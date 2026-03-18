@@ -75,13 +75,17 @@ export async function POST(req: NextRequest, ctx: any) {
 
   await em.flush()
 
-  await emitPartnershipEvent(ctx, 'partnerships.partner_rfp.responded', {
-    id: response.id,
-    tenantId: auth.tenantId,
-    organizationId: auth.orgId,
-    rfpCampaignId: campaign.id,
-    partnerAgencyId: agencyCtx.agency.id,
-  })
+  try {
+    emitPartnershipEvent('partnerships.partner_rfp.responded', {
+      id: response.id,
+      tenantId: auth.tenantId,
+      organizationId: auth.orgId,
+      rfpCampaignId: campaign.id,
+      partnerAgencyId: agencyCtx.agency.id,
+    }, ctx)
+  } catch {
+    // Event emission is best-effort from portal routes
+  }
 
   return Response.json({
     ok: true,

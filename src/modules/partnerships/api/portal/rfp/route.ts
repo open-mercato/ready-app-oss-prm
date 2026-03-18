@@ -52,7 +52,7 @@ export async function GET(req: NextRequest, ctx: any) {
       })
     : []
 
-  const responseMap = new Map(responses.map((r: PartnerRfpResponse) => [r.rfpCampaignId, r]))
+  const responseMap = new Map<string, PartnerRfpResponse>(responses.map((r: PartnerRfpResponse) => [r.rfpCampaignId, r]))
 
   return Response.json({
     ok: true,

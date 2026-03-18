@@ -1,37 +1,46 @@
-export const menuItems = [
-  {
-    id: 'partnerships-portal-dashboard',
-    labelKey: 'partnerships.portal.dashboard',
-    href: '/portal/partnerships',
-    icon: 'LayoutDashboard',
-    order: 100,
+import type { InjectionMenuItemWidget } from '@open-mercato/shared/modules/widgets/injection'
+
+const widget: InjectionMenuItemWidget = {
+  metadata: {
+    id: 'partnerships.injection.portal-nav',
   },
-  {
-    id: 'partnerships-portal-kpi',
-    labelKey: 'partnerships.portal.kpiDetail',
-    href: '/portal/partnerships/kpi',
-    icon: 'BarChart3',
-    order: 110,
-  },
-  {
-    id: 'partnerships-portal-rfp',
-    labelKey: 'partnerships.portal.rfpInbox',
-    href: '/portal/partnerships/rfp',
-    icon: 'FileText',
-    order: 120,
-  },
-  {
-    id: 'partnerships-portal-case-studies',
-    labelKey: 'partnerships.portal.caseStudies',
-    href: '/portal/partnerships/case-studies',
-    icon: 'BookOpen',
-    order: 130,
-  },
-  {
-    id: 'partnerships-portal-team',
-    labelKey: 'partnerships.portal.teamManagement',
-    href: '/portal/partnerships/team',
-    icon: 'Users',
-    order: 140,
-  },
-]
+  menuItems: [
+    {
+      id: 'partnerships-portal-dashboard',
+      label: 'Partner Dashboard',
+      labelKey: 'partnerships.portal.dashboard',
+      href: '/portal/partnerships',
+      icon: 'LayoutDashboard',
+    },
+    {
+      id: 'partnerships-portal-kpi',
+      label: 'KPI Details',
+      labelKey: 'partnerships.portal.kpiDetail',
+      href: '/portal/partnerships/kpi',
+      icon: 'BarChart3',
+    },
+    {
+      id: 'partnerships-portal-rfp',
+      label: 'RFP Campaigns',
+      labelKey: 'partnerships.portal.rfpInbox',
+      href: '/portal/partnerships/rfp',
+      icon: 'FileText',
+    },
+    {
+      id: 'partnerships-portal-case-studies',
+      label: 'Case Studies',
+      labelKey: 'partnerships.portal.caseStudies',
+      href: '/portal/partnerships/case-studies',
+      icon: 'BookOpen',
+    },
+    {
+      id: 'partnerships-portal-team',
+      label: 'Team Management',
+      labelKey: 'partnerships.portal.teamManagement',
+      href: '/portal/partnerships/team',
+      icon: 'Users',
+    },
+  ],
+}
+
+export default widget
