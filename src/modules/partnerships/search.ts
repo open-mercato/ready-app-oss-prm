@@ -1,6 +1,6 @@
 import type { SearchModuleConfig } from '@open-mercato/shared/modules/search'
 
-export const searchConfig: SearchModuleConfig = {
+export const config: SearchModuleConfig = {
   sources: [],
   formatResult: ({ doc }) => ({
     title: doc.display_name ?? doc.label ?? doc.title ?? 'Partner',
@@ -10,4 +10,6 @@ export const searchConfig: SearchModuleConfig = {
   }),
 }
 
-export default searchConfig
+export const searchConfig = config
+
+export default config

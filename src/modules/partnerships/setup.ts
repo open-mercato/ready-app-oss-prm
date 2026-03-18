@@ -21,14 +21,15 @@ async function seedTierDefaults(em: EntityManager, scope: SeedScope) {
   ]
 
   for (const tier of tiers) {
-    const entity = new PartnerTierDefinition()
-    entity.tenantId = scope.tenantId
-    entity.organizationId = scope.organizationId
-    entity.key = tier.key
-    entity.label = tier.label
-    entity.wicThreshold = tier.wicThreshold
-    entity.wipThreshold = tier.wipThreshold
-    entity.minThreshold = tier.minThreshold
+    const entity = em.create(PartnerTierDefinition, {
+      tenantId: scope.tenantId,
+      organizationId: scope.organizationId,
+      key: tier.key,
+      label: tier.label,
+      wicThreshold: tier.wicThreshold,
+      wipThreshold: tier.wipThreshold,
+      minThreshold: tier.minThreshold,
+    })
     em.persist(entity)
   }
 
