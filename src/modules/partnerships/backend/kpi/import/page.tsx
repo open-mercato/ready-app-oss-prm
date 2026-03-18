@@ -34,12 +34,12 @@ export default function ImportKpiPage() {
       <PageBody>
         <CrudForm
           title={t('partnerships.kpi.import', 'Import KPI Snapshot')}
-          backHref="/backend/partnerships/kpi"
+          backHref="/backend/kpi"
           fields={fields}
           groups={groups}
           submitLabel={t('partnerships.kpi.importAction', 'Import')}
-          cancelHref="/backend/partnerships/kpi"
-          successRedirect={`/backend/partnerships/kpi?flash=${encodeURIComponent(t('partnerships.kpi.imported', 'KPI imported'))}&type=success`}
+          cancelHref="/backend/kpi"
+          successRedirect={`/backend/kpi?flash=${encodeURIComponent(t('partnerships.kpi.imported', 'KPI imported'))}&type=success`}
           onSubmit={async (vals) => { await createCrud('partnerships/kpi/snapshots/import', vals) }}
         />
       </PageBody>

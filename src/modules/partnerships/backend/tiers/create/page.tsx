@@ -28,12 +28,12 @@ export default function CreateTierPage() {
       <PageBody>
         <CrudForm
           title={t('partnerships.tier.create', 'Create Tier')}
-          backHref="/backend/partnerships/tiers"
+          backHref="/backend/tiers"
           fields={fields}
           groups={groups}
           submitLabel={t('create', 'Create')}
-          cancelHref="/backend/partnerships/tiers"
-          successRedirect={`/backend/partnerships/tiers?flash=${encodeURIComponent(t('created', 'Created'))}&type=success`}
+          cancelHref="/backend/tiers"
+          successRedirect={`/backend/tiers?flash=${encodeURIComponent(t('created', 'Created'))}&type=success`}
           onSubmit={async (vals) => { await createCrud('partnerships/tiers', vals) }}
         />
       </PageBody>

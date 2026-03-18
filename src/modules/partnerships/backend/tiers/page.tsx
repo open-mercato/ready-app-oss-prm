@@ -52,16 +52,16 @@ export default function TierDefinitionsPage() {
           title={t('partnerships.tier.title', 'Tier Definitions')}
           actions={
             <Button asChild>
-              <Link href="/backend/partnerships/tiers/create">{t('partnerships.tier.create', 'Create Tier')}</Link>
+              <Link href="/backend/tiers/create">{t('partnerships.tier.create', 'Create Tier')}</Link>
             </Button>
           }
           columns={columns}
           data={data?.items || []}
           isLoading={isLoading}
-          onRowClick={(row: TierRow) => router.push(`/backend/partnerships/tiers/${row.id}/edit`)}
+          onRowClick={(row: TierRow) => router.push(`/backend/tiers/${row.id}/edit`)}
           rowActions={(row: TierRow) => (
             <RowActions items={[
-              { label: t('edit', 'Edit'), href: `/backend/partnerships/tiers/${row.id}/edit` },
+              { label: t('edit', 'Edit'), href: `/backend/tiers/${row.id}/edit` },
             ]} />
           )}
         />

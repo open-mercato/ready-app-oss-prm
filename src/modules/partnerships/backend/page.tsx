@@ -13,10 +13,10 @@ export default function PartnershipsDashboard() {
       />
       <PageBody>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <DashboardCard href="/backend/partnerships/agencies" title={t('partnerships.agency.title', 'Agencies')} description={t('partnerships.agency.dashCard', 'Manage partner agencies')} />
-          <DashboardCard href="/backend/partnerships/tiers" title={t('partnerships.tier.title', 'Tier Definitions')} description={t('partnerships.tier.dashCard', 'Configure tier thresholds')} />
-          <DashboardCard href="/backend/partnerships/kpi" title={t('partnerships.kpi.title', 'KPI Dashboard')} description={t('partnerships.kpi.dashCard', 'View partner performance')} />
-          <DashboardCard href="/backend/partnerships/min" title={t('partnerships.min.title', 'MIN Attribution')} description={t('partnerships.min.dashCard', 'Attribute license deals')} />
+          <DashboardCard href="/backend/agencies" title={t('partnerships.agency.title', 'Agencies')} description={t('partnerships.agency.dashCard', 'Manage partner agencies')} />
+          <DashboardCard href="/backend/tiers" title={t('partnerships.tier.title', 'Tier Definitions')} description={t('partnerships.tier.dashCard', 'Configure tier thresholds')} />
+          <DashboardCard href="/backend/kpi" title={t('partnerships.kpi.title', 'KPI Dashboard')} description={t('partnerships.kpi.dashCard', 'View partner performance')} />
+          <DashboardCard href="/backend/min" title={t('partnerships.min.title', 'MIN Attribution')} description={t('partnerships.min.dashCard', 'Attribute license deals')} />
         </div>
       </PageBody>
     </Page>

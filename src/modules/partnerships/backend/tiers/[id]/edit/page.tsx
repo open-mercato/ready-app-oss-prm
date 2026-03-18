@@ -42,14 +42,14 @@ export default function EditTierPage({ params }: { params?: { id?: string } }) {
       <PageBody>
         <CrudForm
           title={t('partnerships.tier.edit', 'Edit Tier')}
-          backHref="/backend/partnerships/tiers"
+          backHref="/backend/tiers"
           fields={fields}
           groups={groups}
           initialValues={initial ?? {}}
           isLoading={loading}
           submitLabel={t('save', 'Save')}
-          cancelHref="/backend/partnerships/tiers"
-          successRedirect={`/backend/partnerships/tiers?flash=${encodeURIComponent(t('saved', 'Saved'))}&type=success`}
+          cancelHref="/backend/tiers"
+          successRedirect={`/backend/tiers?flash=${encodeURIComponent(t('saved', 'Saved'))}&type=success`}
           onSubmit={async (vals) => { await updateCrud('partnerships/tiers', { ...vals, id }) }}
         />
       </PageBody>

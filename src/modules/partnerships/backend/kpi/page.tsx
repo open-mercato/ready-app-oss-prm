@@ -48,7 +48,7 @@ export default function KpiDashboardPage() {
           title={t('partnerships.kpi.title', 'KPI Dashboard')}
           actions={
             <Button asChild>
-              <Link href="/backend/partnerships/kpi/import">{t('partnerships.kpi.import', 'Import KPIs')}</Link>
+              <Link href="/backend/kpi/import">{t('partnerships.kpi.import', 'Import KPIs')}</Link>
             </Button>
           }
           columns={columns}
