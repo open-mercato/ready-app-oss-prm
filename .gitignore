@@ -51,6 +51,10 @@ yarn-error.log*
 .cursor/mcp.json
 .claude/settings.local.json
 
+# Playwright
+test-results/
+playwright-report/
+
 # Misc
 *.tgz
 .cache/
