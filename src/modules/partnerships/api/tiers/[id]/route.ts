@@ -58,12 +58,13 @@ export async function PATCH(req: NextRequest, ctx: any) {
   const container = await createRequestContainer()
   const commandBus = container.resolve('commandBus') as CommandBus
   const scope = await resolveOrganizationScopeForRequest({ container, auth: ctx.auth, request: req })
+  const effectiveOrgId = scope.selectedId ?? ctx.auth?.orgId ?? null
   const runtimeCtx: CommandRuntimeContext = {
     container,
     auth: ctx.auth,
     organizationScope: scope,
-    selectedOrganizationId: scope.selectedId,
-    organizationIds: scope.filterIds,
+    selectedOrganizationId: effectiveOrgId,
+    organizationIds: scope.filterIds ?? (effectiveOrgId ? [effectiveOrgId] : null),
     request: req,
   }
   const { result } = await commandBus.execute('partnerships.partner_tier.update', { input: { ...body, id }, ctx: runtimeCtx })
