@@ -10,6 +10,8 @@ Merged PRs #825 (SPEC-062) and #1006 (SPEC-068 + SPEC-053 alignment) established
 
 This design reshapes `starter-b2b-prm` from a module-source repo into a complete example app, ready to be moved into `open-mercato/examples/b2b-prm/` when that repo is created.
 
+**Note:** SPEC-068 mentions a `.template` file convention with placeholders (`{{APP_NAME}}`, etc.) for `create-mercato-app --example` integration. That convention will be applied when the `open-mercato/examples` repo is created and the `--example` CLI flag is implemented — it is out of scope for this restructuring.
+
 ## Approach
 
 **Copy-and-Clean**: copy test-prm's verified scaffold into starter-b2b-prm, keep the existing partnerships module (already in sync), remove demo modules and dev artifacts.
@@ -37,19 +39,20 @@ This design reshapes `starter-b2b-prm` from a module-source repo into a complete
 
 ## What Gets Removed
 
-### From starter-b2b-prm (dev artifacts)
+### From starter-b2b-prm (dev artifacts + demo modules)
 - `PHASE0-GAPS.md` — framework validation notes
 - `PHASE1B-RESULTS.md` — API verification checklist
 - `modules.ts.snippet` — replaced by real `modules.ts`
+- `src/modules/hello/` — already exists in starter-b2b-prm, must be deleted
 
 ### From copied test-prm content (demo modules)
 - `src/modules/example/` — full demo module (todos, blogs, products)
-- `src/modules/hello/` — minimal SPEC-062 validation module
-- `src/modules/auth/` — empty directory, not needed
+- `src/modules/hello/` — minimal SPEC-062 validation module (do not copy)
+- `src/modules/auth/` — empty directory, not needed (do not copy)
 
 ## modules.ts
 
-18 core/infrastructure modules + partnerships. No demo modules.
+17 core/infrastructure modules + 1 app module (partnerships). No demo modules.
 
 ```typescript
 export const enabledModules: ModuleEntry[] = [
@@ -90,7 +93,7 @@ Per merged SPEC-053 changes, seed configuration uses env vars:
 | `OM_PRM_SEED_PROFILE` | Controls which demo fixtures are seeded (e.g. `demo_agency`) | `demo_agency` |
 | `OM_SEED_EXAMPLES` | Whether to seed demo data during `yarn initialize` | `true` |
 
-These are added to `.env.example` and read in `partnerships/setup.ts` `seedDefaults`/`seedExamples` hooks.
+These are added to `.env.example`. The `partnerships/setup.ts` currently only has `seedDefaults` — wiring these env vars into a `seedExamples` hook is part of this restructuring scope. The `seedDefaults` hook will check `OM_SEED_EXAMPLES` before seeding demo data, and `OM_PRM_SEED_PROFILE` to select fixture sets.
 
 ## Identity & Documentation
 
@@ -118,18 +121,18 @@ Changed to `b2b-prm-example`.
 
 | Action | Path | Source |
 |--------|------|--------|
-| Copy | `package.json` | test-prm (update name) |
+| Copy | `package.json` | test-prm (update name, remove irrelevant deps: `@open-mercato/gateway-stripe`, `@stripe/*`, `pdf2pic`, `newrelic`, `react-big-calendar`; remove `-r newrelic` from start script) |
 | Copy | `yarn.lock`, `.yarnrc.yml` | test-prm |
 | Copy | `next.config.ts`, `tsconfig.json`, `postcss.config.mjs`, `components.json` | test-prm |
 | Copy | `Dockerfile`, `docker-compose*.yml`, `docker/` | test-prm |
-| Copy | `.env.example` | test-prm (add seed env vars) |
+| Copy | `.env.example` | test-prm (add seed env vars, remove irrelevant sections: Stripe, Akeneo, InboxOps, OCR) |
 | Copy | `.dockerignore`, `.gitignore` | test-prm |
 | Copy | `public/`, `types/` | test-prm |
 | Copy | `src/app/`, `src/components/`, `src/lib/`, `src/i18n/` | test-prm |
 | Copy | `src/bootstrap.ts`, `src/di.ts`, `src/proxy.ts` | test-prm |
 | Create | `src/modules.ts` | New (cleaned, no demo modules) |
-| Keep | `src/modules/partnerships/` | Already in starter-b2b-prm |
-| Keep | `src/modules/.gitkeep` | test-prm |
+| Keep | `src/modules/partnerships/` | Already in starter-b2b-prm (verified identical to test-prm except auto-generated `.snapshot-open-mercato.json` which is excluded via `.gitignore`) |
+| Delete | `src/modules/hello/` | Pre-existing in starter-b2b-prm, must be removed |
 | Rewrite | `README.md` | New |
 | Update | `AGENTS.md` | Based on test-prm, updated |
 | Copy | `CLAUDE.md` | test-prm |
@@ -145,6 +148,9 @@ After restructuring, the example app should:
 3. `docker compose up -d` starts postgres, redis, meilisearch
 4. `yarn initialize` runs migrations and seeds (including PRM tiers)
 5. `yarn dev` starts the app
-6. Partnerships API routes respond correctly
-7. Backend admin pages render
-8. Partner portal pages render
+6. Partnerships API smoke tests:
+   - `GET /api/partnerships/agencies` — returns agency list
+   - `GET /api/partnerships/tiers` — returns tier definitions (Bronze/Silver/Gold)
+   - `GET /api/partnerships/kpi/dashboard` — returns KPI dashboard data
+7. Backend admin pages render (`/backend/partnerships/agencies`, `/backend/partnerships/tiers`)
+8. Partner portal pages render (`/[orgSlug]/portal/partnerships`)
