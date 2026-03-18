@@ -63,5 +63,15 @@
   "partnerships.min.isRenewal": "Odnowienie",
   "partnerships.min.attribution": "Przypisana agencja",
   "partnerships.min.attributedAt": "Data atrybucji",
-  "partnerships.min.dashCard": "Przypisz umowy licencyjne"
+  "partnerships.min.dashCard": "Przypisz umowy licencyjne",
+  "partnerships.portal.dashboard": "Panel partnera",
+  "partnerships.portal.tier": "Obecny poziom",
+  "partnerships.portal.noTier": "Brak przypisanego poziomu",
+  "partnerships.portal.activeRfps": "Aktywne RFP",
+  "partnerships.portal.kpiDetail": "Szczegóły KPI",
+  "partnerships.portal.rfpInbox": "Kampanie RFP",
+  "partnerships.portal.rfpResponse": "Twoja odpowiedź",
+  "partnerships.portal.rfpResponsePlaceholder": "Napisz odpowiedź agencji na to RFP...",
+  "partnerships.portal.caseStudies": "Studia przypadków",
+  "partnerships.portal.teamManagement": "Zarządzanie zespołem"
 }

@@ -63,5 +63,15 @@
   "partnerships.min.isRenewal": "Renewal",
   "partnerships.min.attribution": "Attributed Agency",
   "partnerships.min.attributedAt": "Attributed At",
-  "partnerships.min.dashCard": "Attribute license deals"
+  "partnerships.min.dashCard": "Attribute license deals",
+  "partnerships.portal.dashboard": "Partner Dashboard",
+  "partnerships.portal.tier": "Current Tier",
+  "partnerships.portal.noTier": "No tier assigned",
+  "partnerships.portal.activeRfps": "Active RFPs",
+  "partnerships.portal.kpiDetail": "KPI Details",
+  "partnerships.portal.rfpInbox": "RFP Campaigns",
+  "partnerships.portal.rfpResponse": "Your Response",
+  "partnerships.portal.rfpResponsePlaceholder": "Write your agency's response to this RFP...",
+  "partnerships.portal.caseStudies": "Case Studies",
+  "partnerships.portal.teamManagement": "Team Management"
 }
