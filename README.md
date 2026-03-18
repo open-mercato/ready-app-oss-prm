@@ -53,6 +53,7 @@ yarn db:migrate   # Run pending migrations
 yarn typecheck    # Type check
 yarn lint         # Lint
 yarn test         # Run tests
+yarn test:e2e     # Run Playwright e2e tests
 ```
 
 ## Docker (Full App)
