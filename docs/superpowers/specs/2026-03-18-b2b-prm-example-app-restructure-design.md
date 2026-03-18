@@ -52,7 +52,7 @@ This design reshapes `starter-b2b-prm` from a module-source repo into a complete
 
 ## modules.ts
 
-17 core/infrastructure modules + 1 app module (partnerships). No demo modules.
+18 core/infrastructure modules + 1 app module (partnerships). No demo modules.
 
 ```typescript
 export const enabledModules: ModuleEntry[] = [
