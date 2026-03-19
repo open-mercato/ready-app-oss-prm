@@ -202,7 +202,7 @@ Import the bucket options from taxonomy-v1.json to keep ce.ts DRY. The `fields` 
 
 ```typescript
 import type { CustomEntitySpec } from '@open-mercato/shared/modules/entities'
-import taxonomy from './data/taxonomy-v1.json' with { type: 'json' }
+import taxonomy from './data/taxonomy-v1.json'
 
 const buckets = taxonomy.buckets
 
@@ -232,11 +232,9 @@ const caseStudyEntity: CustomEntitySpec = {
   ],
 }
 
+// Extension fields only — entity metadata (label, showInSidebar) owned by customers module
 const companyProfileFields: CustomEntitySpec = {
   id: 'customers:customer_company_profile',
-  label: 'Customer Company',
-  labelField: 'displayName',
-  showInSidebar: false,
   fields: [
     { key: 'positioning_summary', kind: 'multiline', label: 'Positioning Summary', formEditable: true },
     { key: 'delivery_models', kind: 'select', label: 'Delivery Models', options: buckets.delivery_models, multi: true, defaultValue: 'hybrid', formEditable: true, listVisible: true },
@@ -282,7 +280,7 @@ git commit -m "feat(partnerships): add ce.ts — case_study entity + company pro
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { Dictionary, DictionaryEntry, type DictionaryManagerVisibility } from '@open-mercato/core/modules/dictionaries/data/entities'
 import { CustomFieldDef } from '@open-mercato/core/modules/entities/data/entities'
-import taxonomy from '../data/taxonomy-v1.json' with { type: 'json' }
+import taxonomy from '../data/taxonomy-v1.json'
 
 type SeedScope = { tenantId: string; organizationId: string }
 
@@ -485,7 +483,7 @@ Expected: no errors. Partnerships module should appear in generated output with 
 
 Run: `yarn typecheck`
 
-Expected: no errors. If JSON import with `with { type: 'json' }` causes issues in the project's TypeScript config, switch to `require()` or `JSON.parse(readFileSync(...))`.
+Expected: no errors. Project has `resolveJsonModule: true` so plain JSON imports work.
 
 - [ ] **Step 3: Push**
 
