@@ -7,10 +7,12 @@
 > This document is the SINGLE SOURCE OF TRUTH for what PRM is, who it serves,
 > and how it maps to Open Mercato. Technical specs (053, 053a, 053b, etc.)
 > are generated from this document. If a spec contradicts this document, this document wins.
+>
+> Each section has a checklist with owner (Mat or Piotr). Section is done when all checks pass.
 
 ---
 
-## 1. Business Context
+## 1. Business Context `Mat`
 
 ### 1.1 Business Model
 
@@ -29,6 +31,10 @@ Agency joins program
 ```
 
 **Who pays:** OM pays for the PRM system (it's their tool to manage the partner program). Agencies use it for free as part of the partnership. End clients pay for OM enterprise licenses.
+
+#### Checklist
+- [x] Paying customer identified — OM pays, agencies use for free, end clients pay licenses
+- [x] Flywheel articulated — agency contributes + sells -> higher tier -> more leads -> more sales
 
 ### 1.2 Business Goals
 
@@ -52,7 +58,11 @@ All 5 must work for the flywheel to spin. Missing any one = broken loop.
 - Advanced analytics/reporting beyond KPI dashboard
 - Public-facing agency directory (website, not this app)
 
-### 1.3 Glossary
+#### Checklist
+- [x] Primary goal stated with measurable outcome — manage 15+ agencies, track KPIs, govern tiers, distribute leads
+- [x] Scope exclusions listed — matching engine, commission, sales handoff, analytics, directory
+
+### 1.3 Ubiquitous Language
 
 | Term | Definition | Source of data | Period |
 |------|-----------|----------------|--------|
@@ -68,7 +78,14 @@ All 5 must work for the flywheel to spin. Missing any one = broken loop.
 | **PM** | Partnership Manager. OM employee who runs the partner program. | — | — |
 | **BD** | Business Developer. Agency salesperson who prospects clients and creates deals. | — | — |
 
-### 1.4 Tier Definitions
+#### Checklist
+- [x] Every domain term defined once
+- [x] Same word = same meaning across all specs
+- [x] Source of data and period specified per term
+
+### 1.4 Domain Model
+
+#### 1.4.1 Tier Definitions
 
 Source: Mat's business requirements (session 2026-03-19).
 
@@ -85,7 +102,7 @@ Source: Mat's business requirements (session 2026-03-19).
 - Downgrade: PM approval required before tier change takes effect
 - History: all tier changes audited with reason and approver
 
-### 1.5 KPI Formulas
+#### 1.4.2 KPI Formulas
 
 **WIC Score per contribution unit:**
 ```
@@ -118,7 +135,7 @@ MIN(org, year) = COUNT(DISTINCT license_deals)
   AND license_deal.closed_at IN year
 ```
 
-### 1.6 Business Rules
+#### 1.4.3 Business Rules
 
 **Permissions hierarchy:**
 - Admin can do everything BD can, but BD cannot do what Admin does (user management)
@@ -142,9 +159,18 @@ MIN(org, year) = COUNT(DISTINCT license_deals)
 - BD must: add first prospect company, create first deal, move deal to "Contacted"
 - Both are sub-workflows tracked by the system
 
+#### Domain Model Checklist
+- [x] Domain entities identified — PartnerAgency, tiers, KPIs, case studies, RFP, license deals
+- [x] Domain rules documented — tier thresholds, KPI formulas, onboarding requirements
+- [x] Tiers: all 4 real tiers with thresholds and benefits (was 3 in old spec, caught and fixed)
+- [ ] Tiers: governance rules incomplete — grace period TBD
+- [x] KPIs: complete formulas with input source, period, anti-gaming (feature key dedup for WIC)
+- [x] Access control: permissions hierarchy (Admin > BD > Contributor), cross-org visibility (PM all orgs read-only)
+- [x] Data ownership: WIC system-generated, WIP agency-generated, MIN PM-generated
+
 ---
 
-## 2. Identity Model
+## 2. Identity Model `Mat`
 
 > SINGLE SOURCE OF TRUTH. If any spec contradicts this, update the spec.
 
@@ -162,16 +188,26 @@ MIN(org, year) = COUNT(DISTINCT license_deals)
 - _Why not portal for Contributor?_ — Contributor is minimal, but still a User with restricted role. One identity system, not two. Simplicity > convenience.
 - _Could CustomerUser enable self-registration?_ — Yes, but at the cost of dual accounts or a promotion flow. Not worth the complexity for the example app.
 
+#### Checklist
+- [x] Every persona has ONE identity type — all User, zero CustomerUser `Mat`
+- [x] Identity decision justified per persona — BD needs CRM = backend = User `Mat`
+- [x] No persona has two accounts — portal rejected, no promotion flows `Piotr`
+- [x] Org scoping defined per role — PM all orgs null, others own org `Piotr`
+- [x] Portal usage explicitly rejected — "NOT USED" with justification `Mat`
+
 ---
 
-## 3. Workflows
+## 3. Workflows `Mat`
 
 > Each workflow traces to ROI. If a workflow doesn't move a KPI or enable one that does, cut it.
 
 ### WF1: Agency Onboarding
+
 **Journey:** PM invites Agency Admin (email+link) -> Admin sets password -> Admin onboarding sub-workflow (fill company profile -> add min 1 case study -> invite BD -> invite Contributor) -> BD onboarding sub-workflow (add prospect company -> create deal -> move deal to "Contacted") -> Agency is operational
 
 **ROI:** Each new agency = 1-15 WIP/month + 1-5 MIN/year. Zero agencies = zero indirect pipeline. Target: 15+ active agencies.
+
+**Key personas:** Partnership Manager (invites), Agency Admin (configures), BD (first deal)
 
 **Boundaries:**
 - Starts when: PM clicks "Invite Agency" and provides email
@@ -184,10 +220,22 @@ MIN(org, year) = COUNT(DISTINCT license_deals)
 3. Admin fills profile but never invites BD -> onboarding "done" but no WIP generated
 4. PM invites same email twice -> system must deduplicate
 
+**OM readiness:**
+- User creation + RBAC -> `auth` module ✅
+- Org scoping -> platform ✅
+- Company profile custom fields -> `entities` module ✅
+- Case studies custom entity -> `entities` module ✅
+- Pipeline stages for deals -> `customers` module ✅
+- Sub-workflows (onboarding steps) -> `workflows` module ✅
+- **Gap: Invitation flow** — auth module has no invite-by-email-link for User accounts
+
 ### WF2: Pipeline Building (WIP)
+
 **Journey:** BD creates Company (prospect) in CRM -> creates Deal on that Company -> moves Deal through pipeline stages -> at "Sales Qualified Lead" stage = 1 WIP -> BD sees WIP count on KPI dashboard
 
 **ROI:** 15 agencies x 5 WIP/month = 75 prospects/month. Agency without WIP loses tier.
+
+**Key personas:** BD (creates deals), System (counts WIP)
 
 **Boundaries:**
 - Starts when: BD creates deal in CRM
@@ -200,10 +248,20 @@ MIN(org, year) = COUNT(DISTINCT license_deals)
 3. Same prospect in two agencies -> both count WIP -> conflict at RFP
 4. Period boundary: deal created March 31, counted in March or April?
 
+**OM readiness:**
+- CRM (companies, deals, activities) -> `customers` module ✅
+- Pipeline + stages -> `customers` module ✅ (seed PRM pipeline in setup.ts)
+- Deal CRUD + pipeline UI -> `customers` backend pages ✅
+- **Gap: WIP count aggregation** — scheduled job (~30 lines)
+- **Gap: KPI dashboard widget** — widget injection (~50 lines)
+
 ### WF3: Code Contribution (WIC)
+
 **Journey:** Dev opens PR on OM GitHub repo -> core team reviews -> merge to develop -> daily scheduled job -> GitHub API fetch PRs per contributor -> group by (person, month, feature key) -> LLM scoring (L1-L4, impact bonus, bounty) -> optional PM override -> WIC score recorded -> Contributor/BD/Admin sees score
 
 **ROI:** 15 agencies x 2 WIC/month = 30 contributions/month to OM codebase.
+
+**Key personas:** Contributor (views score), System (scheduled job), PM (optional override)
 
 **Boundaries:**
 - Starts when: Scheduled job triggers (daily)
@@ -216,10 +274,21 @@ MIN(org, year) = COUNT(DISTINCT license_deals)
 3. PR merged but WIC batch hasn't run yet -> dev doesn't see contribution
 4. Dev uses private GH account, different from registered username
 
+**OM readiness:**
+- Contributor sees WIC score -> backend page with RBAC ✅ (~50 lines widget)
+- Scheduled daily run -> `scheduler` module ✅
+- Human checkpoint -> `workflows` USER_TASK ✅
+- Score storage -> partnerships entities (PartnerWicRun/ContributionUnit) ✅
+- **Gap: GitHub API integration** — external, LLM scoring, complex pipeline
+- **Gap: GH username -> User mapping** — custom field on User entity
+
 ### WF4: Lead Distribution (RFP)
+
 **Journey:** OM receives lead -> PM creates RFP campaign (description, requirements, deadline, audience: all/selected/tier-filtered) -> system notifies agencies -> BD sees RFP and submits response (capabilities, pricing, timeline, case studies) -> PM evaluates responses -> selects agency -> handoff to sales
 
 **ROI:** 10 RFP/month x 30% conversion = 3 MIN/month. Without RFP = PM sends emails manually.
+
+**Key personas:** PM (creates RFP, evaluates), BD (responds), System (notifies)
 
 **Boundaries:**
 - Starts when: PM creates RFP campaign
@@ -232,10 +301,21 @@ MIN(org, year) = COUNT(DISTINCT license_deals)
 3. Two agencies score identically -> PM decides manually -> favoritism risk
 4. Lead changes requirements after RFP published
 
+**OM readiness:**
+- RFP as workflow -> `workflows` module: START -> SEND_EMAIL -> WAIT_FOR_TIMER -> USER_TASK -> END ✅
+- Notification to BD -> workflows SEND_EMAIL activity ✅
+- BD response -> workflows USER_TASK with structured form ✅
+- **Gap: RFP campaign data** — custom entity (PartnerRfpCampaign)
+- **Gap: Response data** — custom entity (PartnerRfpResponse)
+- **Gap: PM evaluation page** — comparison view (~100 lines)
+
 ### WF5: Tier Governance
+
 **Journey:** System aggregates WIC+WIP+MIN per org per period -> compares with 4 tier thresholds -> generates upgrade/downgrade proposal -> PM reviews + approves -> system updates tier -> agency sees new status + progress to next level
 
 **ROI:** Automated governance saves PM ~4h/week. Network quality maintained.
+
+**Key personas:** System (aggregates), PM (approves), all agency users (see tier)
 
 **Boundaries:**
 - Starts when: Scheduled job triggers (monthly)
@@ -249,9 +329,28 @@ MIN(org, year) = COUNT(DISTINCT license_deals)
 4. PM doesn't approve tier change for weeks -> agency doesn't know tier
 5. Vertical dominance for Expert -> how does system know 3 MIN are "in vertical"?
 
+**OM readiness:**
+- PM approval -> `workflows` USER_TASK ✅
+- Tier history -> `audit_logs` module ✅
+- **Gap: KPI aggregation** — scheduled job (~50 lines)
+- **Gap: Tier comparison** — threshold logic (~30 lines)
+- **Gap: Tier status widget** — widget injection on dashboard (~50 lines)
+
+#### Checklist (per workflow)
+- [x] End-to-end journey — all 5 workflows have full journey `Mat`
+- [x] Measurable ROI — specific metrics per workflow `Mat`
+- [x] Key personas identified per workflow `Mat`
+- [x] Boundaries — start, end, NOT-this-workflow for all 5 `Mat`
+- [x] 3-5 edge cases per workflow — production-realistic scenarios `Mat`
+- [x] Every step mapped to OM module with gap identified `Piotr`
+
+#### Checklist (overall)
+- [x] 5 core workflows defined (3-7 range) `Mat`
+- [ ] No workflow requires >200 lines — all under except WF3 full (deferred to Phase 4 with workaround) `Piotr`
+
 ---
 
-## 4. Workflow Gap Analysis
+## 4. Workflow Gap Analysis `Piotr`
 
 > Gap analysis maps each workflow step to OM platform capability.
 > Gap score = how much new code is needed. Lower = better.
@@ -305,7 +404,7 @@ MIN(org, year) = COUNT(DISTINCT license_deals)
 | PM override | workflows USER_TASK | Covered | 1 | Workflow step |
 | **WORKAROUND: Manual import** | partnerships API | Covered | 0 | `/kpi/wic-runs/import` API exists in spec |
 
-**Workaround detail:** Instead of automated GitHub+LLM pipeline (gap score 5), PM runs external script manually and imports results via API. Score drops from 8 to 3. Automated pipeline deferred to Phase 3.
+**Workaround detail:** Instead of automated GitHub+LLM pipeline (gap score 5), PM runs external script manually and imports results via API. Score drops from 8 to 3. Automated pipeline deferred to Phase 4.
 
 #### WF4: Lead Distribution (RFP) — Total gap: 7
 
@@ -340,9 +439,13 @@ MIN(org, year) = COUNT(DISTINCT license_deals)
 | WF4: RFP | Medium | 7 | No | 7 | Partial — PM can email manually |
 | WF3: WIC | Medium | 8 | Yes (manual import) | 3 | Yes — but workaround unblocks |
 
+#### Checklist
+- [x] Every workflow step scored 0-5 `Mat`
+- [ ] Piotr checkpoint: workflow-to-OM mapping verified `Piotr`
+
 ---
 
-## 5. User Stories (per workflow)
+## 5. User Stories `Mat`
 
 > Each story traces to a workflow step. Story = atomic action by one persona with measurable success.
 > Format: As [persona], I [action], so that [business outcome]. Success: [testable criteria].
@@ -386,7 +489,7 @@ Success: Upload CSV/markdown, system parses and maps GH profiles to users, score
 **US-3.3** As Contributor, I see my WIC score and level breakdown so that I know my contribution status.
 Success: Dashboard shows: total WIC this month, per-contribution breakdown (feature key, level, bonus).
 
-**US-3.4** (Phase 3) As System, I automatically fetch and score GitHub PRs daily so that WIC is always current.
+**US-3.4** (Phase 4) As System, I automatically fetch and score GitHub PRs daily so that WIC is always current.
 Success: Daily job runs, new PRs scored, contributors see updated scores without PM intervention.
 
 ### WF4: Lead Distribution (RFP)
@@ -414,9 +517,15 @@ Success: PM sees proposal, approves/rejects with reason, tier updated on approva
 **US-5.4** As Agency Admin/BD, I see my current tier and progress toward next level so that I know where we stand.
 Success: Dashboard shows: current tier, KPI values vs thresholds, % progress to next tier.
 
+#### Checklist
+- [x] Every story has: persona + action + measurable outcome + success criteria
+- [x] Every story traces to a workflow step — US-x.y maps to WFx
+- [x] Identity checkpoint per story — all personas are User with specific role keys from §2
+- [x] No weak stories — all have concrete actions with observable results
+
 ---
 
-## 6. User Story Gap Analysis
+## 6. User Story Gap Analysis `Piotr`
 
 > Map each story to OM capability. Piotr checkpoint: verify mapping.
 
@@ -433,7 +542,7 @@ Success: Dashboard shows: current tier, KPI values vs thresholds, % progress to 
 | US-3.1 | auth custom field on User | ~10 lines | 1 |
 | US-3.2 | partnerships import API | Spec has API defined | 1 |
 | US-3.3 | partnerships backend page | ~50 lines widget | 2 |
-| US-3.4 | external (GitHub+LLM) | Major — deferred Phase 3 | 5 |
+| US-3.4 | external (GitHub+LLM) | Major — deferred Phase 4 | 5 |
 | US-4.1 | partnerships entity + CRUD | ~80 lines entity+route | 2 |
 | US-4.2 | partnerships entity + form | ~80 lines entity+form | 2 |
 | US-4.3 | partnerships backend page | ~100 lines comparison | 3 |
@@ -442,9 +551,13 @@ Success: Dashboard shows: current tier, KPI values vs thresholds, % progress to 
 | US-5.3 | workflows USER_TASK | Workflow JSON definition | 1 |
 | US-5.4 | partnerships widget injection | ~50 lines widget | 2 |
 
+#### Checklist
+- [x] Every story mapped to specific OM module/mechanism with code estimate `Mat`
+- [ ] Piotr checkpoint: story-to-OM mapping verified `Piotr`
+
 ---
 
-## 7. Phasing & Rollout Plan
+## 7. Phasing & Rollout Plan `Mat`
 
 > Phasing logic:
 > - High business priority + Low gap = ship first
@@ -537,9 +650,17 @@ Phase 4: Automation          ~400 lines   WF3 (full) + WF1 (full)
 
 Each phase delivers a complete, usable increment. No phase leaves a workflow half-done.
 
+#### Checklist
+- [x] Phases ordered by: business priority x gap score x blocker status
+- [x] Each phase delivers complete, usable increment
+- [x] Workarounds documented for high-gap blockers — WIC manual import, self-onboard
+- [x] Total new code estimated per phase `Piotr`
+
 ---
 
-## 8. Cross-Spec Conflicts
+## 8. Cross-Spec Conflicts `Mat`
+
+### Conflicts
 
 | Conflict | Specs involved | Resolution |
 |----------|---------------|------------|
@@ -548,9 +669,30 @@ Each phase delivers a complete, usable increment. No phase leaves a workflow hal
 | WIP definition: "conversations" vs "deals in SQL stage" | SPEC-053 vs SPEC-053b | **Deals in SQL stage.** CRM best practice. |
 | RFP: custom API routes vs workflows module | SPEC-053c (code) vs SPEC-053b (spec) | **TBD — needs Piotr review.** Workflows module likely simpler. |
 
+### Shared Entity Ownership
+
+| Entity | Owner | Referenced by |
+|--------|-------|---------------|
+| PartnerAgency (org + tier + profile) | partnerships module | all specs |
+| PartnerTierAssignment | partnerships module | SPEC-053b (tier governance) |
+| PartnerMetricSnapshot (WIC/WIP/MIN per period) | partnerships module | SPEC-053b (KPIs), SPEC-060 (WIC) |
+| PartnerWicRun / ContributionUnit | partnerships module | SPEC-060 (WIC scoring) |
+| PartnerRfpCampaign | partnerships module | SPEC-053b (RFP) |
+| PartnerRfpResponse | partnerships module | SPEC-053b (RFP) |
+| PartnerLicenseDeal (MIN source) | partnerships module | SPEC-053b (MIN) |
+| PartnerCaseStudy | entities module (custom entity) | SPEC-053b (RFP matching) |
+| Pipeline stages (PRM-specific) | customers module (seeded) | SPEC-053b (WIP) |
+
+#### Checklist
+- [x] All related specs listed — SPEC-053, 053a, 053b, 053c, 060, 068
+- [x] Identity model consistent — conflict resolved, User wins
+- [x] Terminology consistent — glossary §1.3 is source of truth
+- [x] Shared entities owned by one spec — partnerships module owns all PRM entities
+- [ ] Every conflict resolved — RFP mechanism still TBD
+
 ---
 
-## 9. Example App Quality Gate
+## 9. Example App Quality Gate `Piotr`
 
 **This app has two ROIs:**
 1. **Business ROI** — PRM works, agencies generate pipeline for OM
@@ -575,21 +717,61 @@ Each phase delivers a complete, usable increment. No phase leaves a workflow hal
 - Two identity systems in one app
 - Building user management UI (auth module has it)
 
+#### Checklist
+- [x] Every piece of new code passes the "copy test"
+- [x] Anti-patterns explicitly listed
+- [x] Platform features demonstrated
+
 ---
 
-## 10. Open Questions
+## 10. Open Questions `Mat`
 
 | # | Question | Options | Impact | Owner | Status |
 |---|----------|---------|--------|-------|--------|
 | 1 | WIC implementation | a) n8n b) OM scheduler c) standalone cron | Phase 4 architecture | Piotr | Open |
 | 2 | RFP mechanism | a) custom code b) workflows module | Phase 3 code volume | Mat + Piotr | Open |
 | 3 | Invitation flow | a) self-onboard b) email invitation | Phase 1 vs Phase 4 | Mat | Decided: self-onboard Phase 1, email Phase 4 |
-| 4 | Existing portal code | a) delete b) refactor | All phases | Mat | Decided: delete |
+| 4 | Existing portal code | a) delete b) refactor | All phases | Mat | Decided: delete. Zero personas need CustomerUser. |
 | 5 | Tier grace period | a) none b) 1 month c) pro-rata | Phase 2 edge cases | Mat | Open |
+| 6 | RFP lead source | a) website form b) email c) PM enters manually | Phase 3 scope | Mat | Open |
+| 7 | RFP matching criteria | a) automated (case study data) b) manual (PM judgment) | Phase 3 complexity | Mat + Piotr | Open |
+| 8 | MIN attribution | a) PM creates record b) deal in CRM with license tag c) both | Phase 3 data model | Mat | Open |
+
+#### Checklist
+- [x] Every question has: options, impact, owner, status
+- [x] No BLOCKER question unresolved for Phase 1 — invitation flow decided (self-onboard)
+- [x] Decided questions have rationale recorded
+
+---
+
+## Production Readiness `Mat`
+
+| Workflow | Deployable | Blocker | What client would say |
+|----------|-----------|---------|----------------------|
+| WF1: Agency Onboarding | **No** | No invitation flow in auth module | "How do I invite an agency?" |
+| WF2: Pipeline Building (WIP) | **Almost** | CRM ready, missing WIP count job | "I see CRM but not my WIP count" |
+| WF3: Code Contribution (WIC) | **No** | No GitHub integration, no LLM scoring | "How does my PR become WIC score?" |
+| WF4: Lead Distribution (RFP) | **No** | No RFP workflow definition, open questions | "How do I send a lead to agencies?" |
+| WF5: Tier Governance | **No** | No KPI aggregation, no tier logic | "What tier am I? How far to next?" |
+
+#### Checklist
+- [x] Each workflow assessed: deployable or not — binary with specific blocker
+- [x] "What would client say?" test — client complaint, not technical gap
+- [x] No workflow stops midway — workarounds ensure complete increments per phase
 
 ---
 
 ## Changelog
+
+### 2026-03-20
+- App Spec restructured to match template (`templates/app-spec-template.md`)
+- DDD alignment: §1.3 Glossary -> Ubiquitous Language, §1.4-1.6 merged into Domain Model
+- Added checklists per section with Mat/Piotr ownership
+- Added "Key personas" and "OM readiness" per workflow (was only in workflow-analysis)
+- Added Production Readiness section (was only in workflow-analysis)
+- Added Shared Entity Ownership table to Cross-Spec Conflicts
+- Added 3 open questions from workflow-analysis: RFP lead source, RFP matching, MIN attribution
+- Fixed US-3.4 phase reference: Phase 3 -> Phase 4
 
 ### 2026-03-19
 - Initial App Spec created from Phase 0 session transcript
@@ -603,4 +785,3 @@ Each phase delivers a complete, usable increment. No phase leaves a workflow hal
 - Workarounds identified for high-gap blockers (WIC manual import, self-onboard)
 - Rollout plan: 4 phases, ~980 lines total new code
 - Cross-spec conflicts documented and resolved
-- Checklist created separately (app-spec-checklist.md)
