@@ -66,8 +66,16 @@ export async function POST(req: NextRequest, ctx: any) {
     organizationIds: scope.filterIds ?? (effectiveOrgId ? [effectiveOrgId] : null),
     request: req,
   }
-  const { result } = await commandBus.execute('partnerships.partner_agency.self_onboard', { input: body, ctx: runtimeCtx })
-  return Response.json({ ok: true, data: { id: result.id, status: result.status } }, { status: 201 })
+  try {
+    const { result } = await commandBus.execute('partnerships.partner_agency.self_onboard', { input: body, ctx: runtimeCtx })
+    return Response.json({ ok: true, data: { id: result.id, status: result.status } }, { status: 201 })
+  } catch (err: any) {
+    const httpStatus = err?.status ?? err?.statusCode
+    if (httpStatus && typeof httpStatus === 'number' && httpStatus >= 400) {
+      return Response.json({ ok: false, error: err.body?.error ?? err.message }, { status: httpStatus })
+    }
+    throw err
+  }
 }
 
 export const openApi = {
