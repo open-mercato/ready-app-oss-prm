@@ -1,10 +1,10 @@
 import type { APIRequestContext, APIResponse } from '@playwright/test'
 import { DEFAULT_CREDENTIALS, type Role } from './auth'
 
-const BASE_URL = process.env.BASE_URL?.trim() || null
+const BASE_URL = process.env.BASE_URL?.trim() || 'http://localhost:3000'
 
 function resolveUrl(path: string): string {
-  return BASE_URL ? `${BASE_URL}${path}` : path
+  return `${BASE_URL}${path}`
 }
 
 export async function getAuthToken(

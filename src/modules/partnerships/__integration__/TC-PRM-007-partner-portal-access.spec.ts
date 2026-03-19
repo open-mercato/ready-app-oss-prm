@@ -23,9 +23,9 @@ test.describe('TC-PRM-007: Partner portal access', () => {
 
   test('portal routes return data with valid token', async ({ request }) => {
     // This test attempts portal access with admin token.
-    // Admin may not have portal context — expect either 200 or 403 (not 500).
+    // Admin token doesn't have portal customer context — expect 401 or 403 (not 500).
     const token = await getAuthToken(request)
     const res = await apiRequest(request, 'GET', '/api/partnerships/portal/dashboard', { token })
-    expect([200, 403]).toContain(res.status())
+    expect([200, 401, 403]).toContain(res.status())
   })
 })

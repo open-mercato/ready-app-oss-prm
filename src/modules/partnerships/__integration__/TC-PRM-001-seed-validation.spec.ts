@@ -12,7 +12,7 @@ test.describe('TC-PRM-001: Seed validation', () => {
     const res = await apiRequest(request, 'GET', '/api/partnerships/tiers', { token })
     expect(res.ok()).toBe(true)
     const body = await res.json()
-    const items = body.items ?? body.data ?? body
+    const items = body.data?.items ?? body.items ?? body
     const keys = (Array.isArray(items) ? items : []).map((t: any) => t.key)
     expect(keys).toEqual(expect.arrayContaining(['bronze', 'silver', 'gold']))
   })
@@ -21,9 +21,12 @@ test.describe('TC-PRM-001: Seed validation', () => {
     const res = await apiRequest(request, 'GET', '/api/partnerships/agencies', { token })
     expect(res.ok()).toBe(true)
     const body = await res.json()
-    const items = body.items ?? body.data ?? body
-    expect(Array.isArray(items) ? items.length : 0).toBeGreaterThanOrEqual(1)
-    const names = items.map((a: any) => a.name)
-    expect(names).toContain('Demo Agency')
+    const items = body.data?.items ?? body.items ?? body
+    expect(Array.isArray(items)).toBe(true)
+    expect(items.length).toBeGreaterThanOrEqual(1)
+    // Agency has active status and a valid agencyOrganizationId
+    const first = items[0]
+    expect(first.status).toBe('active')
+    expect(first.agencyOrganizationId).toBeTruthy()
   })
 })

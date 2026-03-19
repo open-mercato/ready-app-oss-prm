@@ -20,9 +20,8 @@ test.describe('TC-PRM-005: Admin navigation', () => {
     const link = page.getByRole('link', { name: /agencies/i })
     if (await link.first().isVisible().catch(() => false)) {
       await link.first().click()
-      await page.waitForLoadState('networkidle')
-      // Should land on an agencies view
-      await expect(page.getByText(/agency|agencies/i).first()).toBeVisible()
+      await page.waitForLoadState('domcontentloaded')
+      await expect(page.getByText(/agency|agencies/i).first()).toBeVisible({ timeout: 10_000 })
     }
   })
 
@@ -31,8 +30,8 @@ test.describe('TC-PRM-005: Admin navigation', () => {
     const link = page.getByRole('link', { name: /tier/i })
     if (await link.first().isVisible().catch(() => false)) {
       await link.first().click()
-      await page.waitForLoadState('networkidle')
-      await expect(page.getByText(/tier|bronze|silver|gold/i).first()).toBeVisible()
+      await page.waitForLoadState('domcontentloaded')
+      await expect(page.getByText(/tier|bronze|silver|gold/i).first()).toBeVisible({ timeout: 10_000 })
     }
   })
 })

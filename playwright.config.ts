@@ -10,6 +10,7 @@ export default defineConfig({
   retries: 1,
   workers: 1,
   use: {
+    baseURL: process.env.BASE_URL || 'http://localhost:3000',
     headless: !process.env.HEADED,
     trace: 'on-first-retry',
   },

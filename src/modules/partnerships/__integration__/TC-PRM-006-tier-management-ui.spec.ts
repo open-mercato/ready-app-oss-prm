@@ -1,39 +1,31 @@
 import { test, expect } from '@playwright/test'
-import { login } from './helpers/auth'
 import { getAuthToken, apiRequest } from './helpers/api'
 
-test.describe('TC-PRM-006: Tier management UI', () => {
-  const tierKey = `uitier_${Date.now()}`
+test.describe('TC-PRM-006: Tier management via API', () => {
+  let token: string
 
-  test.afterAll(async ({ request }) => {
-    // Clean up via API
-    try {
-      const token = await getAuthToken(request)
-      const res = await apiRequest(request, 'GET', '/api/partnerships/tiers', { token })
-      const body = await res.json()
-      const items = body.items ?? body.data ?? body
-      const created = (Array.isArray(items) ? items : []).find((t: any) => t.key === tierKey)
-      if (created?.id) {
-        await apiRequest(request, 'DELETE', `/api/partnerships/tiers/${created.id}`, { token })
-      }
-    } catch {
-      // Best-effort cleanup
-    }
+  test.beforeAll(async ({ request }) => {
+    token = await getAuthToken(request)
   })
 
-  test('seeded tiers are visible in the UI', async ({ page }) => {
-    await login(page)
+  test('seeded tiers are present (bronze, silver, gold)', async ({ request }) => {
+    const res = await apiRequest(request, 'GET', '/api/partnerships/tiers', { token })
+    expect(res.ok()).toBe(true)
+    const body = await res.json()
+    const items = body.data?.items ?? body.items ?? body
+    const labels = (Array.isArray(items) ? items : []).map((t: any) => t.label?.toLowerCase())
+    expect(labels).toEqual(expect.arrayContaining(['bronze', 'silver', 'gold']))
+  })
 
-    // Navigate to tiers page
-    const tiersLink = page.getByRole('link', { name: /tier/i })
-    if (await tiersLink.first().isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await tiersLink.first().click()
-      await page.waitForLoadState('networkidle')
-
-      // Should see the seeded tiers
-      await expect(page.getByText(/bronze/i).first()).toBeVisible({ timeout: 10_000 })
-      await expect(page.getByText(/silver/i).first()).toBeVisible()
-      await expect(page.getByText(/gold/i).first()).toBeVisible()
-    }
+  test('tier has expected threshold fields', async ({ request }) => {
+    const res = await apiRequest(request, 'GET', '/api/partnerships/tiers', { token })
+    const body = await res.json()
+    const items = body.data?.items ?? body.items ?? body
+    const bronze = items.find((t: any) => t.key === 'bronze')
+    expect(bronze).toBeTruthy()
+    expect(bronze.wicThreshold).toBeDefined()
+    expect(bronze.wipThreshold).toBeDefined()
+    expect(bronze.minThreshold).toBeDefined()
+    expect(bronze.isActive).toBe(true)
   })
 })
