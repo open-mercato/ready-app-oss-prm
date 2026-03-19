@@ -1,6 +1,7 @@
 import type { ModuleSetupConfig } from '@open-mercato/shared/modules/setup'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { PartnerTierDefinition, PartnerAgency } from './data/entities'
+import { seedPrmDataFoundation } from './lib/seed-data-foundation'
 
 interface SeedScope {
   tenantId: string
@@ -164,6 +165,8 @@ export const setup: ModuleSetupConfig = {
     // Structural defaults always seed (tiers + roles are required for PRM to function)
     await seedTierDefaults(ctx.em, scope)
     await seedPartnerRoles(ctx.em, scope)
+    // SPEC-053a: dictionaries, custom entity fields, and taxonomy
+    await seedPrmDataFoundation(ctx.em, scope)
 
     // Example data only seeds when OM_SEED_EXAMPLES is not explicitly false
     const seedExamples = process.env.OM_SEED_EXAMPLES !== 'false'
