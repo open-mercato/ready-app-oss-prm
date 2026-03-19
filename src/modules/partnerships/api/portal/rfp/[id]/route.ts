@@ -1,6 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { getCustomerAuthFromRequest } from '@open-mercato/core/modules/customer_accounts/lib/customerAuth'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
+import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
+import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi/types'
 import { resolvePartnerAgency } from '../../../../lib/resolvePartnerAgency'
 import { PartnerRfpCampaign, PartnerRfpResponse } from '../../../../data/entities'
 
@@ -25,19 +27,21 @@ export async function GET(req: NextRequest, ctx: any) {
   const campaignId = ctx.params?.id
   if (!campaignId) return Response.json({ error: 'Missing campaign ID' }, { status: 400 })
 
-  const campaign = await em.findOne(PartnerRfpCampaign, {
+  const scope = { tenantId: auth.tenantId, organizationId: auth.orgId }
+
+  const campaign = await findOneWithDecryption(em, PartnerRfpCampaign, {
     id: campaignId,
     tenantId: auth.tenantId,
     organizationId: auth.orgId,
     deletedAt: null,
-  })
+  } as any, undefined, scope)
   if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 })
 
-  const response = await em.findOne(PartnerRfpResponse, {
+  const response = await findOneWithDecryption(em, PartnerRfpResponse, {
     rfpCampaignId: campaign.id,
     partnerAgencyId: agencyCtx.agency.id,
     tenantId: auth.tenantId,
-  })
+  } as any, undefined, scope)
 
   return Response.json({
     ok: true,
@@ -58,4 +62,19 @@ export async function GET(req: NextRequest, ctx: any) {
         : null,
     },
   })
+}
+
+export const openApi: OpenApiRouteDoc = {
+  summary: 'Get RFP campaign detail',
+  methods: {
+    GET: {
+      summary: 'Get a single RFP campaign with partner response status',
+      tags: ['Partner Portal'],
+      responses: [{ status: 200, description: 'Success' }],
+      errors: [
+        { status: 401, description: 'Not authenticated' },
+        { status: 404, description: 'Campaign not found' },
+      ],
+    },
+  },
 }

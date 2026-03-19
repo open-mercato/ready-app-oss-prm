@@ -1,6 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { getCustomerAuthFromRequest } from '@open-mercato/core/modules/customer_accounts/lib/customerAuth'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
+import { findOneWithDecryption, findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
+import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi/types'
 import { resolvePartnerAgency } from '../../../lib/resolvePartnerAgency'
 import { PartnerTierAssignment, PartnerMetricSnapshot, PartnerRfpCampaign } from '../../../data/entities'
 
@@ -23,23 +25,29 @@ export async function GET(req: NextRequest, ctx: any) {
   }
 
   const { agency } = agencyCtx
+  const scope = { tenantId: auth.tenantId, organizationId: auth.orgId }
 
-  const tierAssignment = await em.findOne(
+  const tierAssignment = await findOneWithDecryption(
+    em,
     PartnerTierAssignment,
-    { tenantId: auth.tenantId, organizationId: auth.orgId, partnerAgencyId: agency.id },
+    { tenantId: auth.tenantId, organizationId: auth.orgId, partnerAgencyId: agency.id } as any,
     { orderBy: { createdAt: 'DESC' } },
+    scope,
   )
 
-  const metrics = await em.find(
+  const metrics = await findWithDecryption(
+    em,
     PartnerMetricSnapshot,
-    { tenantId: auth.tenantId, organizationId: auth.orgId, partnerAgencyId: agency.id },
+    { tenantId: auth.tenantId, organizationId: auth.orgId, partnerAgencyId: agency.id } as any,
     { orderBy: { periodEnd: 'DESC' }, limit: 3 },
+    scope,
   )
 
   const wic = metrics.find((m: PartnerMetricSnapshot) => m.metricKey === 'wic')?.value ?? 0
   const wip = metrics.find((m: PartnerMetricSnapshot) => m.metricKey === 'wip')?.value ?? 0
   const min = metrics.find((m: PartnerMetricSnapshot) => m.metricKey === 'min')?.value ?? 0
 
+  // em.count has no encrypted fields to worry about — keep as-is
   const activeRfps = await em.count(PartnerRfpCampaign, {
     tenantId: auth.tenantId,
     organizationId: auth.orgId,
@@ -66,4 +74,18 @@ export async function GET(req: NextRequest, ctx: any) {
       activeRfpCount: activeRfps,
     },
   })
+}
+
+export const openApi: OpenApiRouteDoc = {
+  summary: 'Partner dashboard overview',
+  methods: {
+    GET: {
+      summary: 'Get partner dashboard with tier, KPI summary, and active RFP count',
+      tags: ['Partner Portal'],
+      responses: [{ status: 200, description: 'Success' }],
+      errors: [
+        { status: 401, description: 'Not authenticated' },
+      ],
+    },
+  },
 }

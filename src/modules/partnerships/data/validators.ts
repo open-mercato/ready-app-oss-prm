@@ -78,6 +78,7 @@ export type UpdateRfpCampaignInput = z.infer<typeof updateRfpCampaignSchema>
 export const submitRfpResponseSchema = z.object({
   rfpCampaignId: uuid(),
   partnerAgencyId: uuid(),
+  content: z.string().min(1).max(10000).optional(),
   status: z.enum(['invited', 'draft', 'submitted', 'withdrawn', 'selected']).default('draft'),
   score: z.number().min(0).max(100).optional(),
 })

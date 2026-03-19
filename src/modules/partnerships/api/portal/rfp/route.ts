@@ -1,6 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { getCustomerAuthFromRequest } from '@open-mercato/core/modules/customer_accounts/lib/customerAuth'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
+import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
+import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi/types'
 import { resolvePartnerAgency } from '../../../lib/resolvePartnerAgency'
 import { PartnerRfpCampaign, PartnerRfpResponse } from '../../../data/entities'
 
@@ -27,15 +29,19 @@ export async function GET(req: NextRequest, ctx: any) {
   const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get('pageSize') ?? '25')))
   const offset = (page - 1) * pageSize
 
-  const campaigns = await em.find(
+  const scope = { tenantId: auth.tenantId, organizationId: auth.orgId }
+
+  const campaigns = await findWithDecryption(
+    em,
     PartnerRfpCampaign,
     {
       tenantId: auth.tenantId,
       organizationId: auth.orgId,
       status: { $in: ['published', 'closed'] },
       deletedAt: null,
-    },
+    } as any,
     { orderBy: { createdAt: 'DESC' }, limit: pageSize, offset },
+    scope,
   )
 
   const visibleCampaigns = campaigns.filter((c: PartnerRfpCampaign) =>
@@ -45,11 +51,11 @@ export async function GET(req: NextRequest, ctx: any) {
 
   const campaignIds = visibleCampaigns.map((c: PartnerRfpCampaign) => c.id)
   const responses = campaignIds.length > 0
-    ? await em.find(PartnerRfpResponse, {
+    ? await findWithDecryption(em, PartnerRfpResponse, {
         rfpCampaignId: { $in: campaignIds },
         partnerAgencyId: agencyCtx.agency.id,
         tenantId: auth.tenantId,
-      })
+      } as any, undefined, scope)
     : []
 
   const responseMap = new Map<string, PartnerRfpResponse>(responses.map((r: PartnerRfpResponse) => [r.rfpCampaignId, r]))
@@ -70,4 +76,18 @@ export async function GET(req: NextRequest, ctx: any) {
       pageSize,
     },
   })
+}
+
+export const openApi: OpenApiRouteDoc = {
+  summary: 'List RFP campaigns visible to partner',
+  methods: {
+    GET: {
+      summary: 'List published/closed RFP campaigns for the authenticated partner',
+      tags: ['Partner Portal'],
+      responses: [{ status: 200, description: 'Success' }],
+      errors: [
+        { status: 401, description: 'Not authenticated' },
+      ],
+    },
+  },
 }

@@ -1,9 +1,11 @@
 import type { NextRequest } from 'next/server'
 import { getCustomerAuthFromRequest } from '@open-mercato/core/modules/customer_accounts/lib/customerAuth'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
+import { CommandBus } from '@open-mercato/shared/lib/commands/command-bus'
+import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
+import { runMutationGuards } from '@open-mercato/shared/lib/crud/mutation-guard-registry'
+import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi/types'
 import { resolvePartnerAgency } from '../../../../../lib/resolvePartnerAgency'
-import { PartnerRfpCampaign, PartnerRfpResponse } from '../../../../../data/entities'
-import { emitPartnershipEvent } from '../../../../../events'
 import { z } from 'zod'
 
 const rfpResponseSchema = z.object({
@@ -37,56 +39,43 @@ export async function POST(req: NextRequest, ctx: any) {
     return Response.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
   }
 
-  const campaign = await em.findOne(PartnerRfpCampaign, {
-    id: campaignId,
-    tenantId: auth.tenantId,
-    organizationId: auth.orgId,
-    status: 'published',
-    deletedAt: null,
-  })
-  if (!campaign) {
-    return Response.json({ error: 'Campaign not found or not accepting responses' }, { status: 404 })
+  // Mutation guards
+  const guards = (container as any).resolve?.('mutationGuards') ?? []
+  if (guards.length > 0) {
+    const guardResult = await runMutationGuards(guards, {
+      tenantId: auth.tenantId ?? '', organizationId: auth.orgId ?? '', userId: auth.customerEntityId ?? '',
+      resourceKind: 'partnerships:partner_rfp_response',
+      resourceId: campaignId,
+      operation: 'create',
+      requestMethod: 'POST',
+      requestHeaders: req.headers,
+      mutationPayload: parsed.data,
+    }, { userFeatures: [] })
+    if (!guardResult.ok) {
+      return Response.json(guardResult.errorBody, { status: guardResult.errorStatus ?? 403 })
+    }
   }
 
-  let response = await em.findOne(PartnerRfpResponse, {
-    rfpCampaignId: campaign.id,
-    partnerAgencyId: agencyCtx.agency.id,
-    tenantId: auth.tenantId,
-  })
+  const commandBus = container.resolve('commandBus') as CommandBus
+  const runtimeCtx = {
+    container,
+    auth: { tenantId: auth.tenantId, orgId: auth.orgId, userId: auth.customerEntityId },
+    selectedOrganizationId: auth.orgId ?? null,
+    organizationScope: { selectedId: auth.orgId ?? null, filterIds: auth.orgId ? [auth.orgId] : null },
+    organizationIds: auth.orgId ? [auth.orgId] : null,
+    request: req,
+  } as unknown as CommandRuntimeContext
 
-  if (response) {
-    response.content = parsed.data.content
-    response.status = 'submitted'
-    response.submittedAt = new Date()
-    response.updatedAt = new Date()
-  } else {
-    response = em.create(PartnerRfpResponse, {
-      tenantId: auth.tenantId,
-      organizationId: auth.orgId,
-      rfpCampaignId: campaign.id,
+  const { result } = await commandBus.execute('partnerships.partner_rfp.respond', {
+    input: {
+      rfpCampaignId: campaignId,
       partnerAgencyId: agencyCtx.agency.id,
       content: parsed.data.content,
-      status: 'submitted',
-      submittedAt: new Date(),
-      createdAt: new Date(),
-    })
-    em.persist(response)
-  }
+    },
+    ctx: runtimeCtx,
+  })
 
-  await em.flush()
-
-  try {
-    emitPartnershipEvent('partnerships.partner_rfp.responded', {
-      id: response.id,
-      tenantId: auth.tenantId,
-      organizationId: auth.orgId,
-      rfpCampaignId: campaign.id,
-      partnerAgencyId: agencyCtx.agency.id,
-    }, ctx)
-  } catch {
-    // Event emission is best-effort from portal routes
-  }
-
+  const response = result as any
   return Response.json({
     ok: true,
     data: {
@@ -96,4 +85,20 @@ export async function POST(req: NextRequest, ctx: any) {
       submittedAt: response.submittedAt?.toISOString(),
     },
   })
+}
+
+export const openApi: OpenApiRouteDoc = {
+  summary: 'Submit RFP response',
+  methods: {
+    POST: {
+      summary: 'Submit or update an RFP response for a campaign',
+      tags: ['Partner Portal'],
+      responses: [{ status: 200, description: 'Response submitted' }],
+      errors: [
+        { status: 401, description: 'Not authenticated' },
+        { status: 403, description: 'No partner agency linked or blocked by mutation guard' },
+        { status: 404, description: 'Campaign not found or not published' },
+      ],
+    },
+  },
 }

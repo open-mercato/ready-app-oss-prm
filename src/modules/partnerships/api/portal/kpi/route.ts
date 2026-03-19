@@ -1,6 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { getCustomerAuthFromRequest } from '@open-mercato/core/modules/customer_accounts/lib/customerAuth'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
+import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
+import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi/types'
 import { resolvePartnerAgency } from '../../../lib/resolvePartnerAgency'
 import { PartnerMetricSnapshot, PartnerWicContributionUnit, PartnerLicenseDeal } from '../../../data/entities'
 
@@ -28,22 +30,30 @@ export async function GET(req: NextRequest, ctx: any) {
   const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get('pageSize') ?? '25')))
   const offset = (page - 1) * pageSize
 
-  const metrics = await em.find(
+  const scope = { tenantId: auth.tenantId, organizationId: auth.orgId }
+
+  const metrics = await findWithDecryption(
+    em,
     PartnerMetricSnapshot,
-    { tenantId: auth.tenantId, organizationId: auth.orgId, partnerAgencyId: agency.id },
+    { tenantId: auth.tenantId, organizationId: auth.orgId, partnerAgencyId: agency.id } as any,
     { orderBy: { periodEnd: 'DESC' }, limit: pageSize, offset },
+    scope,
   )
 
-  const wicContributions = await em.find(
+  const wicContributions = await findWithDecryption(
+    em,
     PartnerWicContributionUnit,
-    { tenantId: auth.tenantId, organizationId: auth.orgId, partnerAgencyId: agency.id },
+    { tenantId: auth.tenantId, organizationId: auth.orgId, partnerAgencyId: agency.id } as any,
     { orderBy: { monthKey: 'DESC' }, limit: pageSize },
+    scope,
   )
 
-  const licenseDeals = await em.find(
+  const licenseDeals = await findWithDecryption(
+    em,
     PartnerLicenseDeal,
-    { tenantId: auth.tenantId, organizationId: auth.orgId, partnerAgencyId: agency.id, deletedAt: null },
+    { tenantId: auth.tenantId, organizationId: auth.orgId, partnerAgencyId: agency.id, deletedAt: null } as any,
     { orderBy: { createdAt: 'DESC' }, limit: pageSize },
+    scope,
   )
 
   return Response.json({
@@ -75,4 +85,18 @@ export async function GET(req: NextRequest, ctx: any) {
       pageSize,
     },
   })
+}
+
+export const openApi: OpenApiRouteDoc = {
+  summary: 'Partner KPI details',
+  methods: {
+    GET: {
+      summary: 'Get detailed KPI metrics, WIC contributions, and license deals for the partner',
+      tags: ['Partner Portal'],
+      responses: [{ status: 200, description: 'Success' }],
+      errors: [
+        { status: 401, description: 'Not authenticated' },
+      ],
+    },
+  },
 }
