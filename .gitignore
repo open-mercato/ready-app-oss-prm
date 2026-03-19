@@ -58,3 +58,6 @@ playwright-report/
 # Misc
 *.tgz
 .cache/
+
+# Runtime data
+data/
