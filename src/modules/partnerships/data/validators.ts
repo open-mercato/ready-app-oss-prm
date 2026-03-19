@@ -141,3 +141,43 @@ export const downgradeTierSchema = z.object({
 })
 
 export type DowngradeTierInput = z.infer<typeof downgradeTierSchema>
+
+// ── List query schemas (for makeCrudRoute) ──────────────────
+
+export const agencyListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).optional().default(50),
+  status: z.enum(['active', 'inactive', 'suspended']).optional(),
+  search: z.string().optional(),
+  sortField: z.string().optional(),
+  sortDir: z.enum(['asc', 'desc']).optional(),
+})
+
+export const tierListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).optional().default(50),
+  includeInactive: z.coerce.boolean().optional(),
+  sortField: z.string().optional(),
+  sortDir: z.enum(['asc', 'desc']).optional(),
+})
+
+export const tierHistoryQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).optional().default(50),
+})
+
+export const licenseDealListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).optional().default(50),
+  status: z.enum(['open', 'won', 'lost']).optional(),
+  dealType: z.enum(['enterprise', 'standard']).optional(),
+  year: z.coerce.number().int().optional(),
+  sortField: z.string().optional(),
+  sortDir: z.enum(['asc', 'desc']).optional(),
+})
+
+export const licenseDealMinQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).optional().default(50),
+  year: z.coerce.number().int().optional(),
+})
