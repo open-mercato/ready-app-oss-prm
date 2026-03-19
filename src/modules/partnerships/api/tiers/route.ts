@@ -1,102 +1,74 @@
-import type { NextRequest } from 'next/server'
-import { CrudHttpError } from '@open-mercato/shared/lib/crud/errors'
-import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
-import { CommandBus } from '@open-mercato/shared/lib/commands/command-bus'
-import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
-import { resolveOrganizationScopeForRequest } from '@open-mercato/core/modules/directory/utils/organizationScope'
+import { z } from 'zod'
+import { makeCrudRoute } from '@open-mercato/shared/lib/crud/factory'
 import { PartnerTierDefinition } from '../../data/entities'
+import { tierListQuerySchema, createTierDefinitionSchema } from '../../data/validators'
+import { E } from '@/.mercato/generated/entities.ids.generated'
+import { createPartnershipsCrudOpenApi } from '../openapi'
+import { createPagedListResponseSchema } from '@open-mercato/shared/lib/openapi/crud'
 
-export const metadata = {
+const rawBodySchema = z.object({}).passthrough()
+
+const routeMetadata = {
   GET: { requireAuth: true, requireFeatures: ['partnerships.tiers.view'] },
   POST: { requireAuth: true, requireFeatures: ['partnerships.tiers.manage'] },
 }
+export const metadata = routeMetadata
 
-export async function GET(req: NextRequest, ctx: any) {
-  const tenantId = ctx.auth?.tenantId
-  const organizationId = ctx.auth?.orgId
-  if (!tenantId || !organizationId) {
-    throw new CrudHttpError(403, { error: 'Missing context' })
-  }
-
-  const container = await createRequestContainer()
-  const em = container.resolve('em') as any
-  const url = new URL(req.url)
-  const includeInactive = url.searchParams.get('includeInactive') === 'true'
-
-  const where: any = { tenantId, organizationId, deletedAt: null }
-  if (!includeInactive) where.isActive = true
-
-  const items = await em.find(PartnerTierDefinition, where, {
-    orderBy: { wicThreshold: 'asc' },
-  })
-
-  return Response.json({
-    ok: true,
-    data: {
-      items: items.map((t: PartnerTierDefinition) => ({
-        id: t.id,
-        key: t.key,
-        label: t.label,
-        wicThreshold: t.wicThreshold,
-        wipThreshold: t.wipThreshold,
-        minThreshold: t.minThreshold,
-        isActive: t.isActive,
-        createdAt: t.createdAt.toISOString(),
-      })),
-    },
-  })
-}
-
-export async function POST(req: NextRequest, ctx: any) {
-  const body = await req.json()
-  const container = await createRequestContainer()
-  const commandBus = container.resolve('commandBus') as CommandBus
-  const scope = await resolveOrganizationScopeForRequest({ container, auth: ctx.auth, request: req })
-  const effectiveOrgId = scope.selectedId ?? ctx.auth?.orgId ?? null
-  const runtimeCtx: CommandRuntimeContext = {
-    container,
-    auth: ctx.auth,
-    organizationScope: scope,
-    selectedOrganizationId: effectiveOrgId,
-    organizationIds: scope.filterIds ?? (effectiveOrgId ? [effectiveOrgId] : null),
-    request: req,
-  }
-  const { result } = await commandBus.execute('partnerships.partner_tier.define', { input: body, ctx: runtimeCtx })
-  return Response.json({ ok: true, data: { id: result.id, key: result.key } }, { status: 201 })
-}
-
-export const openApi = {
-  '/api/partnerships/tiers': {
-    get: {
-      summary: 'List tier definitions',
-      tags: ['Partnerships'],
-      parameters: [
-        { name: 'includeInactive', in: 'query', schema: { type: 'boolean', default: false } },
-      ],
-      responses: { 200: { description: 'Tier list' } },
-    },
-    post: {
-      summary: 'Create a tier definition',
-      tags: ['Partnerships'],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                key: { type: 'string' },
-                label: { type: 'string' },
-                wicThreshold: { type: 'integer' },
-                wipThreshold: { type: 'integer' },
-                minThreshold: { type: 'integer' },
-                isActive: { type: 'boolean' },
-              },
-              required: ['key', 'label'],
-            },
-          },
-        },
-      },
-      responses: { 201: { description: 'Tier created' }, 409: { description: 'Tier key already exists' } },
+const crud = makeCrudRoute({
+  metadata: routeMetadata,
+  orm: {
+    entity: PartnerTierDefinition,
+    idField: 'id',
+    orgField: 'organizationId',
+    tenantField: 'tenantId',
+    softDeleteField: 'deletedAt',
+  },
+  indexer: { entityType: E.partnerships.partner_tier_definition },
+  list: {
+    schema: tierListQuerySchema,
+    entityId: E.partnerships.partner_tier_definition,
+    fields: ['id', 'key', 'label', 'wic_threshold', 'wip_threshold', 'min_threshold', 'is_active', 'created_at'],
+    buildFilters: async (query: any) => {
+      const filters: Record<string, any> = {}
+      if (!query.includeInactive) {
+        filters.is_active = { $eq: true }
+      }
+      return filters
     },
   },
-}
+  actions: {
+    create: {
+      commandId: 'partnerships.partner_tier.define',
+      schema: rawBodySchema,
+      mapInput: async ({ raw }) => {
+        return createTierDefinitionSchema.parse(raw ?? {})
+      },
+      response: ({ result }) => ({ id: result?.id, key: result?.key }),
+      status: 201,
+    },
+  },
+})
+
+export const { GET, POST } = crud
+
+const tierListItemSchema = z.object({
+  id: z.string().uuid(),
+  key: z.string(),
+  label: z.string(),
+  wic_threshold: z.number().nullable().optional(),
+  wip_threshold: z.number().nullable().optional(),
+  min_threshold: z.number().nullable().optional(),
+  is_active: z.boolean(),
+  created_at: z.string(),
+})
+
+export const openApi = createPartnershipsCrudOpenApi({
+  resourceName: 'Tier Definition',
+  querySchema: tierListQuerySchema,
+  listResponseSchema: createPagedListResponseSchema(tierListItemSchema),
+  create: {
+    schema: createTierDefinitionSchema,
+    description: 'Create a tier definition.',
+    status: 201,
+  },
+})
