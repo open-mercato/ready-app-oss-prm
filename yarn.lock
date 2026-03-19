@@ -1515,10 +1515,10 @@
   resolved "https://registry.yarnpkg.com/@nolyfill/is-core-module/-/is-core-module-1.0.39.tgz#3dc35ba0f1e66b403c00b39344f870298ebb1c8e"
   integrity sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==
 
-"@open-mercato/ai-assistant@0.4.8":
-  version "0.4.8"
-  resolved "https://registry.yarnpkg.com/@open-mercato/ai-assistant/-/ai-assistant-0.4.8.tgz#4c048054d21bdb9bf3a91efe6d20aead59ed713e"
-  integrity sha512-iiERI/w5gqT41RjsWRvFsi8w1PpTcY3TBPqgILTaTM4nJLmV2pAbSwnGEZvrTPbtZrS9RF0stEPSidtWSJg2Tw==
+"@open-mercato/ai-assistant@0.4.9-develop-36c7c9d7b1":
+  version "0.4.9-develop-36c7c9d7b1"
+  resolved "https://registry.yarnpkg.com/@open-mercato/ai-assistant/-/ai-assistant-0.4.9-develop-36c7c9d7b1.tgz#be8d23697888c052a744cfac35a428a28395a303"
+  integrity sha512-YEtwen2nAYixJdqVkPF9hzPidLp0fryRq0qCm6Wk9y00uSqzUADPzDxgxKkBb+SbtQl8NJIOAXhCmweu1v3eVg==
   dependencies:
     "@ai-sdk/anthropic" "^3.0.12"
     "@ai-sdk/google" "^2.0.0"
@@ -1531,35 +1531,36 @@
     react-markdown "^9.0.0"
     zod-to-json-schema "^3.25.1"
 
-"@open-mercato/cache@0.4.8":
-  version "0.4.8"
-  resolved "https://registry.yarnpkg.com/@open-mercato/cache/-/cache-0.4.8.tgz#9bd9793c8ae75b3cd512e87118c73f28b3114fae"
-  integrity sha512-Gh8Q3SL1AZwiahSUlkS+Aa1D3TsoDPrwuCKlPEyt6hoJxO3nOJ7LR/phVg/fDnFrvopwXH3qPWCzTjUBSi5D2w==
+"@open-mercato/cache@0.4.9-develop-36c7c9d7b1":
+  version "0.4.9-develop-36c7c9d7b1"
+  resolved "https://registry.yarnpkg.com/@open-mercato/cache/-/cache-0.4.9-develop-36c7c9d7b1.tgz#da0ee0200e0e7f41082737df3fc7b8173e848d8f"
+  integrity sha512-MjtgeKYnKYX8j/FMAsLUg0ujYjJ1xJ9p6XFIo1iHQlAcqR3jFeQw/4TfMVFjYlyXDLCnZuyAtsEam0j5Ezlqlw==
   dependencies:
     "@types/better-sqlite3" "^7.6.13"
 
-"@open-mercato/cli@0.4.8":
-  version "0.4.8"
-  resolved "https://registry.yarnpkg.com/@open-mercato/cli/-/cli-0.4.8.tgz#290261122d5212bad03640d169dd462db751c2a3"
-  integrity sha512-xHMdC5JW152aAI4DIz4IhLzzDKcTWfiRZ5bW3oUJtJuL8jxhbTae1NfO7VM9DOALjqVl1KE6aFGrkXrHYuV50g==
+"@open-mercato/cli@0.4.9-develop-36c7c9d7b1":
+  version "0.4.9-develop-36c7c9d7b1"
+  resolved "https://registry.yarnpkg.com/@open-mercato/cli/-/cli-0.4.9-develop-36c7c9d7b1.tgz#a54ca485822cb7a4107dc501297d08376458ddb7"
+  integrity sha512-RqFIa64SggWZgPbcS6+9UGmwo2yppPTg6RpXTrdOQuc6kgD/4wJCg0TsFz283dUUPzI9lE0vter+h2PCIh2NMg==
   dependencies:
     "@mikro-orm/core" "^6.6.2"
     "@mikro-orm/migrations" "^6.6.2"
     "@mikro-orm/postgresql" "^6.6.2"
-    "@open-mercato/shared" "0.4.8"
+    "@open-mercato/shared" "0.4.9-develop-36c7c9d7b1"
     pg "8.20.0"
+    semver "^7.7.3"
     testcontainers "^11.12.0"
     typescript "^5.9.3"
 
-"@open-mercato/content@0.4.8":
-  version "0.4.8"
-  resolved "https://registry.yarnpkg.com/@open-mercato/content/-/content-0.4.8.tgz#3d531cf4965de040d025b8d3b7271daeca552e84"
-  integrity sha512-krOhE9IyRk3ldvBNnqBzUVwXevPCLtXx7CFYj5NmHY2wcFniAs1yhitONmI3fcU8hxk4sPEONH8LfbqqF/wvOQ==
+"@open-mercato/content@0.4.9-develop-36c7c9d7b1":
+  version "0.4.9-develop-36c7c9d7b1"
+  resolved "https://registry.yarnpkg.com/@open-mercato/content/-/content-0.4.9-develop-36c7c9d7b1.tgz#12b456fe6dcbd2a623d00b23a6e017a7ba325abf"
+  integrity sha512-mhuh0rXDJVhpaXYxq4Zehx8Nc4aZCPysxfXFRJbTrZPA5mgLT0oj7A7ski8Q3W487FgRtTfrwvsE598gcXGN6Q==
 
-"@open-mercato/core@0.4.8":
-  version "0.4.8"
-  resolved "https://registry.yarnpkg.com/@open-mercato/core/-/core-0.4.8.tgz#d1e5303b8690738655aade983b28b6c5c72d1122"
-  integrity sha512-vPnMJLIO+9UN/QWqNipBfUQEulx+Qe/Y/znivweVAohwxbv5yN/rcpwZDEo943YMbC2fLBjrruVCe1VQbHecKg==
+"@open-mercato/core@0.4.9-develop-36c7c9d7b1":
+  version "0.4.9-develop-36c7c9d7b1"
+  resolved "https://registry.yarnpkg.com/@open-mercato/core/-/core-0.4.9-develop-36c7c9d7b1.tgz#8d3f8482f2134fd359272367797a016ebf8f3617"
+  integrity sha512-iEJugpahFeWWi+oheioHateGq6vCKzj20H5XfuOqZRc3iCf91WmFkgvCQ28gPItutnIYaqO6Y/ebHe4vs2EkkQ==
   dependencies:
     "@types/html-to-text" "^9.0.4"
     "@types/semver" "^7.5.8"
@@ -1570,38 +1571,38 @@
     html-to-text "^9.0.5"
     semver "^7.6.3"
 
-"@open-mercato/events@0.4.8":
-  version "0.4.8"
-  resolved "https://registry.yarnpkg.com/@open-mercato/events/-/events-0.4.8.tgz#9b3ae8d469fefbfba849c26e41fc39cc32232490"
-  integrity sha512-q8PHlXQMqVuOpO6whQcQVZaxuJgWoqkPWiboEFsUYdzVkDu6x6L23y3Di+CJFsU6Hzzqj5gtUs6zRi8jr7abXw==
+"@open-mercato/events@0.4.9-develop-36c7c9d7b1":
+  version "0.4.9-develop-36c7c9d7b1"
+  resolved "https://registry.yarnpkg.com/@open-mercato/events/-/events-0.4.9-develop-36c7c9d7b1.tgz#ee37df5dd139ae413577ec5bcd5032d8eb0984d6"
+  integrity sha512-qIgj4Pq1fGTz62VmEYZ1gnjp8aPL76hDEpJaU98ydHAza8ils0vlYO4iLvANCmZBaoZZIwDyrEW1B+GpfFzOuw==
   dependencies:
-    "@open-mercato/queue" "0.4.8"
-    "@open-mercato/shared" "0.4.8"
+    "@open-mercato/queue" "0.4.9-develop-36c7c9d7b1"
+    "@open-mercato/shared" "0.4.9-develop-36c7c9d7b1"
     pg "8.20.0"
 
-"@open-mercato/onboarding@0.4.8":
-  version "0.4.8"
-  resolved "https://registry.yarnpkg.com/@open-mercato/onboarding/-/onboarding-0.4.8.tgz#2b0df1c6b44f97b0dc0ea74c0b9d46f3de5524ae"
-  integrity sha512-pOIFmAS3K8cvSvpwLyjAXp/GUiqRAtjpJWTtSAIlcHgz9mpkw23vU6rOsVcEAzRqd6zzOOmMrekK5MgkC0zZ0Q==
+"@open-mercato/onboarding@0.4.9-develop-36c7c9d7b1":
+  version "0.4.9-develop-36c7c9d7b1"
+  resolved "https://registry.yarnpkg.com/@open-mercato/onboarding/-/onboarding-0.4.9-develop-36c7c9d7b1.tgz#cbf2c3022ec6803075ecf641c88c27d178c05257"
+  integrity sha512-qjrU4czQPCwC9FooPZnlAciIuiG3tgg9/dySQ8jmJc8RCdsMiCMB836GGH/H+B7xSWCOjgAx4Uw0khifE5MuPg==
 
-"@open-mercato/queue@0.4.8":
-  version "0.4.8"
-  resolved "https://registry.yarnpkg.com/@open-mercato/queue/-/queue-0.4.8.tgz#c8398586fbfcee2768c30f60503fa5a0942d954d"
-  integrity sha512-bJKanNwAv3cuTGILwr/uhMrhUZMDm0EVpCGeDAnyki+l+mgNib1ZAi7uqs1LWxCFiMPgOxBttKS8Uho2FqmOkw==
+"@open-mercato/queue@0.4.9-develop-36c7c9d7b1":
+  version "0.4.9-develop-36c7c9d7b1"
+  resolved "https://registry.yarnpkg.com/@open-mercato/queue/-/queue-0.4.9-develop-36c7c9d7b1.tgz#9055aaa16149a66c8cfecdf54da7e5b32d6a58b7"
+  integrity sha512-X/e9WwHUbnzIhqxEzeFfoLMljRzrNZWSuCgjFIBKWnXhLzEn+LMA1u5dc5CskE8VRZIOAr4pkN6LwQRzCbCR/A==
 
-"@open-mercato/scheduler@0.4.8":
-  version "0.4.8"
-  resolved "https://registry.yarnpkg.com/@open-mercato/scheduler/-/scheduler-0.4.8.tgz#af8d5795d4fc58e9e950c9de8e28ae99e8363902"
-  integrity sha512-4jrvmo3JORf2d1WTyGN9DgdfvohQwFk+ZwKfQVtyudVn8CIGrcKdF0Fa5OYaXt3b9c1/y3CTb2csteIqQY6XNQ==
+"@open-mercato/scheduler@0.4.9-develop-36c7c9d7b1":
+  version "0.4.9-develop-36c7c9d7b1"
+  resolved "https://registry.yarnpkg.com/@open-mercato/scheduler/-/scheduler-0.4.9-develop-36c7c9d7b1.tgz#0daa9c91d24d7f5d3a4d6492b6e8bd108197b8d5"
+  integrity sha512-fBC9YZgq3kXmmppQsulFJubfZRZKrOiGFFtxuzwrrHymr2euAFZniSLxGbfdQC8yKyWBcQR4eQ3hAaLpTHR13g==
   dependencies:
-    "@open-mercato/events" "0.4.8"
-    "@open-mercato/queue" "0.4.8"
+    "@open-mercato/events" "0.4.9-develop-36c7c9d7b1"
+    "@open-mercato/queue" "0.4.9-develop-36c7c9d7b1"
     cron-parser "^4.9.0"
 
-"@open-mercato/search@0.4.8":
-  version "0.4.8"
-  resolved "https://registry.yarnpkg.com/@open-mercato/search/-/search-0.4.8.tgz#3e8c2b7967c70a01a6c5b9739d180e433dfa5d01"
-  integrity sha512-GjB7BoLzcduZtU7qy1YhVONwaEOHhpmiGEM7KCJZ5dDk+eYShbvmqU4jV6WDS8BC0gKwxCPDB9IbQ/p4ooy7Lw==
+"@open-mercato/search@0.4.9-develop-36c7c9d7b1":
+  version "0.4.9-develop-36c7c9d7b1"
+  resolved "https://registry.yarnpkg.com/@open-mercato/search/-/search-0.4.9-develop-36c7c9d7b1.tgz#dddeb5c863ae4435ecab0186edd97c36dc52a764"
+  integrity sha512-tssFktQ3R3C/r4yY3phsQdvHArDYrymeZK6unSvzMMeTy5gXsACjaQN46E+l0sXMJ5E1/CGTlRI71THbb+KvlA==
   dependencies:
     "@ai-sdk/amazon-bedrock" "^4.0.8"
     "@ai-sdk/cohere" "^3.0.4"
@@ -1614,17 +1615,17 @@
     pg "8.20.0"
     zod "^4.0.0"
 
-"@open-mercato/shared@0.4.8":
-  version "0.4.8"
-  resolved "https://registry.yarnpkg.com/@open-mercato/shared/-/shared-0.4.8.tgz#b7de15acd7f76abfbc61a53247776face1d533de"
-  integrity sha512-Yo6g4gn1eYOSp+LYLUSoQSxlLczKJm2zE3awqvY8pzCejRJtEQDfiy8aaMSiCxgH2Rhf1dZsl9eBDpa8R1RMOg==
+"@open-mercato/shared@0.4.9-develop-36c7c9d7b1":
+  version "0.4.9-develop-36c7c9d7b1"
+  resolved "https://registry.yarnpkg.com/@open-mercato/shared/-/shared-0.4.9-develop-36c7c9d7b1.tgz#3053bd83809d318f1b91555ca11df7146105ee53"
+  integrity sha512-JsYEzdTEHiTDhZ28EDi84sfawxSZ1aKwZIovbXRHRlgEmHqWGmdt+7fAlfVJIoHMa5lu2pCz1LL9Nk7hpLxWyQ==
   dependencies:
     rate-limiter-flexible "^9.0.0"
 
-"@open-mercato/ui@0.4.8":
-  version "0.4.8"
-  resolved "https://registry.yarnpkg.com/@open-mercato/ui/-/ui-0.4.8.tgz#abdee979b5c8c603baf5162fea244958eaa5e466"
-  integrity sha512-E6yrnM8JzvUkcS87cX1LCoKw6bNPF7AxhLpBwdNWRteRGCYHV/g08pXAGlzj0pptm9dpqqO/Zj1fP3VgPp4r/w==
+"@open-mercato/ui@0.4.9-develop-36c7c9d7b1":
+  version "0.4.9-develop-36c7c9d7b1"
+  resolved "https://registry.yarnpkg.com/@open-mercato/ui/-/ui-0.4.9-develop-36c7c9d7b1.tgz#80558f9480b7b52e24d7faa619a9b00a50444456"
+  integrity sha512-zPRosrGn6zD3I0VjYd9tTeaBT220HxKTBdPm1jUMukElDdfHQ88vP69HfBA3mHzNec0yzqmIqg6tds4bA/krxg==
   dependencies:
     "@radix-ui/react-popover" "^1.1.6"
     "@radix-ui/react-tooltip" "^1.2.8"
