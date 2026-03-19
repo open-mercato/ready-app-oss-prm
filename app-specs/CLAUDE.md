@@ -2,10 +2,13 @@
 
 This folder is for defining what to build, not how to build it.
 
-## Context
+## Skills
 
-- Use **Mat skill** for product ownership flow: business context -> workflows -> user stories -> platform mapping
-- Use **Piotr skill** for CTO review: challenge assumptions, verify OM platform capabilities
+- **Mat** (`skills/mat/SKILL.md`) — Product owner flow: business context -> workflows -> user stories -> platform mapping
+- **Piotr** (`skills/piotr/SKILL.md`) — CTO review: challenge assumptions, verify OM platform capabilities on-demand
+
+## Context Rules
+
 - Do NOT load OM monorepo AGENTS.md — Piotr fetches OM context on-demand when verifying capabilities
 - App Spec checklist in `templates/` defines when an App Spec is ready
 
@@ -21,10 +24,11 @@ This folder is for defining what to build, not how to build it.
 
 ## Structure
 
-Each app gets its own folder:
 ```
 app-specs/
-  templates/       App Spec template, checklist template
-  prm/             PRM app spec and supporting docs
-  [future-app]/    Next app spec
+  skills/mat/        Mat skill (product owner)
+  skills/piotr/      Piotr skill (CTO review)
+  templates/         App Spec checklist template
+  prm/               PRM app spec and supporting docs
+  [future-app]/      Next app spec
 ```
