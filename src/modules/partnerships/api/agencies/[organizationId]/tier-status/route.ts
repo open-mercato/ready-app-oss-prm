@@ -1,6 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { CrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
+import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
+import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi/types'
 import { PartnerAgency } from '../../../../data/entities'
 import { getCurrentTierAssignment, computeEligibility } from '../../../../lib/tier-lifecycle'
 
@@ -23,9 +25,9 @@ export async function GET(_req: NextRequest, ctx: any) {
   const container = await createRequestContainer()
   const em = container.resolve('em') as any
 
-  const agency = await em.findOne(PartnerAgency, {
+  const agency = await findOneWithDecryption(em, PartnerAgency, {
     tenantId, organizationId, agencyOrganizationId: agencyOrgId, deletedAt: null,
-  })
+  } as any, undefined, { tenantId, organizationId })
   if (!agency) {
     throw new CrudHttpError(404, { error: 'Partner agency not found' })
   }
@@ -52,15 +54,17 @@ export async function GET(_req: NextRequest, ctx: any) {
   })
 }
 
-export const openApi = {
-  '/api/partnerships/agencies/{organizationId}/tier-status': {
-    get: {
+export const openApi: OpenApiRouteDoc = {
+  summary: 'Tier status and eligibility for an agency',
+  methods: {
+    GET: {
       summary: 'Get current tier status and eligibility for an agency',
       tags: ['Partnerships'],
-      parameters: [
-        { name: 'organizationId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+      responses: [{ status: 200, description: 'Tier status' }],
+      errors: [
+        { status: 401, description: 'Not authenticated' },
+        { status: 404, description: 'Agency not found' },
       ],
-      responses: { 200: { description: 'Tier status' }, 404: { description: 'Agency not found' } },
     },
   },
 }

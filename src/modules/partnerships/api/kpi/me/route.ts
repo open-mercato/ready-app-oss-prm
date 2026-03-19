@@ -1,8 +1,15 @@
+import { z } from 'zod'
 import type { NextRequest } from 'next/server'
 import { CrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
+import { findOneWithDecryption, findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
+import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi/types'
 import { PartnerAgency, PartnerMetricSnapshot } from '../../../data/entities'
 import { getCurrentTierAssignment } from '../../../lib/tier-lifecycle'
+
+const meQuerySchema = z.object({
+  period: z.string().regex(/^\d{4}-\d{2}$/, 'period must be YYYY-MM format').optional(),
+})
 
 export const metadata = {
   GET: { requireAuth: true, requireFeatures: ['partnerships.kpi.view'] },
@@ -16,24 +23,26 @@ export async function GET(req: NextRequest, ctx: any) {
   const container = await createRequestContainer()
   const em = container.resolve('em') as any
   const url = new URL(req.url)
-  const period = url.searchParams.get('period') // YYYY-MM
+  const queryParams = meQuerySchema.parse({
+    period: url.searchParams.get('period') ?? undefined,
+  })
 
   // Find agency for current user's organization
-  const agency = await em.findOne(PartnerAgency, {
+  const agency = await findOneWithDecryption(em, PartnerAgency, {
     tenantId, organizationId, agencyOrganizationId: organizationId, deletedAt: null,
-  })
+  } as any, undefined, { tenantId, organizationId })
   if (!agency) throw new CrudHttpError(404, { error: 'No partner agency found for this organization' })
 
   const where: any = { tenantId, organizationId, partnerAgencyId: agency.id }
-  if (period) {
-    const [year, month] = period.split('-').map(Number)
+  if (queryParams.period) {
+    const [year, month] = queryParams.period.split('-').map(Number)
     where.periodStart = { $gte: new Date(year, month - 1, 1) }
     where.periodEnd = { $lte: new Date(year, month, 0) }
   }
 
-  const snapshots = await em.find(PartnerMetricSnapshot, where, {
+  const snapshots = await findWithDecryption(em, PartnerMetricSnapshot, where, {
     orderBy: { periodEnd: 'desc', metricKey: 'asc' },
-  })
+  } as any, { tenantId, organizationId })
 
   const currentTier = await getCurrentTierAssignment(em, { tenantId, organizationId }, agency.id)
 
@@ -52,8 +61,18 @@ export async function GET(req: NextRequest, ctx: any) {
   })
 }
 
-export const openApi = {
-  '/api/partnerships/kpi/me': {
-    get: { summary: 'Get my KPI snapshots (agency self-view)', tags: ['Partnerships'] },
+export const openApi: OpenApiRouteDoc = {
+  summary: 'Agency self-view KPI snapshots',
+  methods: {
+    GET: {
+      summary: 'Get my KPI snapshots (agency self-view)',
+      tags: ['Partnerships'],
+      query: meQuerySchema,
+      responses: [{ status: 200, description: 'KPI snapshots for the current agency' }],
+      errors: [
+        { status: 401, description: 'Not authenticated' },
+        { status: 404, description: 'No partner agency found for this organization' },
+      ],
+    },
   },
 }

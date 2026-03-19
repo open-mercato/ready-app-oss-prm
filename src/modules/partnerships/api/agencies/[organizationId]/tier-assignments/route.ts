@@ -4,6 +4,9 @@ import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { CommandBus } from '@open-mercato/shared/lib/commands/command-bus'
 import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { resolveOrganizationScopeForRequest } from '@open-mercato/core/modules/directory/utils/organizationScope'
+import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
+import { runMutationGuards } from '@open-mercato/shared/lib/crud/mutation-guard-registry'
+import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi/types'
 import { PartnerAgency } from '../../../../data/entities'
 import { getCurrentTierAssignment } from '../../../../lib/tier-lifecycle'
 
@@ -27,9 +30,9 @@ export async function GET(_req: NextRequest, ctx: any) {
   const container = await createRequestContainer()
   const em = container.resolve('em') as any
 
-  const agency = await em.findOne(PartnerAgency, {
+  const agency = await findOneWithDecryption(em, PartnerAgency, {
     tenantId, organizationId, agencyOrganizationId: agencyOrgId, deletedAt: null,
-  })
+  } as any, undefined, { tenantId, organizationId })
   if (!agency) {
     throw new CrudHttpError(404, { error: 'Partner agency not found' })
   }
@@ -67,14 +70,32 @@ export async function POST(req: NextRequest, ctx: any) {
   const container = await createRequestContainer()
   const em = container.resolve('em') as any
 
-  const agency = await em.findOne(PartnerAgency, {
+  const agency = await findOneWithDecryption(em, PartnerAgency, {
     tenantId, organizationId, agencyOrganizationId: agencyOrgId, deletedAt: null,
-  })
+  } as any, undefined, { tenantId, organizationId })
   if (!agency) {
     throw new CrudHttpError(404, { error: 'Partner agency not found' })
   }
 
   const body = await req.json()
+
+  // Mutation guards
+  const guards = (container as any).resolve?.('mutationGuards') ?? []
+  if (guards.length > 0) {
+    const guardResult = await runMutationGuards(guards, {
+      tenantId, organizationId, userId: ctx.auth?.userId,
+      resourceKind: 'partnerships:partner_tier_assignment',
+      resourceId: agency.id,
+      operation: 'create',
+      requestMethod: 'POST',
+      requestHeaders: req.headers,
+      mutationPayload: body,
+    }, { userFeatures: ctx.auth?.features ?? [] })
+    if (!guardResult.ok) {
+      return Response.json(guardResult.errorBody, { status: guardResult.errorStatus ?? 403 })
+    }
+  }
+
   const commandBus = container.resolve('commandBus') as CommandBus
   const scope = await resolveOrganizationScopeForRequest({ container, auth: ctx.auth, request: req })
   const effectiveOrgId = scope.selectedId ?? ctx.auth?.orgId ?? null
@@ -102,38 +123,26 @@ export async function POST(req: NextRequest, ctx: any) {
   }, { status: 201 })
 }
 
-export const openApi = {
-  '/api/partnerships/agencies/{organizationId}/tier-assignments': {
-    get: {
+export const openApi: OpenApiRouteDoc = {
+  summary: 'Tier assignments for an agency',
+  methods: {
+    GET: {
       summary: 'Get current tier assignment for an agency',
       tags: ['Partnerships'],
-      parameters: [
-        { name: 'organizationId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+      responses: [{ status: 200, description: 'Current assignment or null' }],
+      errors: [
+        { status: 401, description: 'Not authenticated' },
+        { status: 404, description: 'Agency not found' },
       ],
-      responses: { 200: { description: 'Current assignment or null' }, 404: { description: 'Agency not found' } },
     },
-    post: {
+    POST: {
       summary: 'Assign a tier to an agency',
       tags: ['Partnerships'],
-      parameters: [
-        { name: 'organizationId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+      responses: [{ status: 201, description: 'Tier assigned' }],
+      errors: [
+        { status: 401, description: 'Not authenticated' },
+        { status: 404, description: 'Agency or tier not found' },
       ],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                tierKey: { type: 'string' },
-                validUntil: { type: 'string', format: 'date-time' },
-                reason: { type: 'string' },
-              },
-              required: ['tierKey'],
-            },
-          },
-        },
-      },
-      responses: { 201: { description: 'Tier assigned' }, 404: { description: 'Agency or tier not found' } },
     },
   },
 }

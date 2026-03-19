@@ -1,6 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { CrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
+import { findOneWithDecryption, findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
+import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi/types'
 import { PartnerWicRun, PartnerWicContributionUnit } from '../../../../data/entities'
 
 export const metadata = {
@@ -16,14 +18,14 @@ export async function GET(req: NextRequest, ctx: any) {
   const container = await createRequestContainer()
   const em = container.resolve('em') as any
 
-  const run = await em.findOne(PartnerWicRun, {
+  const run = await findOneWithDecryption(em, PartnerWicRun, {
     id: runId, tenantId, organizationId,
-  })
+  } as any, undefined, { tenantId, organizationId })
   if (!run) throw new CrudHttpError(404, { error: 'WIC run not found' })
 
-  const units = await em.find(PartnerWicContributionUnit, {
+  const units = await findWithDecryption(em, PartnerWicContributionUnit, {
     tenantId, organizationId, wicRunId: runId,
-  }, { orderBy: { ghProfile: 'asc', monthKey: 'asc' } })
+  } as any, { orderBy: { ghProfile: 'asc', monthKey: 'asc' } } as any, { tenantId, organizationId })
 
   return Response.json({
     ok: true,
@@ -58,8 +60,17 @@ export async function GET(req: NextRequest, ctx: any) {
   })
 }
 
-export const openApi = {
-  '/api/partnerships/kpi/wic-runs/{runId}': {
-    get: { summary: 'Get WIC run detail with contribution units', tags: ['Partnerships'] },
+export const openApi: OpenApiRouteDoc = {
+  summary: 'WIC run detail with contribution units',
+  methods: {
+    GET: {
+      summary: 'Get WIC run detail with contribution units',
+      tags: ['Partnerships'],
+      responses: [{ status: 200, description: 'WIC run with contribution units' }],
+      errors: [
+        { status: 401, description: 'Not authenticated' },
+        { status: 404, description: 'WIC run not found' },
+      ],
+    },
   },
 }
