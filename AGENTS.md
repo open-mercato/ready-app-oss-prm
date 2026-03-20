@@ -135,6 +135,21 @@ Each spec must include:
 ## Implementation Notes
 [Any non-obvious decisions, edge cases from App Spec §3, ordering constraints]
 
+## Testing
+[Required for commits with custom business logic (interceptors, workers, custom API routes, validators).
+ Skip for purely declarative commits (setup.ts seeds, ce.ts, seedExamples).]
+
+### Unit Tests
+[List functions/modules that need unit tests. Colocated as *.test.ts files.]
+- `functionName` — test: [what to verify]
+
+### Integration Test Scenarios
+[Each scenario becomes a Playwright test during §3. Self-contained, no demo data dependency.]
+
+| ID | Type | Scenario | Expected Result |
+|----|------|----------|-----------------|
+| T1 | API  | [action] | [result]        |
+
 ## Verification
 [Exact commands to run, what to check, expected output]
 ```
@@ -146,6 +161,7 @@ Each spec must include:
 - **Files section is exhaustive** — every file created or modified, with exact path under `src/modules/`.
 - **OM patterns reference source code** — point to `open-mercato/packages/core/src/modules/` for reference implementations.
 - **No spec without a commit plan entry** — if it's not in `commits-WF*.md`, it shouldn't exist.
+- **Test Scenarios required for custom logic** — if the commit introduces custom business logic (API interceptors, custom API routes, workers, validators with domain rules), the spec MUST include a Test Scenarios section. Skip for purely declarative commits (setup.ts seeds, ce.ts, seedExamples). Read `open-mercato/.ai/skills/integration-tests/SKILL.md` for the Playwright test conventions.
 
 ---
 
@@ -156,15 +172,26 @@ After a spec is written and reviewed (§2 steps 5-6), implement it. Read `open-m
 ### Per-Commit Loop
 
 ```
-1. Read the implementation spec
-2. If spec involves entities, validators, or workers → invoke superpowers:test-driven-development
-3. Implement the code
-4. yarn generate          (if module files changed)
-5. yarn typecheck          (must pass)
-6. yarn build              (must pass)
-7. Check acceptance criteria from the spec
-8. Invoke superpowers:verification-before-completion before claiming done
-9. Commit
+1.  Read the implementation spec
+2.  If spec involves entities, validators, or workers → invoke superpowers:test-driven-development
+3.  Implement the code
+4.  yarn generate                (if module files changed)
+5.  yarn typecheck               (must pass)
+6.  yarn build                   (must pass)
+7.  Unit tests — for every new function/module with business logic:
+    - Colocate with source: src/modules/<module>/**/*.test.ts
+    - Test happy path + key edge cases + error paths
+    - Mock external dependencies (DI services, data engine)
+    - Run: yarn test
+8.  If spec has Test Scenarios → implement Playwright integration tests
+    - Read open-mercato/.ai/skills/integration-tests/SKILL.md for conventions
+    - Place tests in src/modules/<module>/__integration__/TC-*.spec.ts
+    - Tests MUST be self-contained: create fixtures in setup, clean up in teardown
+    - Tests MUST NOT rely on seeded/demo data
+    - Run: yarn test:integration:ephemeral (spins up fresh app + DB)
+9.  Check acceptance criteria from the spec
+10. Invoke superpowers:verification-before-completion before claiming done
+11. Commit
 ```
 
 Use `superpowers:systematic-debugging` if any step fails. Use `superpowers:dispatching-parallel-agents` when implementing multiple independent commits within the same phase.
@@ -184,9 +211,10 @@ Pattern: {OM pattern used}
 After all commits in a phase are done:
 
 1. Run `yarn initialize` to test full bootstrap (seedDefaults + seedExamples)
-2. Verify ALL acceptance criteria from App Spec §7 for this phase (both domain and business)
-3. Use `code-review` skill for phase review
-4. Update `apps/<app>/docs/specs/` with any learnings
+2. Run `yarn test:integration:ephemeral` — all integration tests for the phase must pass
+3. Verify ALL acceptance criteria from App Spec §7 for this phase (both domain and business)
+4. Use `code-review` skill for phase review
+5. Update `apps/<app>/docs/specs/` with any learnings
 
 ---
 
