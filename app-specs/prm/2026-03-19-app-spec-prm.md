@@ -263,7 +263,7 @@ API contracts use standard OM entities module: `POST /api/entities/definitions.b
 
 | Persona | Identity | What they do |
 |---------|----------|-------------|
-| Developer | N/A (CLI user) | Bootstraps PRM via `create-mercato-app --example b2b-prm`. Reads code to learn OM patterns. Not an app user — a distribution consumer per SPEC-068. |
+| Developer | N/A (CLI user) | Bootstraps PRM via `create-mercato-app --example prm`. Reads code to learn OM patterns. Not an app user — a distribution consumer per SPEC-068. |
 
 **Portal:** NOT USED. Zero portal pages. Zero CustomerUser accounts. Backend + RBAC + org scoping = sufficient for all personas.
 
@@ -655,7 +655,7 @@ Success: Org switcher shows all agencies, PM selects one, sees that agency's dat
 
 ### Distribution (SPEC-068)
 
-**US-7.1** As a Developer, I run `create-mercato-app --example b2b-prm` and get a running PRM app so that I can see how OM solves partner relationship management.
+**US-7.1** As a Developer, I run `create-mercato-app --example prm` and get a running PRM app so that I can see how OM solves partner relationship management.
 Success: One command → app scaffolded with PRM modules in `src/modules/`. `yarn install && yarn initialize` → app starts with demo data. Developer sees working dashboards, CRM with deals, tier widgets — no manual setup needed.
 
 **US-7.2** As a Developer, I run `yarn initialize` and see example data that exercises every workflow so that I understand what the app does without reading docs first.
@@ -1093,8 +1093,8 @@ Each phase delivers a complete, usable increment. No phase leaves a workflow hal
 - Building user management UI (auth module has it)
 
 **SPEC-068 alignment:**
-- This app IS `b2b-prm` for `create-mercato-app --example b2b-prm` — the first official example
-- Distribution: `open-mercato/examples/b2b-prm/` (or partner repo per SPEC-068 community model)
+- This app IS `prm` for `create-mercato-app --example prm` — the first official example
+- Distribution: `open-mercato/examples/prm/` (or partner repo per SPEC-068 community model)
 - App structure: domain modules in `src/modules/partnerships/` following OM auto-discovery conventions
 - Bootstrap: `yarn initialize` runs `seedDefaults` (roles, fields, pipelines) + `seedExamples` (demo agencies, deals, tiers, RFPs)
 - Developer can run the app, see every workflow working with demo data, and read the code to learn patterns
@@ -1105,7 +1105,7 @@ Each phase delivers a complete, usable increment. No phase leaves a workflow hal
 - [x] Every piece of new code passes the "copy test"
 - [x] Anti-patterns explicitly listed
 - [x] Platform features demonstrated
-- [x] SPEC-068 distribution model acknowledged — `b2b-prm` is the first official example
+- [x] SPEC-068 distribution model acknowledged — `prm` is the first official example
 - [x] seedExamples defined per phase — demo data exercises every workflow
 - [x] Developer persona and user stories (US-7.x) documented in §5
 

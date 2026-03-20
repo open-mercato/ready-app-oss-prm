@@ -28,7 +28,7 @@ The platform grows by becoming more extensible, not bigger. Piotr doesn't add fe
 
 - **UMES** — Universal Module Extension System. Widget injection, enrichers, interceptors, extensions. Modules extend each other without coupling.
 - **Official Modules Marketplace** (SPEC-061-067) — modules as npm packages. `yarn mercato module add/eject`.
-- **Use-Case Examples** (SPEC-068) — `create-mercato-app --example b2b-prm`. Examples in own repos, not core.
+- **Use-Case Examples** (SPEC-068) — `create-mercato-app --example prm`. Examples in own repos, not core.
 - **Portal as framework** — extensible sidebar, dashboard, notifications via widget injection. Separate RBAC.
 - **Providers as separate packages** — `packages/gateway-stripe`, `packages/sync-akeneo`. Never in core.
 - **Enterprise as overlay** — `packages/enterprise`. Feature-toggled, never mixed into core.
