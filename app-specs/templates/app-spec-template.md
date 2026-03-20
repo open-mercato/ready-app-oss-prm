@@ -198,6 +198,47 @@ Piotr saves detailed commit plans to `app-specs/<app>/piotr-notes/commits-WF<N>.
 
 ---
 
+## 4.5 Module Architecture `Piotr`
+
+> Consolidated view of which OM modules this app uses, how it extends them, and what new modules it creates.
+> This section is derived from the per-workflow gap analysis (§4) — Piotr consolidates after checkpoint #1.
+
+### OM Core modules used
+
+| Module | Usage | Extension points used | Notes |
+|--------|-------|----------------------|-------|
+| | as-is / extend | interceptor, widget injection, defaultCustomerRoleFeatures, workflow JSON, DI override, ... | |
+
+### Official modules (existing or proposed)
+
+> If a gap is reusable (2+ apps would benefit), propose it as an official module instead of building it into the app.
+> Proposed modules need clear boundaries: single responsibility, no app-specific domain logic.
+
+| Module | Status | Usage | Extension points | Rationale |
+|--------|--------|-------|-----------------|-----------|
+| | EXISTING / PROPOSED | use / extend / create | | Why official vs app-level? Would other apps need this? |
+
+### App modules
+
+> App-specific domain logic that is NOT reusable across other OM apps.
+
+| Module | Responsibility | Entities owned | Notes |
+|--------|---------------|----------------|-------|
+| | | | |
+
+#### Checklist
+- [ ] Every OM core module listed with explicit usage type (as-is / extend) and extension points `Piotr`
+- [ ] Every official module listed — existing ones with extension points, proposed ones with rationale `Piotr`
+- [ ] Every gap scored `official-module` or `core-module` in §4 has upstream investigation (specs, issues, PRs) `Piotr`
+- [ ] Reusability check: no reusable pattern hidden inside an app module — if 2+ apps would need it, propose as official module `Piotr`
+- [ ] Proposed official modules have clear boundary — single responsibility, no app-specific domain logic leaked in `Piotr`
+- [ ] App module count justified — if >2 app modules, explain why they can't be one `Piotr`
+- [ ] Extension points to official modules documented — same UMES patterns as core (interceptors, widget injection, enrichers, DI overrides) `Piotr`
+- [ ] No direct modification of core or official module code — extend only via UMES, or FLAG as upstream PR `Mat + Piotr`
+- [ ] Module boundaries align with bounded context boundaries — if two modules share invariants or domain events that must be transactionally consistent, they should be one module `Vernon`
+
+---
+
 ## 5. User Stories `Mat`
 
 > Each story traces to a workflow step. Story = atomic action by one persona with measurable success.

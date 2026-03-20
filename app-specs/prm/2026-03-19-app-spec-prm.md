@@ -549,6 +549,42 @@ RFP lifecycle uses workflows module: START → SEND_EMAIL → WAIT_FOR_TIMER →
 
 ---
 
+## 4.5 Module Architecture `Piotr`
+
+> Consolidated view of which OM modules PRM uses, how it extends them, and what new modules it creates.
+
+### OM Core modules used
+
+| Module | Usage | Extension points used | Notes |
+|--------|-------|----------------------|-------|
+| `customers` | extend | Custom fields on company entity (profile data), custom entity (case studies) | Agencies ARE customers — no separate agency entity |
+| `customer_accounts` | extend | `defaultCustomerRoleFeatures` in setup.ts | Portal auth for agency roles (partner_admin, partner_member, partner_contributor) |
+| `entities` | extend | Custom entities via `ce.ts`, custom fields via setup.ts | Case studies, tier proposals, WIC snapshots |
+| `workflows` | extend | Workflow JSON seed | SEND_EMAIL on stage transitions, tier review notifications |
+| `auth` | as-is | — | User management for PM role. No customization. |
+
+### Official modules (existing or proposed)
+
+| Module | Status | Usage | Extension points | Rationale |
+|--------|--------|-------|-----------------|-----------|
+| — | — | — | — | No official modules needed for PRM. All gaps are app-specific domain logic or OM core extensions. |
+
+### App modules
+
+| Module | Responsibility | Entities owned | Notes |
+|--------|---------------|----------------|-------|
+| `partnerships` | All PRM domain logic: onboarding, WIP tracking, WIC assessment, tier management, RFP | case_study, tier_change_proposal, wic_snapshot, rfp, rfp_response | Single module — all entities share invariants (org scoping, tier rules, WIP/WIC calculations) |
+
+#### Checklist
+- [x] Every OM core module listed with explicit usage type and extension points `Piotr`
+- [x] Every official module listed — none needed, all gaps are app-specific `Piotr`
+- [x] Reusability check: PRM domain logic (tiers, WIP/WIC, RFP) is specific to partner relationship management — not reusable as official module `Piotr`
+- [x] App module count justified — 1 module (`partnerships`). All entities share org-scoped invariants and tier calculation dependencies. Splitting would break transactional consistency. `Piotr`
+- [x] No direct modification of core or official module code — all extensions via UMES (interceptors, widget injection, custom fields, defaultCustomerRoleFeatures) `Mat + Piotr`
+- [x] Module boundaries align with bounded context boundaries — partnerships is one bounded context: agency lifecycle from onboarding through tier management `Vernon`
+
+---
+
 ## 5. User Stories `Mat`
 
 > Each story traces to a workflow step. Story = atomic action by one persona with measurable success.
