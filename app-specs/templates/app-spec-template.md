@@ -260,6 +260,12 @@ Piotr saves detailed commit plans to `app-specs/<app>/piotr-notes/commits-US-<N>
 - **Business value:** [What business problem is solved that wasn't solved before this phase? Be specific.]
 - **ROI metric:** [Measurable outcome. Target number. How you'd know this phase was worth building.]
 
+**Platform ROI** (if example/reference app):
+- [OM pattern demonstrated by this phase — e.g., "RBAC roles with org scoping via setup.ts"]
+- [OM pattern demonstrated — e.g., "UMES API interceptor for domain event on entity change"]
+- ...
+- **Copy test:** [If someone copies this phase's code, what do they learn about building on OM?]
+
 **Mat's challenges to Vernon's criteria:** [If Mat pushed back on any domain criterion — what was cut/deferred and why. If all accepted, state "all accepted."]
 
 [Repeat per phase]

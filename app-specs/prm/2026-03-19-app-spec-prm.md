@@ -724,6 +724,16 @@ Success: Org switcher shows all agencies, PM selects one, sees that agency's dat
 - **Business value:** Pipeline visibility. PM knows which agencies are generating prospects. Without this, PM has zero data on agency activity.
 - **ROI metric:** Number of active agencies with ≥1 WIP. Target: 3+ agencies onboarded and logging deals.
 
+**Platform ROI** (example app patterns demonstrated):
+- RBAC roles with org scoping — `partner_admin`, `partner_member`, `partner_contributor` via setup.ts
+- CRM as core tool — agencies use `customers` module backend, not custom CRUD
+- Custom fields + custom entities via `entities` module — company profile, case studies
+- UMES API interceptor — `wip_registered_at` stamp on deal stage change
+- Widget injection — KPI dashboard widget
+- Org switcher for cross-org visibility — PM sees all agencies read-only
+- Pipeline stages seeded via setup.ts — PRM-specific deal stages
+- **Copy test:** Every piece of Phase 1 code shows "this is how you extend OM with RBAC + CRM + UMES"
+
 **Mat's challenges:** All 10 domain criteria accepted. Essential WIP integrity rules — no over-engineering.
 
 ### Phase 2: Governance + KPI Visibility + MIN (WF5 + WF3 workaround)
@@ -781,6 +791,15 @@ Success: Org switcher shows all agencies, PM selects one, sees that agency's dat
 - **Business value:** Governance active. The partner program has meaning — agencies with strong KPIs get higher tiers, underperformers get grace period then downgrade. PM saves ~4h/week of manual spreadsheet work.
 - **ROI metric:** Number of agencies with evaluated tiers. PM approval turnaround < 1 week. Grace period correctly applied for agencies below threshold.
 
+**Platform ROI** (example app patterns demonstrated):
+- Queue workers — KPI aggregation worker with idempotent processing
+- Workflow JSON definitions — tier evaluation workflow (START → AUTOMATED → USER_TASK → END)
+- Import API with validation — WicScoringResult schema enforcement, versioned replace+archive
+- Custom entities with business invariants — ContributionUnit, TierChangeProposal, PartnerLicenseDeal
+- Cross-org search — PM searches all agencies' CRM for MIN attribution
+- Cron trigger mechanism — external trigger for scheduled workers
+- **Copy test:** Phase 2 shows "this is how you build governance with workers + workflows + validated imports"
+
 **Mat's challenges:** 18 accepted. 1 clarified: "ContributionUnit dedup" — Vernon said per-unit replacement; Mat corrected to assessment-level (org+month) versioned replace, which is the actual import model. No criteria deferred.
 
 ### Phase 3: Lead Distribution (WF4)
@@ -825,6 +844,14 @@ Success: Org switcher shows all agencies, PM selects one, sees that agency's dat
 **Value delivered:**
 - **Business value:** Lead distribution is fair and scalable. PM no longer sends emails manually. Agencies compete on evidence. Full flywheel loop complete: onboard → pipeline → contribute → bid on leads → tier evaluation reflects all 3 KPIs.
 - **ROI metric:** RFP campaigns created per month. Agency response rate. Lead-to-selection conversion rate. Target: 3+ RFPs/month, >50% response rate.
+
+**Platform ROI** (example app patterns demonstrated):
+- Workflows module for multi-step processes — RFP lifecycle (START → SEND_EMAIL → WAIT_FOR_TIMER → USER_TASK → END)
+- SEND_EMAIL activity — agency notification without custom notification code
+- USER_TASK with free-form input — BD response collection via workflow step
+- Domain events — CampaignPublished, RfpAwarded as explicit facts
+- File attachments on custom entities — RFP campaigns and responses
+- **Copy test:** Phase 3 shows "this is how you build a multi-party workflow with the workflows module"
 
 **Mat's challenges:** 11 accepted. 1 deferred: "Case study snapshots at link time" — Vernon wants to copy case study data at submission to prevent post-submission edits from changing what PM evaluates. For 15 agencies where RFP evaluation takes days (not months), this adds a snapshot mechanism for a low-probability scenario. If an agency edits a case study mid-evaluation, PM will notice. **Defer to Phase 5+ if proven needed.**
 
@@ -888,6 +915,14 @@ All LLM work lives in n8n. PRM app has zero LLM dependencies. One integration po
 **Value delivered:**
 - **Business value:** PM time reclaimed. WIC import goes from manual monthly task to automated daily. RFP evaluation goes from reading every response manually to AI-assisted scoring. Invitation flow is professional, not "here's a link."
 - **ROI metric:** PM hours saved per week (target: 6+ hours). WIC import delay (target: <24h from PR merge to score visible). RFP scoring time (target: <2 min from click to scores).
+
+**Platform ROI** (example app patterns demonstrated):
+- n8n integration via `open-mercato/n8n-nodes` — first production use of the n8n community node
+- Anti-corruption boundary — external automation (n8n) talks to OM only through validated API, never direct DB
+- Service account scoping — n8n has narrowly scoped write permissions (WIC import + RFP scores only)
+- SPEC-038 invitation flow — demonstrates auth module extension pattern (if merged upstream)
+- Onboarding sub-workflows — guided multi-step processes via workflows module
+- **Copy test:** Phase 4 shows "this is how you integrate n8n + LLM with OM without coupling your app to external services"
 
 **Mat's challenges:** All 12 accepted. These are anti-corruption boundary rules that prevent n8n from bypassing the domain. Essential for trust in automated scoring.
 
