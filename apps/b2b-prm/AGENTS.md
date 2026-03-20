@@ -1,115 +1,31 @@
-# B2B PRM Example — Open Mercato Application
+# B2B PRM — App-Specific Overrides
 
-This is a **standalone application** that consumes Open Mercato packages from the npm registry. Unlike the monorepo development environment, packages here are pre-compiled and installed as dependencies.
-This example app demonstrates the B2B Partner Relationship Management use case per SPEC-053/SPEC-068.
+@../../AGENTS.md
 
-## Package Source Files
+## Identity Model (CRITICAL — overrides SPEC-053c)
 
-To explore or understand the Open Mercato framework code:
+All agency users are `User` (auth module, backend access). **Portal is NOT used. Zero CustomerUser accounts.**
 
-- **Location**: `node_modules/@open-mercato/*/dist/` contains compiled JavaScript
-- **Source exploration**: Search `node_modules/@open-mercato/` for module implementations
-- **Key packages**:
-  - `@open-mercato/core` - Core business modules (auth, customers, catalog, sales, etc.)
-  - `@open-mercato/shared` - Shared utilities, types, DSL helpers, i18n
-  - `@open-mercato/ui` - UI components and primitives
-  - `@open-mercato/cli` - CLI tooling (mercato command)
-  - `@open-mercato/search` - Search module (fulltext, vector, tokens)
+| Persona | Role key | Org scope | Access |
+|---------|----------|-----------|--------|
+| Partnership Manager | `partnership_manager` | all orgs (`organizationsJson: null`) | All CRM read-only, all KPIs, tier governance, RFP, MIN attribution |
+| Agency Admin | `partner_admin` | own org | CRM full write, KPI, tier, team mgmt, case studies, RFP |
+| Business Developer | `partner_member` | own org | CRM own records, KPI, tier, RFP responses |
+| Contributor | `partner_contributor` | own org | WIC score + tier only |
 
-**Note**: When debugging or extending functionality, reference the compiled code in `node_modules/@open-mercato/` to understand the framework's implementation details.
+## Key Domain Rules
 
-## Development Commands
+These rules are acceptance criteria — code must enforce them:
 
-```bash
-# Start development server
-yarn dev
+- **WIP:** `wip_registered_at` is immutable once set. Stamped by interceptor on first SQL+ transition only. BD cannot write field directly.
+- **WIC:** one active assessment per org+month. Re-import replaces + archives. Feature Key dedup enforced as invariant at ContributionUnit creation.
+- **MIN:** no double-attribution (unique: license_identifier + year). PM-only. Calendar year UTC boundaries.
+- **Tiers:** TierEligibility (computed) != TierAssignment (durable). Grace period state machine: OK -> GracePeriod -> ProposedDowngrade. One open TierChangeProposal per org per period.
+- **RBAC:** Admin > BD > Contributor. PM has Program Scope (all orgs). Agency users see own org only.
 
-# Build for production
-yarn build
+## What NOT to Do
 
-# Run production server
-yarn start
-
-# Type checking
-yarn typecheck
-
-# Linting
-yarn lint
-
-# Run tests
-yarn test
-
-# Run a single test
-yarn test path/to/test.spec.ts
-
-# Generate code from modules
-yarn generate
-
-# Database operations
-yarn db:generate    # Generate migrations
-yarn db:migrate     # Run migrations
-yarn db:greenfield  # Reset and recreate database
-
-# Initialize/reinstall project
-yarn initialize
-yarn reinstall
-```
-
-## Infrastructure
-
-Start required services via Docker Compose:
-```bash
-docker compose up -d
-```
-
-Services: PostgreSQL (pgvector), Redis, Meilisearch
-
-## Architecture
-
-### Open Mercato Framework
-
-This is a Next.js 16 application built on the **Open Mercato** modular ERP framework. The framework provides:
-
-- **Module system**: Business modules (auth, customers, catalog, sales, etc.) from `@open-mercato/*` packages
-- **Entity system**: MikroORM entities with code generation
-- **DI container**: Awilix-based dependency injection
-- **RBAC**: Role-based access control with feature flags
-
-### Key Files
-
-- `src/modules.ts` - Declares enabled modules and their sources (`@open-mercato/core`, `@open-mercato/*`, or `@app`)
-- `src/di.ts` - App-level DI overrides (runs after core/module registrations)
-- `src/bootstrap.ts` - Application initialization (imports generated files, registers i18n)
-- `.mercato/generated/` - Auto-generated files from `yarn generate` (do not edit manually)
-
-### Routing Structure
-
-- `/backend/*` - Admin panel routes (AppShell with sidebar navigation)
-- `/(frontend)/*` - Public-facing routes
-- `/api/*` - API routes with automatic module routing via `findApi()`
-
-### Module Development
-
-Custom modules go in `src/modules/`. Each module can define:
-- Entities (MikroORM)
-- API routes
-- Backend/frontend pages
-- DI registrations
-- Navigation entries
-
-Add new modules to `src/modules.ts` with `from: '@app'`.
-Install official package-backed modules with `yarn mercato module add @open-mercato/<package>`.
-
-### Path Aliases
-
-- `@/*` → `./src/*`
-- `@/.mercato/*` → `./.mercato/*`
-
-### i18n
-
-Translation files in `src/i18n/{locale}.json`. Supported locales: en, pl, es, de.
-
-## Requirements
-
-- Node.js >= 24
-- Yarn (via corepack)
+- Do NOT use CustomerUser or portal pages — all users are `User` with backend access
+- Do NOT build custom notification subscribers — use workflows SEND_EMAIL activity
+- Do NOT build custom state machines — use workflows module
+- Do NOT reference old SPEC-053c portal design — it was wrong (see App Spec §8)
