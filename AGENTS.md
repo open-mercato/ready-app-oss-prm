@@ -93,13 +93,14 @@ For each phase, generate implementation specs from the App Spec. One spec per at
 
 Follow these steps in order. Do NOT skip the review step.
 
-1. **Load OM context** — Read `open-mercato/.ai/skills/spec-writing/SKILL.md` for the OM spec-writing standards. Read `open-mercato/AGENTS.md` for platform conventions. Read reference module patterns from `open-mercato/packages/core/src/modules/customers/` as needed.
+1. **Load OM context** — Read `open-mercato/.ai/skills/spec-writing/SKILL.md` for the OM spec-writing standards. Read `open-mercato/AGENTS.md` for platform conventions. Read reference module patterns from `open-mercato/packages/core/src/modules/customers/` as needed. Use Explore subagents for broad pattern research.
 2. **Read the App Spec** — Follow §1 above (App Spec → commit plans → upstream flags).
-3. **Reconcile commit plans** — Multiple workflow commit plans may overlap (e.g., both WF1 and WF2 seed roles). Merge overlapping commits and document the rationale.
-4. **Write specs** — For each atomic commit, write one implementation spec using the format below.
-5. **Review specs** — Read `open-mercato/.ai/skills/pre-implement-spec/SKILL.md` and apply its review process (adapted for app-level specs — BC audit is N/A for new apps). At minimum check: AGENTS.md compliance, spec completeness, gap analysis, risk assessment, cross-spec consistency.
-6. **Fix findings** — Address all Critical and High findings before proceeding. Update specs in place.
-7. **Commit specs** — Commit all specs for the phase together before starting implementation.
+3. **Reconcile commit plans** — Multiple workflow commit plans may overlap (e.g., both WF1 and WF2 seed roles). Merge overlapping commits and document the rationale. If the reconciliation involves design decisions not fully covered by the App Spec, invoke `superpowers:brainstorming` before deciding.
+4. **Plan (if 5+ commits)** — If the phase has 5 or more commits, invoke `superpowers:writing-plans` to coordinate the work before writing individual specs.
+5. **Write specs** — For each atomic commit, write one implementation spec using the format below. Use `superpowers:dispatching-parallel-agents` when multiple independent specs can be written simultaneously.
+6. **Review specs** — Read `open-mercato/.ai/skills/pre-implement-spec/SKILL.md` and apply its review process (adapted for app-level specs — BC audit is N/A for new apps). At minimum check: AGENTS.md compliance, spec completeness, gap analysis, risk assessment, cross-spec consistency.
+7. **Fix findings** — Address all Critical and High findings before proceeding. Update specs in place.
+8. **Commit specs** — Commit all specs for the phase together before starting implementation.
 
 ### Spec Format
 
@@ -156,13 +157,17 @@ After a spec is written and reviewed (§2 steps 5-6), implement it. Read `open-m
 
 ```
 1. Read the implementation spec
-2. Implement the code
-3. yarn generate          (if module files changed)
-4. yarn typecheck          (must pass)
-5. yarn build              (must pass)
-6. Check acceptance criteria from the spec
-7. Commit
+2. If spec involves entities, validators, or workers → invoke superpowers:test-driven-development
+3. Implement the code
+4. yarn generate          (if module files changed)
+5. yarn typecheck          (must pass)
+6. yarn build              (must pass)
+7. Check acceptance criteria from the spec
+8. Invoke superpowers:verification-before-completion before claiming done
+9. Commit
 ```
+
+Use `superpowers:systematic-debugging` if any step fails. Use `superpowers:dispatching-parallel-agents` when implementing multiple independent commits within the same phase.
 
 ### Commit Message Format
 
@@ -259,16 +264,16 @@ Access via Read tool at `open-mercato/.ai/skills/<skill>/SKILL.md`. Do NOT use t
 | Code review | `code-review/SKILL.md` | After completing each phase — full review with CI gates |
 
 ### Superpowers Skills (invoke via Skill tool)
-Access via the Skill tool as usual.
+Access via the Skill tool. These are wired into the §2/§3 workflows at specific steps — invoke them when you reach that step.
 
-| Task | Skill | When to invoke |
-|------|-------|----------------|
-| Brainstorming | `superpowers:brainstorming` | When facing design decisions not covered by App Spec |
-| TDD | `superpowers:test-driven-development` | When implementing entities, validators, workers |
-| Debugging | `superpowers:systematic-debugging` | When tests fail |
-| Verification | `superpowers:verification-before-completion` | Before claiming a commit is done |
-| Parallel agents | `superpowers:dispatching-parallel-agents` | When multiple independent commits can be worked on simultaneously |
-| Plan mode | `superpowers:writing-plans` | When a phase has 5+ commits and needs coordination |
+| Skill | Wired into | Trigger |
+|-------|-----------|---------|
+| `superpowers:brainstorming` | §2 step 3 | Design decisions not covered by App Spec (e.g., reconciling overlapping commit plans) |
+| `superpowers:writing-plans` | §2 step 4 | Phase has 5+ commits and needs coordination |
+| `superpowers:dispatching-parallel-agents` | §2 step 5, §3 loop | Multiple independent specs or commits can be worked on simultaneously |
+| `superpowers:test-driven-development` | §3 step 2 | Commit involves entities, validators, or workers |
+| `superpowers:verification-before-completion` | §3 step 8 | Before claiming any commit is done |
+| `superpowers:systematic-debugging` | §3 (any failure) | When typecheck, build, or tests fail |
 
 ---
 
