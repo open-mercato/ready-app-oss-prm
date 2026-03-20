@@ -295,6 +295,29 @@ Order phases by: **business priority × gap score × blocker status**.
 
 Each phase MUST deliver a complete, usable increment. No half-done workflows. After each phase, the client can do something real.
 
+### Acceptance Criteria — Vernon writes, Mat challenges
+
+**Role reversal.** After phasing is complete, Vernon writes the acceptance criteria for each phase. Mat challenges them.
+
+**Vernon writes (domain perspective):**
+- Domain invariants that must hold after this phase (e.g., "every TierChangeProposal has uniqueness constraint per org per period")
+- Aggregate consistency requirements (e.g., "WIP stamp is immutable once set")
+- Event completeness (e.g., "AgencyTierChanged published on every tier approval")
+- Data integrity (e.g., "WIC import archives previous version before replacing")
+
+**Mat writes (business perspective):**
+- Testable actions each persona can perform end-to-end
+- Business value statement — what problem is solved that wasn't solved before
+- ROI metric — measurable outcome with target number
+
+**Mat challenges Vernon's criteria:**
+- "Is this invariant needed for the business to work AT THIS PHASE?" If not — defer it.
+- "Would a real user notice if this invariant was violated?" If not — it's over-engineering.
+- "Does enforcing this add commits?" If yes and it's not critical — defer to next phase.
+- If Vernon's criterion IS essential for domain integrity — accept it. Don't cut invariants that prevent data corruption or governance bugs.
+
+**Why this reversal works:** Vernon tends to over-specify invariants. Mat tends to under-specify them. By making Vernon write and Mat challenge, the acceptance criteria land in the sweet spot: domain-correct but business-pragmatic.
+
 ## Phase 5: Handoff
 
 Present the complete App Spec. Wait for confirmation before any design/planning/coding.
@@ -358,9 +381,15 @@ digraph flow {
     "PIOTR: verify story mapping" -> "Phase 4: Gap Analysis + Phasing" [label="approved"];
     "PIOTR: verify story mapping" -> "Phase 3: Map to Platform" [label="re-map"];
     "Phase 4: Gap Analysis + Phasing" -> "CHALLENGER: Vernon reviews §7";
-    "CHALLENGER: Vernon reviews §7" -> "Phase 5: Handoff" [label="pass"];
+    "CHALLENGER: Vernon reviews §7" -> "ACCEPTANCE: Vernon writes criteria" [label="pass"];
     "CHALLENGER: Vernon reviews §7" -> "Phase 4: Gap Analysis + Phasing" [label="critical"];
+    "ACCEPTANCE: Vernon writes criteria" -> "MAT: challenges criteria";
+    "MAT: challenges criteria" -> "Phase 5: Handoff" [label="agreed"];
+    "MAT: challenges criteria" -> "ACCEPTANCE: Vernon writes criteria" [label="over-engineered"];
     "Phase 5: Handoff" -> "brainstorming → planning → implementation";
+
+    "ACCEPTANCE: Vernon writes criteria" [shape=box style=filled fillcolor=lightsalmon];
+    "MAT: challenges criteria" [shape=box style=filled fillcolor=lightblue];
 }
 ```
 

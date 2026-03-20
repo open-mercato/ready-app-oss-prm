@@ -234,12 +234,30 @@ Piotr saves detailed commit plans to `app-specs/<app>/piotr-notes/commits-US-<N>
 **Total: [N] atomic commits**
 **Workaround:** [if any high-gap blocker is worked around]
 
-**Acceptance criteria:**
+**Acceptance criteria:** `Vernon writes, Mat challenges`
+
+> **Role reversal.** Vernon (DDD) writes the acceptance criteria — domain invariants that must hold,
+> aggregate consistency, event completeness, data integrity. Mat (business) challenges them —
+> "is this actually needed for the business to work at this phase?" If Vernon's criterion is
+> over-engineered for the current phase, Mat cuts it or defers it. If it's essential for domain
+> integrity, Mat accepts it. The one who usually critiques now defends; the one who builds now pushes back.
+
+**Domain criteria** `Vernon`:
+- [ ] [Invariant that must hold after this phase — e.g., "every WIP-stamped deal has exactly one immutable timestamp"]
+- [ ] [Aggregate consistency — e.g., "TierChangeProposal uniqueness: one per org per period"]
+- [ ] [Event completeness — e.g., "AgencyTierChanged published on every tier approval"]
+- [ ] [Data integrity — e.g., "WIC import for same org+month archives previous version"]
+
+**Business criteria** `Mat`:
 - [ ] [Testable action the primary persona can perform end-to-end]
 - [ ] [Testable action another persona can perform]
 - [ ] ...
+
+**Value delivered:**
 - **Business value:** [What business problem is solved that wasn't solved before this phase? Be specific.]
 - **ROI metric:** [Measurable outcome. Target number. How you'd know this phase was worth building.]
+
+**Mat's challenges to Vernon's criteria:** [If Mat pushed back on any domain criterion — what was cut/deferred and why. If all accepted, state "all accepted."]
 
 [Repeat per phase]
 
@@ -259,7 +277,9 @@ Phase 2: [name]    [N] commits    [which workflows]
 - [ ] Each phase delivers complete, usable increment — no half-done workflows
 - [ ] Workarounds documented for high-gap blockers (gap >3)
 - [ ] Total atomic commits estimated per phase `Piotr`
-- [ ] Acceptance criteria per phase — testable actions + business value + ROI metric
+- [ ] Acceptance criteria per phase: Vernon wrote domain criteria, Mat wrote business criteria `Vernon + Mat`
+- [ ] Mat challenged Vernon's criteria — over-engineered criteria cut or deferred, essential ones accepted `Mat`
+- [ ] Business value + ROI metric stated per phase — no artificial phases
 - [ ] No artificial phases — every phase delivers measurable business value. If ROI is unclear, merge with adjacent phase or cut.
 
 ---
