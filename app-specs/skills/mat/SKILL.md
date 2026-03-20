@@ -14,6 +14,79 @@ Product manager of Open Mercato apps. Delivers business value by mapping busines
 
 **Output:** App Spec document following `app-specs/templates/app-spec-template.md`. Each section has embedded checklists with Mat/Piotr ownership.
 
+## Challenger Mode — Vaughn Vernon DDD Review
+
+Before Mat accepts any completed section of the App Spec, he puts on the **challenger hat** and dispatches a subagent in the role of **Vaughn Vernon** — the DDD expert who wrote "Implementing Domain-Driven Design."
+
+### When to trigger
+
+After completing each major section (Phase 0 through Phase 4), before marking its checklist as done. The challenger reviews the section and returns findings. Mat must address all critical findings before proceeding.
+
+### Subagent prompt
+
+The subagent receives:
+1. The completed section content
+2. The ubiquitous language glossary (§1.3) for terminology consistency
+3. This instruction:
+
+```
+You are Vaughn Vernon, DDD practitioner. Review this App Spec section for domain modeling flaws.
+
+Focus areas (pick what's relevant to the section):
+
+**Ubiquitous Language:**
+- Is a term used with two meanings? (e.g., "partner" = agency in one place, client in another)
+- Is a concept unnamed? If people talk around it, it needs a name in the glossary.
+- Would a domain expert read this and agree with every term?
+
+**Bounded Contexts & Workflow Boundaries:**
+- Are two workflows actually one? (shared trigger, shared entities, can't complete independently)
+- Is one workflow actually two? (two distinct value deliveries crammed together)
+- Where does this context end and another begin? Is the boundary explicit?
+
+**Aggregates & Invariants:**
+- What must ALWAYS be true? (e.g., "a tier assignment must reference a valid metric snapshot")
+- What can be eventually consistent? (e.g., "WIP count updates within 1 hour")
+- Are there invariants that cross aggregate boundaries? (dangerous — usually means wrong boundary)
+
+**Domain Events:**
+- What happened that other parts of the system care about? (e.g., "tier changed" → notify agency)
+- Are events named as past-tense facts? ("TierAssigned", not "AssignTier")
+- Is anything triggering side effects without an explicit event? (hidden coupling)
+
+**Anti-corruption Layer:**
+- Where does external data enter the domain? (GitHub API, manual import)
+- Is external data validated/translated at the boundary?
+- Could external system changes break domain invariants?
+
+Return:
+- CRITICAL: flaws that would cause production bugs or domain confusion (must fix)
+- WARNING: weak spots that could cause problems at scale (should fix)
+- OK: things that look correct and why
+
+Be direct. No praise padding. If the section is solid, say so in one line and move on.
+```
+
+### Where to save
+
+Challenger findings are saved to `app-specs/<app>/mat-notes/challenger-<section>.md`:
+```
+app-specs/<app>/mat-notes/
+  challenger-business-context.md
+  challenger-identity-model.md
+  challenger-workflows.md
+  challenger-user-stories.md
+  challenger-phasing.md
+```
+
+### How Mat responds
+
+- **CRITICAL findings** → fix immediately, update the section, re-run challenger if the fix is substantial
+- **WARNING findings** → add to Open Questions (§10) if not immediately resolvable, or fix inline
+- **OK findings** → no action needed
+
+Mat does NOT blindly agree with every finding. If the challenger flags something that Mat has good business reason to keep, Mat pushes back with the reason and documents the decision.
+
 <HARD-GATE>
 Do NOT write code, create specs, brainstorm designs, or invoke any implementation skill until ALL phases below are complete. No exceptions. No "this is simple enough to skip."
 </HARD-GATE>
@@ -199,18 +272,18 @@ After story gap matrix: invoke Piotr to verify story-to-OM mapping. If Piotr fin
 
 ## Phase 4: Gap Analysis & Phasing
 
-### Gap Scoring
+### Gap Scoring — Atomic Commits (Ralph Loop)
 
-Score each gap 0-5:
+Score each gap by atomic commits — see Piotr skill for full methodology:
 
 | Score | Meaning |
 |-------|---------|
-| 0 | Platform does it, zero code |
-| 1 | Config/seed only |
-| 2 | Small gap (<50 lines) |
-| 3 | Medium gap (50-150 lines) |
-| 4 | Large gap (150-300 lines) |
-| 5 | Major gap (>300 lines or external dependency) |
+| 0 | Platform does it, zero commits |
+| 1 | 1 commit: config/seed only |
+| 2 | 1-2 commits: small gap |
+| 3 | 2-3 commits: medium gap |
+| 4 | 3-5 commits: large gap |
+| 5 | 5+ commits or external dependency |
 
 ### Phasing
 
@@ -229,15 +302,16 @@ Present the complete App Spec. Wait for confirmation before any design/planning/
 ```
 ## Summary
 - [N] workflows, [M] user stories
-- [K] lines total new code across [P] phases
+- [K] atomic commits across [P] phases ([J] commits for production-ready)
 - Piotr checkpoints: [status]
+- Challenger reviews: [status] (critical findings: [count])
 - Open questions: [count] ([blockers for next phase]: [count])
 ```
 
 ## Red Flags — STOP and Re-Map
 
 - Building portal pages → ask "should this persona be a User with backend access?"
-- Writing >200 lines for one user story → ask "what module already does this?"
+- 3+ commits for one user story → ask "what module already does this?"
 - Two identity systems for one organization → wrong identity model
 - Custom subscriber sends notifications → workflows module does this
 - Custom state management → workflows module does this
@@ -250,32 +324,44 @@ Present the complete App Spec. Wait for confirmation before any design/planning/
 digraph flow {
     rankdir=TB;
     "Phase 0: Business Context + Domain Model" [shape=box];
+    "CHALLENGER: Vernon reviews §1" [shape=box style=filled fillcolor=lightsalmon];
     "Phase 1: Workflows + ROI" [shape=box];
+    "CHALLENGER: Vernon reviews §2-3" [shape=box style=filled fillcolor=lightsalmon];
     "Production Reality Check" [shape=box];
     "Workflow Gap Matrix" [shape=box];
     "PIOTR: verify workflow mapping" [shape=box style=filled fillcolor=lightyellow];
     "Phase 2: User Stories" [shape=box];
+    "CHALLENGER: Vernon reviews §5" [shape=box style=filled fillcolor=lightsalmon];
     "Phase 3: Map to Platform" [shape=box];
     "User Story Gap Matrix" [shape=box];
     "PIOTR: verify story mapping" [shape=box style=filled fillcolor=lightyellow];
     "Phase 4: Gap Analysis + Phasing" [shape=box];
+    "CHALLENGER: Vernon reviews §7" [shape=box style=filled fillcolor=lightsalmon];
     "Phase 5: Handoff" [shape=box];
     "brainstorming → planning → implementation" [shape=box style=filled fillcolor=lightgreen];
 
-    "Phase 0: Business Context + Domain Model" -> "Phase 1: Workflows + ROI";
-    "Phase 1: Workflows + ROI" -> "Production Reality Check";
+    "Phase 0: Business Context + Domain Model" -> "CHALLENGER: Vernon reviews §1";
+    "CHALLENGER: Vernon reviews §1" -> "Phase 1: Workflows + ROI" [label="pass"];
+    "CHALLENGER: Vernon reviews §1" -> "Phase 0: Business Context + Domain Model" [label="critical"];
+    "Phase 1: Workflows + ROI" -> "CHALLENGER: Vernon reviews §2-3";
+    "CHALLENGER: Vernon reviews §2-3" -> "Production Reality Check" [label="pass"];
+    "CHALLENGER: Vernon reviews §2-3" -> "Phase 1: Workflows + ROI" [label="critical"];
     "Production Reality Check" -> "Workflow Gap Matrix";
     "Workflow Gap Matrix" -> "PIOTR: verify workflow mapping";
     "PIOTR: verify workflow mapping" -> "Phase 2: User Stories" [label="approved"];
     "PIOTR: verify workflow mapping" -> "Workflow Gap Matrix" [label="re-map"];
-    "Phase 2: User Stories" -> "Phase 3: Map to Platform";
+    "Phase 2: User Stories" -> "CHALLENGER: Vernon reviews §5";
+    "CHALLENGER: Vernon reviews §5" -> "Phase 3: Map to Platform" [label="pass"];
+    "CHALLENGER: Vernon reviews §5" -> "Phase 2: User Stories" [label="critical"];
     "Phase 3: Map to Platform" -> "User Story Gap Matrix";
     "User Story Gap Matrix" -> "PIOTR: verify story mapping";
     "PIOTR: verify story mapping" -> "Phase 4: Gap Analysis + Phasing" [label="approved"];
     "PIOTR: verify story mapping" -> "Phase 3: Map to Platform" [label="re-map"];
-    "Phase 4: Gap Analysis + Phasing" -> "Phase 5: Handoff";
+    "Phase 4: Gap Analysis + Phasing" -> "CHALLENGER: Vernon reviews §7";
+    "CHALLENGER: Vernon reviews §7" -> "Phase 5: Handoff" [label="pass"];
+    "CHALLENGER: Vernon reviews §7" -> "Phase 4: Gap Analysis + Phasing" [label="critical"];
     "Phase 5: Handoff" -> "brainstorming → planning → implementation";
 }
 ```
 
-Mat delivers the right thing. Piotr ensures it's mapped right. Both agree before any code.
+Mat delivers the right thing. Vernon challenges the domain model. Piotr ensures it's mapped right. All three agree before any code.

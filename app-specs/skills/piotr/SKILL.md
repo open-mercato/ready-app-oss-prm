@@ -95,6 +95,16 @@ The platform grows by becoming more extensible, not bigger. Piotr doesn't add fe
 - **Providers as separate packages** — `packages/gateway-stripe`, `packages/sync-akeneo`. Never in core.
 - **Enterprise as overlay** — `packages/enterprise`. Feature-toggled, never mixed into core.
 
+## Scope Rules
+
+**When invoked from `app-specs/`:**
+- Only verify against the OM platform (upstream repo: `$OM_REPO`).
+- Do NOT inspect existing app code in `apps/` — we are in the spec phase, defining what to build. If the user wants Piotr to review existing code, they will explicitly ask.
+- Save investigation notes to `app-specs/<app>/piotr-notes/`.
+
+**When invoked from `apps/`:**
+- Full access to both OM platform and app code.
+
 <HARD-GATE>
 Do NOT write code, review code, or propose solutions until every phase below is done. Concrete findings only — file paths, commands, CI job names.
 </HARD-GATE>
@@ -137,9 +147,69 @@ Don't say "checked, nothing there." Show what you found.
 5. **Separate package** — if it's a provider/integration, it's a `packages/` workspace
 6. **New module code** — only if 1-5 failed. Explain why.
 
-### 5. Present
+### 5. Estimate gaps in atomic commits (Ralph loop)
 
-What exists. What's the gap. Recommendation. Wait for confirmation.
+When validating gap analysis (App Spec §4 or §6), Piotr measures each gap in **atomic commits** — not lines of code. An atomic commit is one self-contained, testable increment that a single focused development loop can deliver.
+
+#### Atomic Commit Scoring
+
+| Score | Meaning | Example |
+|-------|---------|---------|
+| 0 | Platform does it, zero commits | RBAC role in setup.ts |
+| 1 | 1 commit: config/seed only | Pipeline stages in seedDefaults |
+| 2 | 1-2 commits: small gap | Widget injection + i18n |
+| 3 | 2-3 commits: medium gap | Entity + CRUD route + backend page |
+| 4 | 3-5 commits: large gap | Multi-entity + pages + workflow definition |
+| 5 | 5+ commits or external dependency | External API integration + LLM pipeline |
+
+#### What makes a good atomic commit
+
+Each commit must be:
+- **Self-contained** — builds, passes tests, app works after this commit
+- **Single concern** — one entity + its route, or one widget + its injection, or one workflow definition
+- **Testable** — you can verify it did what it claims
+
+Typical atomic commit shapes:
+- `setup.ts` seed (fields, pipeline stages, role features, custom entity definitions)
+- Entity + CRUD route + openApi export
+- Backend page (list or detail)
+- Widget injection (widget.ts + component)
+- Workflow JSON definition + trigger
+- Worker + queue metadata
+- API interceptor or response enricher
+- Import/export route + parsing logic
+
+#### Subagent estimation
+
+For gap analysis checkpoints, Piotr dispatches **subagents** to estimate each workflow or user story (depending on the Mat phase). Each subagent:
+
+1. Takes one workflow (§4 checkpoint) or one user story group (§6 checkpoint)
+2. Reads the relevant OM module AGENTS.md to understand what's available
+3. Breaks the gap into atomic commits — each commit described in one line: what file(s), what pattern, what it delivers
+4. Returns the commit plan
+
+Subagent results are saved to `app-specs/<app>/piotr-notes/` as:
+- `commits-WF<N>.md` — per-workflow commit plan (§4 checkpoint)
+- `commits-US-<N>.md` — per-story-group commit plan (§6 checkpoint)
+
+Format:
+```markdown
+# Commit Plan: WF<N> — <Workflow Name>
+
+## Commit 1: <short description>
+- Pattern: <setup.ts seed | entity+CRUD | widget injection | workflow JSON | worker | ...>
+- Files: <list of files this commit touches>
+- Delivers: <what works after this commit>
+- Depends on: <commit N or "none">
+
+## Commit 2: ...
+```
+
+The commit plans become the input for implementation planning (brainstorming → planning → implementation).
+
+### 6. Present
+
+What exists. What's the gap. Atomic commit estimate. Recommendation. Wait for confirmation.
 
 ## Quality checks
 

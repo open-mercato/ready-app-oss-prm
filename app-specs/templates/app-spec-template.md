@@ -144,36 +144,40 @@
 
 > Gap analysis maps each workflow step to OM platform capability.
 
-### Gap Scoring
+### Gap Scoring — Atomic Commits (Ralph Loop)
+
+Each gap is measured in **atomic commits** — one self-contained, testable increment that a single focused development loop can deliver. See Piotr skill for commit estimation methodology.
 
 | Score | Meaning | Example |
 |-------|---------|---------|
-| 0 | Platform does it, zero code | RBAC role in setup.ts |
-| 1 | Config/seed only | Pipeline stages in seedDefaults |
-| 2 | Small gap (<50 lines) | Scheduled job |
-| 3 | Medium gap (50-150 lines) | Dashboard widget |
-| 4 | Large gap (150-300 lines) | Custom comparison page |
-| 5 | Major gap (>300 lines or external dependency) | External API + LLM pipeline |
+| 0 | Platform does it, zero commits | RBAC role in setup.ts |
+| 1 | 1 commit: config/seed only | Pipeline stages in seedDefaults |
+| 2 | 1-2 commits: small gap | Widget injection + i18n |
+| 3 | 2-3 commits: medium gap | Entity + CRUD route + backend page |
+| 4 | 3-5 commits: large gap | Multi-entity + pages + workflow definition |
+| 5 | 5+ commits or external dependency | External API + LLM pipeline |
 
 ### Per-Workflow Gap Matrix
 
-#### WF[N]: [Name] — Total gap: [N]
+#### WF[N]: [Name] — Total: [N] atomic commits
 
-| Step | OM Module | Gap | Score | Notes |
-|------|-----------|-----|-------|-------|
+| Step | OM Module | Gap | Commits | Notes |
+|------|-----------|-----|---------|-------|
 | | | | | |
 
 [Repeat per workflow]
 
 ### Gap Summary
 
-| Workflow | Business Priority | Gap Score (raw) | Workaround? | Gap Score (effective) | Blocks ROI? |
-|----------|------------------|-----------------|-------------|----------------------|-------------|
+| Workflow | Business Priority | Atomic Commits (raw) | Workaround? | Commits (effective) | Blocks ROI? |
+|----------|------------------|---------------------|-------------|---------------------|-------------|
 | | | | | | |
 
+Piotr saves detailed commit plans to `app-specs/<app>/piotr-notes/commits-WF<N>.md`.
+
 #### Checklist
-- [ ] Every workflow step scored 0-5 `Mat`
-- [ ] Piotr checkpoint: workflow-to-OM mapping verified — no module missed, no overengineering `Piotr`
+- [ ] Every workflow step scored in atomic commits `Mat`
+- [ ] Piotr checkpoint: workflow-to-OM mapping verified — no module missed, no overengineering, commit plans saved `Piotr`
 
 ---
 
@@ -198,15 +202,17 @@ Success: [concrete, testable criteria]
 
 ## 6. User Story Gap Analysis `Piotr`
 
-> Map each story to OM capability.
+> Map each story to OM capability. Measure in atomic commits.
 
-| Story | Platform Match | New Code? | Gap Score |
-|-------|---------------|-----------|-----------|
+| Story | Platform Match | Atomic Commits | Notes |
+|-------|---------------|----------------|-------|
 | | | | |
 
+Piotr saves detailed commit plans to `app-specs/<app>/piotr-notes/commits-US-<N>.md`.
+
 #### Checklist
-- [ ] Every story mapped to specific OM module/mechanism with code estimate `Mat`
-- [ ] Piotr checkpoint: story-to-OM mapping verified — simplest solution for each story `Piotr`
+- [ ] Every story mapped to specific OM module/mechanism with atomic commit estimate `Mat`
+- [ ] Piotr checkpoint: story-to-OM mapping verified — simplest solution for each story, commit plans saved `Piotr`
 
 ---
 
@@ -220,11 +226,11 @@ Success: [concrete, testable criteria]
 
 **Why this order:** [Business justification]
 
-| Story | What ships | Gap |
-|-------|-----------|-----|
+| Story | What ships | Commits |
+|-------|-----------|---------|
 | | | |
 
-**Total new code:** [estimate]
+**Total: [N] atomic commits**
 **Workaround:** [if any high-gap blocker is worked around]
 
 **After this phase, client can say:** "[quote]"
@@ -234,18 +240,19 @@ Success: [concrete, testable criteria]
 ### Rollout Summary
 
 ```
-Phase 1: [name]    ~[N] lines    [which workflows]
-Phase 2: [name]    ~[N] lines    [which workflows]
+Phase 1: [name]    [N] commits    [which workflows]
+Phase 2: [name]    [N] commits    [which workflows]
 ...
-                   --------
-                   ~[N] lines total
+                   ---------
+                   [N] atomic commits total
+                   [M] commits for production-ready (Phases 1-N)
 ```
 
 #### Checklist
 - [ ] Phases ordered by: business priority x gap score x blocker status
 - [ ] Each phase delivers complete, usable increment — no half-done workflows
 - [ ] Workarounds documented for high-gap blockers (gap >3)
-- [ ] Total new code estimated per phase `Piotr`
+- [ ] Total atomic commits estimated per phase `Piotr`
 
 ---
 
