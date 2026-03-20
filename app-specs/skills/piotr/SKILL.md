@@ -243,6 +243,47 @@ Format:
 3. **Alternative check:** Can UMES extend the module from the app side instead? (interceptor, enricher, widget injection, DI override). If yes, that's `app` scope — no upstream dependency.
 4. **If core/official-module is the right answer:** Flag it in the gap matrix, note the upstream dependency, and consider whether the phase can ship with a workaround while the upstream PR is in review.
 
+#### Upstream investigation for flagged commits
+
+When Piotr flags a commit as `core-module` or `official-module`, he MUST investigate whether the needed capability is already tracked upstream. This prevents duplicate work and surfaces existing momentum.
+
+**Check in this order:**
+
+1. **Open specs:** Search `$OM_REPO/.ai/specs/` and `$OM_REPO/.ai/specs/enterprise/` for specs that describe the missing capability. If a spec exists, the feature is planned — reference it and note its status.
+   ```bash
+   grep -rl "<keyword>" $OM_REPO/.ai/specs/
+   ```
+
+2. **Open issues / PRs:** Check GitHub for existing issues or PRs on the upstream repo.
+   ```bash
+   gh issue list -R open-mercato/open-mercato --search "<keyword>" --state open
+   gh pr list -R open-mercato/open-mercato --search "<keyword>" --state open
+   ```
+   For official modules:
+   ```bash
+   gh issue list -R open-mercato/official-modules --search "<keyword>" --state open
+   ```
+
+3. **Develop branch:** Check if it's already been implemented on `upstream/develop` but not yet released.
+   ```bash
+   git -C $OM_REPO log upstream/develop --oneline --grep="<keyword>" | head -10
+   ```
+
+**Report findings per flagged commit:**
+```markdown
+### Upstream investigation: <commit description>
+- Scope: core-module | official-module
+- Needed capability: <what's missing>
+- Specs found: <spec ID + title, or "none">
+- Issues/PRs found: <issue/PR URL + status, or "none">
+- On develop branch: <yes/no + commit hash>
+- Recommendation: <wait for upstream | submit PR | build app-level workaround>
+```
+
+Save findings to `app-specs/<app>/piotr-notes/upstream-flags.md`.
+
+If the capability is already specced or has an open PR, note the expected timeline. If nothing exists upstream, recommend either submitting a spec/issue (if it's a general platform need) or building an app-level workaround (if it's app-specific).
+
 The commit plans become the input for implementation planning (brainstorming → planning → implementation).
 
 ### 6. Present
