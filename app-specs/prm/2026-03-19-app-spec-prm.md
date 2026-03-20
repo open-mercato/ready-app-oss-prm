@@ -127,7 +127,8 @@ wic_final = wic_pre_bounty * bounty_multiplier  (1.5x if linked to active bounty
 WIC/month per agency = sum of wic_final for all contributors in that org for that month.
 
 **Note on WIC levels:** Levels are NOT ordinal difficulty. They measure different types of contribution:
-- L1 (0.5/0.25) = small fixes, routine work. Discriminator for 0.5 vs 0.25: **TODO — verify against SDRC source** (Open Question #9).
+- L1 (0.5) = complex fix, large refactor, high-impact accepted bug report
+- L1 (0.25) = smaller fix/hardening, standard accepted bug report
 - L2 (1.0) = substantial implementation work (high volume, moderate complexity)
 - L3 (0.5) = design review, architecture guidance (lower volume, strategic value)
 - L4 (1.0) = strategic/architectural contributions (highest impact)
@@ -319,7 +320,7 @@ These are enforced at entity level in setup.ts seed configuration. Required for 
 
 ### WF3: Code Contribution (WIC)
 
-**Journey:** Dev opens PR on OM GitHub repo -> core team reviews -> merge to develop -> daily scheduled job -> GitHub API fetch PRs per contributor -> group by (person, month, feature key) -> LLM scoring (L1-L4, impact bonus, bounty) -> optional PM override -> WIC score recorded -> Contributor/BD/Admin sees score
+**Journey:** Dev opens PR on OM GitHub repo -> core team reviews -> merge to develop -> Phase 1-3: PM imports WIC manually via import API. Phase 4: n8n workflow (daily schedule -> GitHub GraphQL -> group by person+month+feature key -> LLM scoring -> POST to import API via open-mercato/n8n-nodes) -> WIC score recorded as ContributionUnits -> Contributor/BD/Admin sees score
 
 **ROI:** 15 agencies x 2 WIC/month = 30 contributions/month to OM codebase.
 
@@ -467,12 +468,12 @@ Each gap is measured in **atomic commits** — one self-contained, testable incr
 
 **Piotr note:** Spec said "scheduler module" — **no such module exists on upstream.** OM has `queue` package with workers, but no built-in cron trigger. Worker needs an external trigger: system crontab, Docker cron, or API endpoint called externally. This applies to all "scheduled job" gaps (WF3, WF5). WF2 no longer needs a scheduled worker — WIP is stamp-based with live query.
 
-#### WF3: Code Contribution (WIC) — Total: 3 atomic commits (with workaround) / 8+ (full)
+#### WF3: Code Contribution (WIC) — Total: 3 atomic commits (with workaround) / 5-6 (full, n8n)
 
 | Step | OM Module | Gap | Commits | Notes |
 |------|-----------|-----|---------|-------|
 | GitHub PR merged | external | N/A | — | Outside OM |
-| Daily job fetches PRs | GitHub API + LLM | Gap: external integration | 5+ (Ph4) | LLM scoring, GitHub API, contributor mapping — deferred |
+| Daily job fetches PRs | n8n workflow + open-mercato/n8n-nodes | Gap: n8n workflow definition | 2-3 (Ph4) | n8n Schedule → GitHub GraphQL → Code (scoring) → Open Mercato node (POST import API). Scoring logic from wic_assessment.mjs. |
 | GH username -> User mapping | entities (custom field on User) | Gap: field definition | 1 | Custom field seed in setup.ts |
 | Score recorded | partnerships entities | Covered | 0 | Entity already in spec |
 | Score displayed | partnerships backend | Gap: widget | 1 | Widget injection on dashboard |
@@ -513,8 +514,8 @@ RFP lifecycle uses workflows module: START → SEND_EMAIL → WAIT_FOR_TIMER →
 | WF1: Onboarding | High | 4 | Partial (self-onboard Ph1) | 2 (Ph1) | Yes — enables all other WFs |
 | WF5: Tier Governance | High | 5 | No | 5 | Yes — governance loop |
 | WF4: RFP | Medium | 4 | No | 4 | Partial — PM can email manually |
-| WF3: WIC | Medium | 8+ | Yes (manual import) | 3 | Yes — but workaround unblocks |
-| **Total** | | **23+** | | **16 (Ph1-3)** | |
+| WF3: WIC | Medium | 5-6 | Yes (manual import Ph1-3, n8n Ph4) | 3 | Yes — but workaround unblocks |
+| **Total** | | **20-21** | | **15 (Ph1-3)** | |
 
 **Piotr finding — no scheduler module:** "Scheduled job" gaps (WF3/WF5) reference a scheduler that doesn't exist on OM upstream. The `queue` package provides workers but no cron trigger. Solution: one shared commit adds a cron trigger mechanism (external crontab or API endpoint) that enqueues jobs. This is **1 additional commit** counted once. Note: WF2 no longer needs a scheduled worker — WIP is stamp-based with live query.
 
@@ -574,8 +575,8 @@ Success: Upload CSV/markdown for a given org+month, system validates against Wic
 **US-3.3** As Contributor, I verify my WIC score and level breakdown so that I can flag missing contributions to my Admin.
 Success: Dashboard shows: total WIC this month, per-contribution breakdown (feature key, level, bonus). Contributor can identify if a merged PR is missing.
 
-**US-3.4** (Phase 4) As PM, I rely on automated daily WIC scoring so that I don't need to manually import scores.
-Success: Daily job runs, new PRs scored, contributors see updated scores without PM intervention. PM sees last-run timestamp and can trigger manual re-run if needed.
+**US-3.4** (Phase 4) As PM, I rely on automated daily WIC scoring via n8n so that I don't need to manually import scores.
+Success: n8n workflow runs daily (Schedule Trigger → GitHub GraphQL → scoring → POST to import API via open-mercato/n8n-nodes). Contributors see updated scores without PM intervention. PM sees n8n run history, can trigger manual re-run in n8n UI. WicAssessmentSource = `automated_pipeline`.
 
 ### WF4: Lead Distribution (RFP)
 
@@ -646,7 +647,7 @@ Success: Org switcher shows all agencies, PM selects one, sees that agency's dat
 | US-3.1 | entities custom field on User | 1 | GH username field seed in setup.ts. Unique, immutable once WIC recorded. |
 | US-3.2 | partnerships import API | 1 | Import route validates WicScoringResult schema, enforces Feature Key dedup, versioned import (replace+archive). |
 | US-3.3 | partnerships backend widget | 0 | Bundled with US-2.3 KPI dashboard (same widget, scoped data) |
-| US-3.4 | external (GitHub+LLM) — Phase 4 | 5+ | Major — deferred to Phase 4. WicAssessmentSource = `automated_pipeline`. |
+| US-3.4 | n8n workflow (GitHub+LLM) → POST to import API — Phase 4 | 2-3 | n8n workflow definition + n8n-nodes enhancements + docs. WicAssessmentSource = `automated_pipeline`. |
 | US-4.1 | partnerships entity + workflows | 2 | 1: PartnerRfpCampaign entity + CRUD route. 2: RFP workflow JSON definition. CampaignPublished event. |
 | US-4.2 | workflows SEND_EMAIL | 0 | Covered by workflow activity |
 | US-4.3 | workflows USER_TASK + partnerships entity | 1 | PartnerRfpResponse entity + USER_TASK form |
@@ -659,7 +660,7 @@ Success: Org switcher shows all agencies, PM selects one, sees that agency's dat
 | US-5.6 | partnerships entity + search + CRUD | 2 | 1: PartnerLicenseDeal entity + PM-only CRUD. 2: Cross-org company search + CRM read-only jump + attribution UI. |
 | US-6.1 | auth org switcher (Program Scope) | 0 | Platform feature (`organizationsJson: null`) |
 | — | Cron trigger mechanism (shared) | 1 | External crontab or API trigger for WF3/WF5 scheduled workers |
-| **Total** | | **14 (Ph1-3) + 7+ (Ph4)** | |
+| **Total** | | **14 (Ph1-3) + 5-6 (Ph4) = 19-20** | |
 
 #### Checklist
 - [x] Every story mapped to specific OM module/mechanism with atomic commit estimate `Mat`
@@ -744,13 +745,26 @@ Success: Org switcher shows all agencies, PM selects one, sees that agency's dat
 
 | Story | What ships | Commits |
 |-------|-----------|---------|
-| US-3.4 | Automated WIC pipeline (GitHub API + LLM scoring) | 5+ |
+| US-3.4 | Automated WIC pipeline via n8n workflow (GitHub API + LLM scoring → POST to import API) | 2-3 |
 | US-1.1b | Email invitation flow (replaces self-onboard) | 2 |
 | Onboarding sub-workflows | Tracked onboarding steps via workflows module | 1 |
 
-**Total: 8+ atomic commits**
+**Total: 5-6 atomic commits**
 
-**After Phase 4:** "System runs itself. WIC scores automatically, agencies get invited by email, onboarding is guided."
+**WIC automation approach (decided):** n8n workflow using `open-mercato/n8n-nodes` package.
+- n8n Schedule Trigger (daily) → GitHub GraphQL node (fetch PRs) → Code node (group + score) → IF node (bounty → AI reviewer) → Open Mercato node (POST to WIC import API)
+- Import API (Phase 2) remains the anti-corruption layer — validates WicScoringResult schema, enforces dedup, versioned replace+archive
+- Scoring logic extracted from existing `wic_assessment.mjs` (SDRC) into n8n Code node steps
+- WicAssessmentSource = `automated_pipeline` distinguishes from Phase 2 manual imports
+- PM sees workflow run history in n8n UI, can trigger manual re-runs
+- Platform ROI: demonstrates n8n-nodes package as real integration pattern
+
+**Why n8n over alternatives:**
+- _Not standalone cron + scripts:_ n8n gives PM visible orchestration, run history, failure alerts. Scripts are 2000 lines of monolith — n8n decomposes into inspectable steps.
+- _Not OM queue worker:_ GitHub API + LLM scoring is not OM's domain. Wrapping external tooling in an OM worker means PRM owns that code and needs redeployment when scoring rules change.
+- _n8n node exists:_ `open-mercato/n8n-nodes` (generic REST node, pushed 2026-03-07) already speaks OM's API. WIC would be its first production use case.
+
+**After Phase 4:** "System runs itself. WIC scores automatically via n8n, agencies get invited by email, onboarding is guided."
 
 ### Rollout Summary
 
@@ -758,9 +772,9 @@ Success: Org switcher shows all agencies, PM selects one, sees that agency's dat
 Phase 1: Core Loop              3 commits    WF1 (partial) + WF2 (stamp-based WIP)
 Phase 2: Governance + KPI + MIN 8 commits    WF5 + WF3 (manual) + MIN attribution + cron
 Phase 3: RFP                    4 commits    WF4 (workflows)
-Phase 4: Automation             8+ commits   WF3 (full) + WF1 (full)
+Phase 4: Automation             5-6 commits  WF3 (n8n) + WF1 (full)
                                 ---------
-                                23+ atomic commits total
+                                20-21 atomic commits total
                                 15 commits for Phases 1-3 (production-ready loop)
 ```
 
@@ -845,7 +859,7 @@ Each phase delivers a complete, usable increment. No phase leaves a workflow hal
 
 | # | Question | Options | Impact | Owner | Status |
 |---|----------|---------|--------|-------|--------|
-| 1 | WIC implementation | a) n8n b) OM scheduler c) standalone cron | Phase 4 architecture | Piotr | Open |
+| 1 | WIC implementation | n8n workflow using open-mercato/n8n-nodes | Phase 4 architecture | Piotr | Decided: n8n. Existing n8n-nodes package speaks OM API. n8n gives PM visible orchestration + run history. Scoring logic extracted from wic_assessment.mjs into n8n Code nodes. Import API (Phase 2) is the anti-corruption layer. |
 | 2 | RFP mechanism | a) custom code b) workflows module | Phase 3 code volume | Mat + Piotr | Decided: workflows module. Lifecycle maps to workflow steps, reduces custom code. |
 | 3 | Invitation flow | a) self-onboard b) email invitation | Phase 1 vs Phase 4 | Mat | Decided: self-onboard Phase 1, email Phase 4. Known limitation: no formal enrollment event in Phase 1 (accepted). |
 | 4 | Existing portal code | a) delete b) refactor | All phases | Mat | Decided: delete. Zero personas need CustomerUser. |
@@ -853,7 +867,7 @@ Each phase delivers a complete, usable increment. No phase leaves a workflow hal
 | 6 | RFP lead source | a) website form b) email c) PM enters manually | Phase 3 scope | Mat | Open |
 | 7 | RFP matching criteria | a) automated (case study data) b) manual (PM judgment) | Phase 3 complexity | Mat + Piotr | Open |
 | 8 | MIN attribution | PM searches all companies across all agencies, verifies in CRM, creates PartnerLicenseDeal with attribution | Phase 2 data model | Mat | Decided: cross-org company search + CRM read-only jump + attribution. Moved from Phase 3 to Phase 2 (tier eval needs MIN). |
-| 9 | WIC L1 score discriminator | L1 has two values (0.5 / 0.25) — what determines which applies? | WIC scoring accuracy | Mat | Open — must verify against SDRC source before Phase 2 WIC import. |
+| 9 | WIC L1 score discriminator | L1 0.5 = complex fix/large refactor/high-impact bug report. L1 0.25 = smaller fix/hardening/standard bug report. | WIC scoring accuracy | Mat | Decided: impact level of the fix. Verified against SDRC WIC Assessment Learnings + Monthly Workflow docs. |
 
 #### Checklist
 - [x] Every question has: options, impact, owner, status
