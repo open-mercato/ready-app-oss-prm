@@ -217,6 +217,7 @@ Format:
 # Commit Plan: WF<N> — <Workflow Name>
 
 ## Commit 1: <short description>
+- Scope: <app | official-module | core-module | n8n | external>
 - Pattern: <setup.ts seed | entity+CRUD | widget injection | workflow JSON | worker | ...>
 - Files: <list of files this commit touches>
 - Delivers: <what works after this commit>
@@ -224,6 +225,21 @@ Format:
 
 ## Commit 2: ...
 ```
+
+#### Scope column values
+
+| Scope | Meaning | Red flag? |
+|-------|---------|-----------|
+| `app` | Change lives in the app repo (setup.ts, entities, routes, widgets, workers, pages) | No — this is where we build |
+| `n8n` | Change lives in n8n (workflow definition, n8n-nodes enhancement) | No — external automation layer |
+| `official-module` | Change requires modifying an official marketplace module | **YES** — should the app extend it instead? File an issue or propose upstream. |
+| `core-module` | Change requires modifying OM core | **RED FLAG** — almost certainly wrong. Use UMES (interceptors, enrichers, widget injection) to extend. If truly needed, it's a platform contribution, not app work. |
+| `external` | Change lives outside OM entirely (scripts, third-party service config) | Caution — document the dependency. |
+
+**If any commit has scope `core-module` or `official-module`, STOP.** Ask:
+1. Can UMES extend the module instead? (interceptor, enricher, widget injection, DI override)
+2. Is this a missing platform capability that should be proposed upstream?
+3. If it genuinely needs a core change, it's a **blocker** — flag it, don't plan around it.
 
 The commit plans become the input for implementation planning (brainstorming → planning → implementation).
 
