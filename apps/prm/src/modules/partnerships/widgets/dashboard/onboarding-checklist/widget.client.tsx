@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from 'react'
-import Link from 'next/link'
 import type { DashboardWidgetComponentProps } from '@open-mercato/shared/modules/dashboard/widgets'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Spinner } from '@open-mercato/ui/primitives/spinner'
@@ -88,7 +87,7 @@ const OnboardingChecklistWidget: React.FC<DashboardWidgetComponentProps> = ({
         const label = t(item.label) !== item.label ? t(item.label) : item.label
         return (
           <li key={item.id}>
-            <Link
+            <a
               href={item.link}
               className="flex items-center gap-3 rounded-md p-2 hover:bg-muted/50 transition-colors"
             >
@@ -120,7 +119,7 @@ const OnboardingChecklistWidget: React.FC<DashboardWidgetComponentProps> = ({
               >
                 {label}
               </span>
-            </Link>
+            </a>
           </li>
         )
       })}
