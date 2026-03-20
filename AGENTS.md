@@ -5,6 +5,11 @@ Build Open Mercato applications from App Specs. Each app follows the same proces
 ## Repo Structure
 
 ```
+open-mercato/                    # OM monorepo (gitignored, local reference copy)
+  .ai/skills/                    # OM platform skills (spec-writing, implement-spec, etc.)
+  packages/core/src/modules/     # Reference module implementations (customers = reference CRUD)
+  AGENTS.md                      # OM platform conventions and task router
+
 app-specs/
   <app-name>/                    # Business analysis (App Spec + supporting docs)
     YYYY-MM-DD-app-spec-<app>.md # THE source of truth
@@ -23,15 +28,36 @@ apps/
 
 **Convention:** `app-specs/<app>/` is the business spec, `apps/<app>/` is the implementation. Same `<app>` name in both.
 
+## OM Monorepo Reference
+
+The OM monorepo lives at `open-mercato/` in this repo (gitignored — local reference copy, not committed). It provides:
+
+1. **Platform skills** — at `open-mercato/.ai/skills/<skill>/SKILL.md`. These are NOT Skill tool skills — read the file directly with the Read tool and follow the process described inside.
+2. **Reference implementations** — at `open-mercato/packages/core/src/modules/`. The `customers` module is the canonical CRUD reference. Search here when you need to understand how an OM pattern works.
+3. **Platform conventions** — at `open-mercato/AGENTS.md`. The root AGENTS.md has the full task router and all OM rules (naming, security, BC contract, etc.).
+4. **Review checklists** — at `open-mercato/.ai/skills/code-review/references/review-checklist.md`.
+
+**Before any implementation work:** verify the monorepo is on the `develop` branch and up to date:
+```bash
+cd open-mercato && git checkout develop && git pull
+```
+
+**If `open-mercato/` does not exist:** clone it:
+```bash
+git clone <om-repo-url> open-mercato && cd open-mercato && git checkout develop
+```
+
 ## Task Router
 
 | Task | Where to work | What to use |
 |------|---------------|-------------|
 | Define a new app (business analysis) | `app-specs/<app>/` | Mat skill + Piotr skill + template |
-| Convert App Spec to implementation specs | `apps/<app>/docs/specs/` | This guide §2 + OM `spec-writing` skill |
+| Convert App Spec to implementation specs | `apps/<app>/docs/specs/` | This guide §2 (full workflow below) |
 | Implement a spec | `apps/<app>/src/modules/` | This guide §3 + OM `implement-spec` skill |
 | Review implementation | `apps/<app>/` | OM `code-review` skill |
 | Check platform capabilities | `app-specs/<app>/` | Piotr skill (fetches OM context on-demand) |
+
+**How to access OM skills:** Read the skill file with the Read tool at `open-mercato/.ai/skills/<skill>/SKILL.md`. Do NOT use the Skill tool — OM skills are not registered there. Read the file, then follow the process it describes.
 
 ---
 
@@ -65,10 +91,15 @@ For each phase, generate implementation specs from the App Spec. One spec per at
 
 ### Process
 
-1. Pick the next phase from App Spec §7
-2. Read the commit plans for that phase's workflows (`commits-WF*.md`)
-3. For each atomic commit, write one implementation spec
-4. Use the OM `spec-writing` skill (invoke via Skill tool) — adapt its output for app context
+Follow these steps in order. Do NOT skip the review step.
+
+1. **Load OM context** — Read `open-mercato/.ai/skills/spec-writing/SKILL.md` for the OM spec-writing standards. Read `open-mercato/AGENTS.md` for platform conventions. Read reference module patterns from `open-mercato/packages/core/src/modules/customers/` as needed.
+2. **Read the App Spec** — Follow §1 above (App Spec → commit plans → upstream flags).
+3. **Reconcile commit plans** — Multiple workflow commit plans may overlap (e.g., both WF1 and WF2 seed roles). Merge overlapping commits and document the rationale.
+4. **Write specs** — For each atomic commit, write one implementation spec using the format below.
+5. **Review specs** — Read `open-mercato/.ai/skills/pre-implement-spec/SKILL.md` and apply its review process (adapted for app-level specs — BC audit is N/A for new apps). At minimum check: AGENTS.md compliance, spec completeness, gap analysis, risk assessment, cross-spec consistency.
+6. **Fix findings** — Address all Critical and High findings before proceeding. Update specs in place.
+7. **Commit specs** — Commit all specs for the phase together before starting implementation.
 
 ### Spec Format
 
@@ -112,14 +143,14 @@ Each spec must include:
 - **One spec = one atomic commit** from the commit plans. Not bigger.
 - **Acceptance criteria come from the App Spec** — copy the relevant domain + business criteria from §7, don't invent new ones.
 - **Files section is exhaustive** — every file created or modified, with exact path under `src/modules/`.
-- **OM patterns reference compiled code** — point to `node_modules/@open-mercato/` for reference implementations.
+- **OM patterns reference source code** — point to `open-mercato/packages/core/src/modules/` for reference implementations.
 - **No spec without a commit plan entry** — if it's not in `commits-WF*.md`, it shouldn't exist.
 
 ---
 
 ## §3. Implementing Specs
 
-After a spec is written, implement it. Use the OM `implement-spec` skill (invoke via Skill tool).
+After a spec is written and reviewed (§2 steps 5-6), implement it. Read `open-mercato/.ai/skills/implement-spec/SKILL.md` for the OM implementation workflow, then follow the per-commit loop below.
 
 ### Per-Commit Loop
 
@@ -156,7 +187,7 @@ After all commits in a phase are done:
 
 ## §4. OM Platform Patterns
 
-When implementing, reference these patterns from the OM monorepo (`node_modules/@open-mercato/`):
+When implementing, reference these patterns from the OM monorepo at `open-mercato/packages/core/src/modules/`:
 
 | Pattern | Where to find reference | Used for |
 |---------|------------------------|----------|
@@ -172,7 +203,7 @@ When implementing, reference these patterns from the OM monorepo (`node_modules/
 | **acl.ts** | `@open-mercato/core/modules/*/acl.ts` | Feature-based permissions |
 | **ce.ts** | `@open-mercato/core/modules/*/ce.ts` | Custom entity declarations |
 
-**When you need to understand an OM pattern:** search `node_modules/@open-mercato/` for the compiled implementation. The `customers` module is the reference CRUD module.
+**When you need to understand an OM pattern:** search `open-mercato/packages/core/src/modules/` for the source implementation. The `customers` module is the reference CRUD module. Use Explore subagents for broad pattern research.
 
 ---
 
@@ -215,14 +246,23 @@ src/modules/<module>/
 
 ## §6. Skills Reference
 
-Invoke these via the Skill tool at the appropriate moment:
+Two types of skills are available. Use the right access method:
+
+### OM Platform Skills (read the file, follow the process)
+Access via Read tool at `open-mercato/.ai/skills/<skill>/SKILL.md`. Do NOT use the Skill tool.
+
+| Task | Skill file | When to use |
+|------|-----------|-------------|
+| Writing implementation specs | `spec-writing/SKILL.md` | Step 1 of §2 — read for OM spec standards before writing |
+| Pre-implementation analysis | `pre-implement-spec/SKILL.md` | Step 5 of §2 — review specs after writing, fix findings before implementing |
+| Implementing a spec | `implement-spec/SKILL.md` | Step 1 of §3 — read before coding each commit |
+| Code review | `code-review/SKILL.md` | After completing each phase — full review with CI gates |
+
+### Superpowers Skills (invoke via Skill tool)
+Access via the Skill tool as usual.
 
 | Task | Skill | When to invoke |
 |------|-------|----------------|
-| Writing implementation specs | `spec-writing` | Before coding each commit |
-| Pre-implementation analysis | `pre-implement-spec` | Before complex commits (workers, workflows, multi-entity) |
-| Implementing a spec | `implement-spec` | When coding each commit |
-| Code review | `code-review` | After completing each phase |
 | Brainstorming | `superpowers:brainstorming` | When facing design decisions not covered by App Spec |
 | TDD | `superpowers:test-driven-development` | When implementing entities, validators, workers |
 | Debugging | `superpowers:systematic-debugging` | When tests fail |
