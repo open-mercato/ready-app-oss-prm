@@ -1,6 +1,7 @@
 node_modules/
 .DS_Store
 .mercato/
+open-mercato/
 *.tsbuildinfo
 
 # App-level generated (covered by apps/*/gitignore but also catch at root)
