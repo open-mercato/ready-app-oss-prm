@@ -45,7 +45,7 @@
 
 ---
 
-## Per-org feature scoping for PM role (Phase 2+ enhancement)
+## Per-org feature scoping for PM role (by design — not a gap)
 
 ### Upstream investigation
 - **Scope:** `core-module` — auth module RBAC
@@ -53,14 +53,10 @@
 - **Spec found:** None
 - **Issues/PRs found:** None
 - **On develop branch:** No — `RoleAcl.featuresJson` applies to all visible orgs equally
-- **Recommendation:** This is a significant RBAC enhancement. Phase 1 workaround: PM gets `customers.*` everywhere (procedural read-only on agencies). Acceptable for small partner programs. For Phase 2+, propose upstream spec for per-org feature override.
+- **Assessment:** This is **by design, not a gap.** OM RBAC uses organizations as data partitioning (which records you see), not permission partitioning (what actions you can perform). This is consistent with standard CRM/ERP RBAC — roles define capabilities, org assignment defines data scope. Verified in `rbacService.ts`: `organizationsJson` controls visibility only, features are resolved tenant-wide regardless of selected org.
 
-### Impact
-- PM can technically edit agency CRM data in Phase 1 — no enforcement
-- Acceptable for trust-based partner program with ~15 agencies
-- Becomes a problem at scale (50+ agencies, multiple PMs)
-
-### Timeline
-- Spec: not written — needs upstream discussion
-- Risk: medium — architectural change to RBAC, may require schema migration
-- Mitigation: Phase 1 workaround is acceptable for MVP scope
+### PRM approach
+- PM gets `customers.*` (full write everywhere) — this is **correct** per OM's architecture
+- PM cross-org read-only is a **procedural convention**, not a technical enforcement
+- If per-org feature scoping is ever needed at scale, it would require a new `OrgRoleAcl` entity or `organizationId` on `RoleAcl` — a significant architectural enhancement, not a bugfix
+- **No upstream PR planned** — the current model works for PRM's trust-based partner program
