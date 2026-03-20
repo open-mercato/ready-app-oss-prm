@@ -199,7 +199,7 @@ Use `superpowers:systematic-debugging` if any step fails. Use `superpowers:dispa
 ### Commit Message Format
 
 ```
-feat(partnerships): {what this commit delivers}
+feat(<module>): {what this commit delivers}
 
 Implements: {app-spec-ref} US-{X.Y}
 Phase: {N}, Commit: {M}
@@ -224,17 +224,19 @@ When implementing, reference these patterns from the OM monorepo at `open-mercat
 
 | Pattern | Where to find reference | Used for |
 |---------|------------------------|----------|
-| **setup.ts** (roles, seeds) | `@open-mercato/core/modules/customers/` | Seeding roles, dictionaries, pipeline stages, custom fields |
-| **API interceptors** | `@open-mercato/core/modules/*/api/interceptors.ts` | Before/after hooks on CRUD operations |
-| **Dashboard widgets** | `@open-mercato/shared/modules/dashboard/widgets` | Dashboard tiles and cards |
-| **Widget injection** | search `injection-table.ts` in `@open-mercato/core` | Injecting UI into existing pages |
-| **Custom fields/entities** | `@open-mercato/core/modules/entities/` | Dynamic field definitions, custom entity types |
-| **Queue workers** | `@open-mercato/queue/` | Background job processing |
-| **Workflow JSON** | `@open-mercato/core/modules/workflows/` | Multi-step processes with activities and user tasks |
-| **CRUD routes** | `@open-mercato/core/modules/customers/api/` | Standard CRUD with openApi exports |
-| **Events** | `@open-mercato/core/modules/*/events.ts` | Typed domain events |
-| **acl.ts** | `@open-mercato/core/modules/*/acl.ts` | Feature-based permissions |
-| **ce.ts** | `@open-mercato/core/modules/*/ce.ts` | Custom entity declarations |
+| **setup.ts** (roles, seeds) | `open-mercato/packages/core/src/modules/customers/setup.ts` | Seeding roles, dictionaries, pipeline stages, custom fields |
+| **API interceptors** | `open-mercato/packages/core/src/modules/*/api/interceptors.ts` | Before/after hooks on CRUD operations |
+| **Dashboard widgets** | `open-mercato/packages/core/src/modules/*/widgets/dashboard/` | Dashboard tiles and cards |
+| **Widget injection** | search `injection-table.ts` in `open-mercato/packages/core/` | Injecting UI into existing pages |
+| **Custom fields/entities** | `open-mercato/packages/core/src/modules/entities/` | Dynamic field definitions, custom entity types |
+| **Custom fields DSL** | `open-mercato/packages/shared/src/modules/dsl/` | `defineFields()`, `cf.*` helpers |
+| **Queue workers** | `open-mercato/packages/queue/` | Background job processing |
+| **Workflow JSON** | `open-mercato/packages/core/src/modules/workflows/` | Multi-step processes with activities and user tasks |
+| **CRUD routes** | `open-mercato/packages/core/src/modules/customers/api/` | Standard CRUD with openApi exports |
+| **Events** | `open-mercato/packages/core/src/modules/*/events.ts` | Typed domain events |
+| **acl.ts** | `open-mercato/packages/core/src/modules/*/acl.ts` | Feature-based permissions |
+| **ce.ts** | `open-mercato/packages/core/src/modules/*/ce.ts` | Custom entity declarations |
+| **Integration tests** | `open-mercato/.ai/skills/integration-tests/SKILL.md` | Playwright test conventions |
 
 **When you need to understand an OM pattern:** search `open-mercato/packages/core/src/modules/` for the source implementation. The `customers` module is the reference CRUD module. Use Explore subagents for broad pattern research.
 
@@ -307,9 +309,9 @@ Access via the Skill tool. These are wired into the §2/§3 workflows at specifi
 
 ## §7. Conventions
 
-- **Module folders:** plural, snake_case (`partnerships`, `logistics`)
-- **Event IDs:** `module.entity.action` (singular entity, past tense: `partnerships.partner_agency.self_onboarded`)
-- **Feature IDs:** `module.action` (`partnerships.manage`, `prm.widgets.wip-count`)
+- **Module folders:** plural, snake_case (e.g., `partnerships`, `logistics`). Acronyms are acceptable as special cases (e.g., `prm`).
+- **Event IDs:** `module.entity.action` (singular entity, past tense, e.g., `catalog.product.created`)
+- **Feature IDs:** `module.action` (e.g., `catalog.manage`, `catalog.widgets.revenue`)
 - **JS identifiers:** camelCase
 - **DB columns:** snake_case
 - **PKs:** UUID, explicit FKs, junction tables for M:N
@@ -325,14 +327,17 @@ Access via the Skill tool. These are wired into the §2/§3 workflows at specifi
 ## §8. Development Commands
 
 ```bash
-yarn dev              # Start dev server
-yarn build            # Build
-yarn typecheck        # Type check
-yarn generate         # Regenerate module files (after adding/modifying module files)
-yarn db:generate      # Generate database migrations
-yarn db:migrate       # Apply migrations
-yarn initialize       # Full initialization (seedDefaults + seedExamples)
-yarn test             # Run tests
+yarn dev                              # Start dev server
+yarn build                            # Build
+yarn typecheck                        # Type check
+yarn generate                         # Regenerate module files (after adding/modifying module files)
+yarn db:generate                      # Generate database migrations
+yarn db:migrate                       # Apply migrations
+yarn initialize                       # Full initialization (seedDefaults + seedExamples)
+yarn test                             # Run unit tests
+yarn test:integration:ephemeral       # Run Playwright integration tests (fresh app + DB)
+yarn test:integration:ephemeral:start # Start ephemeral app only (for test development)
+yarn test:integration:report          # View HTML test report
 ```
 
 ---
