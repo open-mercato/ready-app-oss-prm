@@ -4,13 +4,13 @@
 
 **Goal:** Implement the PRM partnerships module Phase 1 — agency onboarding foundation + stamp-based WIP pipeline tracking with dashboard widgets.
 
-**Architecture:** App-level module at `apps/b2b-prm/src/modules/partnerships/` extending the OM platform via UMES (setup.ts seeds, API interceptors, dashboard widgets, custom entities). Zero core modifications. All data lives in the `customers` module (CRM) and `entities` module (custom fields/entities), extended by the `partnerships` module.
+**Architecture:** App-level module at `apps/prm/src/modules/partnerships/` extending the OM platform via UMES (setup.ts seeds, API interceptors, dashboard widgets, custom entities). Zero core modifications. All data lives in the `customers` module (CRM) and `entities` module (custom fields/entities), extended by the `partnerships` module.
 
 **Tech Stack:** TypeScript, MikroORM, Zod, React (widget client components), OM auto-discovery (setup.ts, acl.ts, events.ts, ce.ts, api/interceptors.ts, widgets/)
 
 **Specs:** `apps/prm/docs/specs/2026-03-20-ph1-c*.md` (5 specs)
 
-**App directory:** `apps/b2b-prm/` (scaffolded OM app — modules go in `src/modules/`)
+**App directory:** `apps/prm/` (scaffolded OM app — modules go in `src/modules/`)
 
 **OM monorepo:** `open-mercato/` (on `develop` branch, reference only)
 
@@ -19,7 +19,7 @@
 ## File Structure
 
 ```
-apps/b2b-prm/src/modules/partnerships/
+apps/prm/src/modules/partnerships/
   index.ts                                    # Module metadata
   acl.ts                                      # Feature declarations
   setup.ts                                    # seedDefaults + seedExamples + defaultRoleFeatures
@@ -59,10 +59,10 @@ Test files (colocated):
 **Spec:** `2026-03-20-ph1-c1-foundation-seed.md`
 
 **Files:**
-- Create: `apps/b2b-prm/src/modules/partnerships/index.ts`
-- Create: `apps/b2b-prm/src/modules/partnerships/acl.ts`
-- Create: `apps/b2b-prm/src/modules/partnerships/events.ts`
-- Create: `apps/b2b-prm/src/modules/partnerships/ce.ts`
+- Create: `apps/prm/src/modules/partnerships/index.ts`
+- Create: `apps/prm/src/modules/partnerships/acl.ts`
+- Create: `apps/prm/src/modules/partnerships/events.ts`
+- Create: `apps/prm/src/modules/partnerships/ce.ts`
 
 - [ ] **Step 1: Create module metadata**
 
@@ -125,7 +125,7 @@ export const entities = [
 
 - [ ] **Step 5: Run generator and verify**
 
-Run: `cd apps/b2b-prm && yarn generate`
+Run: `cd apps/prm && yarn generate`
 Expected: Module files regenerated, partnerships module discovered.
 
 Run: `yarn typecheck`
@@ -134,11 +134,11 @@ Expected: No type errors.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/b2b-prm/src/modules/partnerships/index.ts \
-       apps/b2b-prm/src/modules/partnerships/acl.ts \
-       apps/b2b-prm/src/modules/partnerships/events.ts \
-       apps/b2b-prm/src/modules/partnerships/ce.ts \
-       apps/b2b-prm/generated/
+git add apps/prm/src/modules/partnerships/index.ts \
+       apps/prm/src/modules/partnerships/acl.ts \
+       apps/prm/src/modules/partnerships/events.ts \
+       apps/prm/src/modules/partnerships/ce.ts \
+       apps/prm/generated/
 git commit -m "feat(partnerships): scaffold module — metadata, ACL, events, case study CE
 
 Implements: App Spec §2, US-1.3
@@ -153,7 +153,7 @@ Pattern: OM module auto-discovery (index.ts, acl.ts, events.ts, ce.ts)"
 **Spec:** `2026-03-20-ph1-c1-foundation-seed.md`
 
 **Files:**
-- Create: `apps/b2b-prm/src/modules/partnerships/data/custom-fields.ts`
+- Create: `apps/prm/src/modules/partnerships/data/custom-fields.ts`
 
 - [ ] **Step 1: Define company profile fields, case study fields, wip_registered_at, and SQL stage constant**
 
@@ -183,7 +183,7 @@ Expected: No type errors.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add apps/b2b-prm/src/modules/partnerships/data/custom-fields.ts
+git add apps/prm/src/modules/partnerships/data/custom-fields.ts
 git commit -m "feat(partnerships): add custom field definitions + pipeline constants
 
 Implements: App Spec §1.4, US-1.2, US-1.3, US-2.2
@@ -198,7 +198,7 @@ Pattern: OM custom fields DSL / entities batch API schema"
 **Spec:** `2026-03-20-ph1-c1-foundation-seed.md`
 
 **Files:**
-- Create: `apps/b2b-prm/src/modules/partnerships/setup.ts`
+- Create: `apps/prm/src/modules/partnerships/setup.ts`
 
 **Reference:**
 - `open-mercato/packages/core/src/modules/customers/setup.ts` — ModuleSetupConfig structure
@@ -275,7 +275,7 @@ Expected: All pass.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/b2b-prm/src/modules/partnerships/setup.ts apps/b2b-prm/generated/
+git add apps/prm/src/modules/partnerships/setup.ts apps/prm/generated/
 git commit -m "feat(partnerships): seed roles, pipeline, custom fields, dictionaries
 
 Implements: App Spec §1.3, §1.4, US-1.2, US-1.3, US-2.1
@@ -290,8 +290,8 @@ Pattern: setup.ts seedDefaults + defaultRoleFeatures"
 **Spec:** `2026-03-20-ph1-c2-wip-interceptor.md`
 
 **Files:**
-- Create: `apps/b2b-prm/src/modules/partnerships/api/interceptors.ts`
-- Create: `apps/b2b-prm/src/modules/partnerships/api/interceptors.test.ts`
+- Create: `apps/prm/src/modules/partnerships/api/interceptors.ts`
+- Create: `apps/prm/src/modules/partnerships/api/interceptors.test.ts`
 
 **Reference:**
 - `open-mercato/apps/mercato/src/modules/example/api/interceptors.ts` — cross-module interceptor pattern
@@ -385,9 +385,9 @@ Expected: All pass. Interceptor auto-discovered in `interceptors.generated.ts`.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/b2b-prm/src/modules/partnerships/api/interceptors.ts \
-       apps/b2b-prm/src/modules/partnerships/api/interceptors.test.ts \
-       apps/b2b-prm/generated/
+git add apps/prm/src/modules/partnerships/api/interceptors.ts \
+       apps/prm/src/modules/partnerships/api/interceptors.test.ts \
+       apps/prm/generated/
 git commit -m "feat(partnerships): WIP interceptor — stamp wip_registered_at on SQL+ transition
 
 Implements: App Spec §1.4.2, US-2.2
@@ -402,8 +402,8 @@ Pattern: OM API interceptor (after hook on customers/deals PATCH)"
 **Spec:** `2026-03-20-ph1-c3-kpi-dashboard-widget.md`
 
 **Files:**
-- Create: `apps/b2b-prm/src/modules/partnerships/api/get/wip-count.ts`
-- Create: `apps/b2b-prm/src/modules/partnerships/api/get/wip-count.test.ts`
+- Create: `apps/prm/src/modules/partnerships/api/get/wip-count.ts`
+- Create: `apps/prm/src/modules/partnerships/api/get/wip-count.test.ts`
 
 - [ ] **Step 1: Write failing unit tests for wip-count route**
 
@@ -443,8 +443,8 @@ Expected: Pass
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/b2b-prm/src/modules/partnerships/api/get/wip-count.ts \
-       apps/b2b-prm/src/modules/partnerships/api/get/wip-count.test.ts
+git add apps/prm/src/modules/partnerships/api/get/wip-count.ts \
+       apps/prm/src/modules/partnerships/api/get/wip-count.test.ts
 git commit -m "feat(partnerships): WIP count API route — live query endpoint
 
 Implements: App Spec §1.4.2, US-2.3
@@ -459,10 +459,10 @@ Pattern: OM custom GET route with openApi export"
 **Spec:** `2026-03-20-ph1-c3-kpi-dashboard-widget.md`
 
 **Files:**
-- Create: `apps/b2b-prm/src/modules/partnerships/widgets/dashboard/wip-count/widget.ts`
-- Create: `apps/b2b-prm/src/modules/partnerships/widgets/dashboard/wip-count/widget.client.tsx`
-- Create: `apps/b2b-prm/src/modules/partnerships/widgets/injection-table.ts`
-- Create: `apps/b2b-prm/src/modules/partnerships/i18n/en.json`
+- Create: `apps/prm/src/modules/partnerships/widgets/dashboard/wip-count/widget.ts`
+- Create: `apps/prm/src/modules/partnerships/widgets/dashboard/wip-count/widget.client.tsx`
+- Create: `apps/prm/src/modules/partnerships/widgets/injection-table.ts`
+- Create: `apps/prm/src/modules/partnerships/i18n/en.json`
 
 **Reference:**
 - `open-mercato/packages/core/src/modules/customers/widgets/dashboard/customer-todos/widget.ts`
@@ -533,9 +533,9 @@ Expected: Widget discovered, all pass.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/b2b-prm/src/modules/partnerships/widgets/ \
-       apps/b2b-prm/src/modules/partnerships/i18n/ \
-       apps/b2b-prm/generated/
+git add apps/prm/src/modules/partnerships/widgets/ \
+       apps/prm/src/modules/partnerships/i18n/ \
+       apps/prm/generated/
 git commit -m "feat(partnerships): WIP count dashboard widget — live KPI tile
 
 Implements: App Spec §7, US-2.3
@@ -550,8 +550,8 @@ Pattern: OM dashboard widget injection (lazyDashboardWidget + injection-table)"
 **Spec:** `2026-03-20-ph1-c4-onboarding-checklist-widget.md`
 
 **Files:**
-- Create: `apps/b2b-prm/src/modules/partnerships/api/get/onboarding-status.ts`
-- Create: `apps/b2b-prm/src/modules/partnerships/api/get/onboarding-status.test.ts`
+- Create: `apps/prm/src/modules/partnerships/api/get/onboarding-status.ts`
+- Create: `apps/prm/src/modules/partnerships/api/get/onboarding-status.test.ts`
 
 - [ ] **Step 1: Write failing unit tests**
 
@@ -597,8 +597,8 @@ Expected: Pass
 - [ ] **Step 6: Commit**
 
 ```bash
-git add apps/b2b-prm/src/modules/partnerships/api/get/onboarding-status.ts \
-       apps/b2b-prm/src/modules/partnerships/api/get/onboarding-status.test.ts
+git add apps/prm/src/modules/partnerships/api/get/onboarding-status.ts \
+       apps/prm/src/modules/partnerships/api/get/onboarding-status.test.ts
 git commit -m "feat(partnerships): onboarding status API — role-conditional completion checks
 
 Implements: App Spec §7, US-1.7, US-1.8
@@ -613,9 +613,9 @@ Pattern: OM custom GET route with live data queries"
 **Spec:** `2026-03-20-ph1-c4-onboarding-checklist-widget.md`
 
 **Files:**
-- Create: `apps/b2b-prm/src/modules/partnerships/widgets/dashboard/onboarding-checklist/widget.ts`
-- Create: `apps/b2b-prm/src/modules/partnerships/widgets/dashboard/onboarding-checklist/widget.client.tsx`
-- Modify: `apps/b2b-prm/src/modules/partnerships/widgets/injection-table.ts`
+- Create: `apps/prm/src/modules/partnerships/widgets/dashboard/onboarding-checklist/widget.ts`
+- Create: `apps/prm/src/modules/partnerships/widgets/dashboard/onboarding-checklist/widget.client.tsx`
+- Modify: `apps/prm/src/modules/partnerships/widgets/injection-table.ts`
 
 - [ ] **Step 1: Create widget server definition**
 
@@ -649,8 +649,8 @@ Expected: Widget discovered, all pass.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add apps/b2b-prm/src/modules/partnerships/widgets/ \
-       apps/b2b-prm/generated/
+git add apps/prm/src/modules/partnerships/widgets/ \
+       apps/prm/generated/
 git commit -m "feat(partnerships): onboarding checklist widget — role-conditional, auto-dismiss
 
 Implements: App Spec §7, US-1.7, US-1.8
@@ -665,7 +665,7 @@ Pattern: OM dashboard widget injection (role-conditional rendering, data-driven)
 **Spec:** `2026-03-20-ph1-c5-seed-examples.md`
 
 **Files:**
-- Modify: `apps/b2b-prm/src/modules/partnerships/setup.ts`
+- Modify: `apps/prm/src/modules/partnerships/setup.ts`
 
 **Reference:**
 - `open-mercato/packages/core/src/modules/customers/cli.ts` — seedCustomerExamples pattern
@@ -715,7 +715,7 @@ Expected: All demo data created. Verify by checking logs or querying.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add apps/b2b-prm/src/modules/partnerships/setup.ts
+git add apps/prm/src/modules/partnerships/setup.ts
 git commit -m "feat(partnerships): seedExamples — Phase 1 demo data
 
 Implements: App Spec §7, US-7.1, US-7.2
@@ -730,9 +730,9 @@ Pattern: setup.ts seedExamples (3 agencies, users, deals, case studies, WIP stam
 **Spec:** `2026-03-20-ph1-c2-wip-interceptor.md`, `2026-03-20-ph1-c3-kpi-dashboard-widget.md`, `2026-03-20-ph1-c4-onboarding-checklist-widget.md`
 
 **Files:**
-- Create: `apps/b2b-prm/src/modules/partnerships/__integration__/TC-WIP-001.spec.ts`
-- Create: `apps/b2b-prm/src/modules/partnerships/__integration__/TC-KPI-001.spec.ts`
-- Create: `apps/b2b-prm/src/modules/partnerships/__integration__/TC-ONBOARD-001.spec.ts`
+- Create: `apps/prm/src/modules/partnerships/__integration__/TC-WIP-001.spec.ts`
+- Create: `apps/prm/src/modules/partnerships/__integration__/TC-KPI-001.spec.ts`
+- Create: `apps/prm/src/modules/partnerships/__integration__/TC-ONBOARD-001.spec.ts`
 
 **Reference:**
 - `open-mercato/.ai/skills/integration-tests/SKILL.md` — Playwright test conventions
@@ -773,7 +773,7 @@ Expected: All tests PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add apps/b2b-prm/src/modules/partnerships/__integration__/
+git add apps/prm/src/modules/partnerships/__integration__/
 git commit -m "test(partnerships): Phase 1 integration tests — WIP, KPI, onboarding
 
 Phase: 1
@@ -787,7 +787,7 @@ Pattern: Playwright integration tests (self-contained, no demo data dependency)"
 - [ ] **Step 1: Run full verification suite**
 
 ```bash
-cd apps/b2b-prm
+cd apps/prm
 yarn generate
 yarn typecheck
 yarn build
