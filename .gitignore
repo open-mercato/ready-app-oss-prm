@@ -12,3 +12,4 @@ open-mercato/
 **/.env
 **/.env.local
 **/data/
+!**/src/**/data/
