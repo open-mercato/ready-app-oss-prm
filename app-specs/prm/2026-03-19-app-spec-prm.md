@@ -445,40 +445,40 @@ Each gap is measured in **atomic commits** — one self-contained, testable incr
 
 #### WF1: Agency Onboarding — Total: 4 atomic commits (Phase 1: 2, Phase 4: 2)
 
-| Step | OM Module | Gap | Commits | Notes |
-|------|-----------|-----|---------|-------|
-| PM invites agency admin | auth module | No invite-by-email in auth | 0 (Ph1) / 2 (Ph4) | Phase 1: self-onboard workaround. Phase 4: invitation flow (email template + API route + UI) |
-| Admin sets password | auth module | Covered | 0 | Standard password reset flow |
-| Admin fills company profile | entities module (custom fields) | Covered | 1 | Seed custom field definitions in setup.ts |
-| Admin adds case study | entities module (custom entity) | Covered | 0 | Bundled with profile seed above (same commit) |
-| Admin invites BD/Contributor | auth module | Same as invite gap | 0 | Shared with PM invite mechanism |
-| BD onboarding sub-workflow | workflows module | Covered (SUB_WORKFLOW) | 1 | Workflow JSON definition |
-| Onboarding checklist tracking | workflows module | Covered (USER_TASK) | 0 | Bundled with workflow definition above |
+| Step | OM Module | Gap | Commits | Scope | Notes |
+|------|-----------|-----|---------|-------|-------|
+| PM invites agency admin | auth module | No invite-by-email in auth | 0 (Ph1) / 2 (Ph4) | `app` (Ph1 zero commits) / `core-module` (Ph4 — FLAG: invitation flow requires auth module changes) | Phase 1: self-onboard workaround. Phase 4: invitation flow (email template + API route + UI) — upstream PR + core team approval required |
+| Admin sets password | auth module | Covered | 0 | — | Standard password reset flow |
+| Admin fills company profile | entities module (custom fields) | Covered | 1 | `app` | Seed custom field definitions in setup.ts |
+| Admin adds case study | entities module (custom entity) | Covered | 0 | — | Bundled with profile seed above (same commit) |
+| Admin invites BD/Contributor | auth module | Same as invite gap | 0 | — | Shared with PM invite mechanism |
+| BD onboarding sub-workflow | workflows module | Covered (SUB_WORKFLOW) | 1 | `app` | Workflow JSON definition |
+| Onboarding checklist tracking | workflows module | Covered (USER_TASK) | 0 | — | Bundled with workflow definition above |
 
 #### WF2: Pipeline Building (WIP) — Total: 2 atomic commits
 
-| Step | OM Module | Gap | Commits | Notes |
-|------|-----------|-----|---------|-------|
-| BD creates Company | customers module | Covered | 0 | |
-| BD creates Deal | customers module | Covered | 0 | |
-| Pipeline stages + `wip_registered_at` field | customers module + entities | Covered | 1 | Seed PRM pipeline stages + WIP custom field in setup.ts |
-| BD moves deal to SQL | customers module | Covered | 0 | Pipeline UI exists |
-| WIP stamp on stage change | UMES API interceptor | Gap: interceptor | 1 | Stamps `wip_registered_at` when deal first reaches SQL+. Immutable, first qualification only. |
-| WIP displayed on dashboard | partnerships widget | Covered | 0 | Bundled with interceptor commit. Phase 1: live query (`COUNT WHERE wip_registered_at IN month`). Phase 2+: same query, can also be used by aggregation worker. |
+| Step | OM Module | Gap | Commits | Scope | Notes |
+|------|-----------|-----|---------|-------|-------|
+| BD creates Company | customers module | Covered | 0 | — | |
+| BD creates Deal | customers module | Covered | 0 | — | |
+| Pipeline stages + `wip_registered_at` field | customers module + entities | Covered | 1 | `app` | Seed PRM pipeline stages + WIP custom field in setup.ts |
+| BD moves deal to SQL | customers module | Covered | 0 | — | Pipeline UI exists |
+| WIP stamp on stage change | UMES API interceptor | Gap: interceptor | 1 | `app` | Stamps `wip_registered_at` when deal first reaches SQL+. Immutable, first qualification only. |
+| WIP displayed on dashboard | partnerships widget | Covered | 0 | — | Bundled with interceptor commit. Phase 1: live query (`COUNT WHERE wip_registered_at IN month`). Phase 2+: same query, can also be used by aggregation worker. |
 
 **Piotr note:** Spec said "scheduler module" — **no such module exists on upstream.** OM has `queue` package with workers, but no built-in cron trigger. Worker needs an external trigger: system crontab, Docker cron, or API endpoint called externally. This applies to all "scheduled job" gaps (WF3, WF5). WF2 no longer needs a scheduled worker — WIP is stamp-based with live query.
 
 #### WF3: Code Contribution (WIC) — Total: 3 atomic commits (with workaround) / 5-6 (full, n8n)
 
-| Step | OM Module | Gap | Commits | Notes |
-|------|-----------|-----|---------|-------|
-| GitHub PR merged | external | N/A | — | Outside OM |
-| Daily job fetches PRs | n8n workflow + open-mercato/n8n-nodes | Gap: n8n workflow definition | 2-3 (Ph4) | n8n Schedule → GitHub GraphQL → Code (scoring) → Open Mercato node (POST import API). Scoring logic from wic_assessment.mjs. |
-| GH username -> User mapping | entities (custom field on User) | Gap: field definition | 1 | Custom field seed in setup.ts |
-| Score recorded | partnerships entities | Covered | 0 | Entity already in spec |
-| Score displayed | partnerships backend | Gap: widget | 1 | Widget injection on dashboard |
-| PM override | workflows USER_TASK | Covered | 0 | Workflow step, bundled with tier workflow |
-| **WORKAROUND: Manual import** | partnerships API | Gap: import route | 1 | Import API validates against WicScoringResult schema, enforces Feature Key dedup invariant, versioned import (re-import replaces + archives old). WicAssessmentSource = `manual_import`. |
+| Step | OM Module | Gap | Commits | Scope | Notes |
+|------|-----------|-----|---------|-------|-------|
+| GitHub PR merged | external | N/A | — | `external` | Outside OM |
+| Daily job fetches PRs | n8n workflow + open-mercato/n8n-nodes | Gap: n8n workflow definition | 2-3 (Ph4) | `n8n` | n8n Schedule → GitHub GraphQL → Code (scoring) → Open Mercato node (POST import API). Scoring logic from wic_assessment.mjs. |
+| GH username -> User mapping | entities (custom field on User) | Gap: field definition | 1 | `app` | Custom field seed in setup.ts |
+| Score recorded | partnerships entities | Covered | 0 | — | Entity already in spec |
+| Score displayed | partnerships backend | Gap: widget | 1 | `app` | Widget injection on dashboard |
+| PM override | workflows USER_TASK | Covered | 0 | — | Workflow step, bundled with tier workflow |
+| **WORKAROUND: Manual import** | partnerships API | Gap: import route | 1 | `app` | Import API validates against WicScoringResult schema, enforces Feature Key dedup invariant, versioned import (re-import replaces + archives old). WicAssessmentSource = `manual_import`. |
 
 **Workaround detail:** Instead of automated GitHub+LLM pipeline (5+ commits), PM runs external script and imports via API. Commits drop from 8+ to 3. Automated pipeline deferred to Phase 4. Phase 4 uses same ContributionUnit entities but with WicAssessmentSource = `automated_pipeline`.
 
@@ -486,36 +486,36 @@ Each gap is measured in **atomic commits** — one self-contained, testable incr
 
 RFP lifecycle uses workflows module: START → SEND_EMAIL → WAIT_FOR_TIMER → USER_TASK (BD response) → USER_TASK (PM evaluation) → END.
 
-| Step | OM Module | Gap | Commits | Notes |
-|------|-----------|-----|---------|-------|
-| PM creates RFP campaign | partnerships entities + workflows | Gap: entity + workflow def | 2 | 1: PartnerRfpCampaign entity + CRUD route. 2: Workflow JSON definition + trigger |
-| System notifies agencies | workflows SEND_EMAIL | Covered | 0 | Workflow activity — zero code |
-| BD sees RFP + submits response | workflows USER_TASK + partnerships | Gap: response entity | 1 | PartnerRfpResponse entity, USER_TASK form renders it |
-| PM evaluates responses | partnerships backend | Gap: comparison page | 1 | Side-by-side backend page |
-| PM selects winner | workflows USER_TASK | Covered | 0 | Workflow completes, status updated |
+| Step | OM Module | Gap | Commits | Scope | Notes |
+|------|-----------|-----|---------|-------|-------|
+| PM creates RFP campaign | partnerships entities + workflows | Gap: entity + workflow def | 2 | `app` | 1: PartnerRfpCampaign entity + CRUD route. 2: Workflow JSON definition + trigger |
+| System notifies agencies | workflows SEND_EMAIL | Covered | 0 | — | Workflow activity — zero code |
+| BD sees RFP + submits response | workflows USER_TASK + partnerships | Gap: response entity | 1 | `app` | PartnerRfpResponse entity, USER_TASK form renders it |
+| PM evaluates responses | partnerships backend | Gap: comparison page | 1 | `app` | Side-by-side backend page |
+| PM selects winner | workflows USER_TASK | Covered | 0 | — | Workflow completes, status updated |
 
 #### WF5: Tier Governance — Total: 5 atomic commits
 
-| Step | OM Module | Gap | Commits | Notes |
-|------|-----------|-----|---------|-------|
-| KPI aggregation (WIC+WIP+MIN) | queue worker + partnerships | Gap: worker + logic | 1 | Worker reads WIC (from ContributionUnits), WIP (from `wip_registered_at` stamps), MIN (from PartnerLicenseDeals). Computes TierEligibility per org. |
-| Grace period check + TierChangeProposal | partnerships | Gap: state machine + entity | 1 | Reads TierEvaluationState, applies grace period state machine (OK → GracePeriod → ProposedDowngrade). Creates TierChangeProposal (one per org per period max). Bundled with aggregation. |
-| PM approval | workflows USER_TASK | Covered | 0 | Workflow JSON definition (bundled with tier workflow) |
-| Tier workflow definition | workflows | Gap: workflow JSON | 1 | Tier evaluation workflow: START → AUTOMATED (aggregate + grace check) → USER_TASK (PM approval) → END. Publishes AgencyTierChanged event on approval. |
-| Tier updated + audit | partnerships | Gap: command | 0 | Bundled with workflow — UPDATE_ENTITY activity + audit log |
-| Agency sees tier + progress | partnerships backend | Gap: widget | 1 | Widget injection on dashboard (with grace period warning, TierEligibility vs TierAssignment) |
-| MIN attribution (cross-org search) | partnerships + search | Gap: search + attribution UI | 1 | Cross-org company search + CRM read-only jump + PartnerLicenseDeal creation. Moved from Phase 3 to Phase 2. |
+| Step | OM Module | Gap | Commits | Scope | Notes |
+|------|-----------|-----|---------|-------|-------|
+| KPI aggregation (WIC+WIP+MIN) | queue worker + partnerships | Gap: worker + logic | 1 | `app` | Worker reads WIC (from ContributionUnits), WIP (from `wip_registered_at` stamps), MIN (from PartnerLicenseDeals). Computes TierEligibility per org. |
+| Grace period check + TierChangeProposal | partnerships | Gap: state machine + entity | 1 | `app` | Reads TierEvaluationState, applies grace period state machine (OK → GracePeriod → ProposedDowngrade). Creates TierChangeProposal (one per org per period max). Bundled with aggregation. |
+| PM approval | workflows USER_TASK | Covered | 0 | — | Workflow JSON definition (bundled with tier workflow) |
+| Tier workflow definition | workflows | Gap: workflow JSON | 1 | `app` | Tier evaluation workflow: START → AUTOMATED (aggregate + grace check) → USER_TASK (PM approval) → END. Publishes AgencyTierChanged event on approval. |
+| Tier updated + audit | partnerships | Gap: command | 0 | — | Bundled with workflow — UPDATE_ENTITY activity + audit log |
+| Agency sees tier + progress | partnerships backend | Gap: widget | 1 | `app` | Widget injection on dashboard (with grace period warning, TierEligibility vs TierAssignment) |
+| MIN attribution (cross-org search) | partnerships + search | Gap: search + attribution UI | 1 | `app` | Cross-org company search + CRM read-only jump + PartnerLicenseDeal creation. Moved from Phase 3 to Phase 2. |
 
 ### Gap Summary
 
-| Workflow | Business Priority | Atomic Commits (raw) | Workaround? | Commits (effective) | Blocks ROI? |
-|----------|------------------|---------------------|-------------|---------------------|-------------|
-| WF2: Pipeline (WIP) | High | 2 | No | 2 | Yes — core flywheel |
-| WF1: Onboarding | High | 4 | Partial (self-onboard Ph1) | 2 (Ph1) | Yes — enables all other WFs |
-| WF5: Tier Governance | High | 5 | No | 5 | Yes — governance loop |
-| WF4: RFP | Medium | 4 | No | 4 | Partial — PM can email manually |
-| WF3: WIC | Medium | 5-6 | Yes (manual import Ph1-3, n8n Ph4) | 3 | Yes — but workaround unblocks |
-| **Total** | | **20-21** | | **15 (Ph1-3)** | |
+| Workflow | Business Priority | Atomic Commits (raw) | Workaround? | Commits (effective) | Blocks ROI? | Scope flags |
+|----------|------------------|---------------------|-------------|---------------------|-------------|-------------|
+| WF2: Pipeline (WIP) | High | 2 | No | 2 | Yes — core flywheel | — |
+| WF1: Onboarding | High | 4 | Partial (self-onboard Ph1) | 2 (Ph1) | Yes — enables all other WFs | FLAG `core-module`: Ph4 invitation flow requires auth module changes (upstream PR + core team approval) |
+| WF5: Tier Governance | High | 5 | No | 5 | Yes — governance loop | — |
+| WF4: RFP | Medium | 4 | No | 4 | Partial — PM can email manually | — |
+| WF3: WIC | Medium | 5-6 | Yes (manual import Ph1-3, n8n Ph4) | 3 | Yes — but workaround unblocks | `external` (GitHub, not a blocker); `n8n` (Ph4 automation) |
+| **Total** | | **20-21** | | **15 (Ph1-3)** | | **1 core-module flag (Ph4 only, not on critical path for Ph1-3)** |
 
 **Piotr finding — no scheduler module:** "Scheduled job" gaps (WF3/WF5) reference a scheduler that doesn't exist on OM upstream. The `queue` package provides workers but no cron trigger. Solution: one shared commit adds a cron trigger mechanism (external crontab or API endpoint) that enqueues jobs. This is **1 additional commit** counted once. Note: WF2 no longer needs a scheduled worker — WIP is stamp-based with live query.
 
@@ -635,36 +635,36 @@ Success: Org switcher shows all agencies, PM selects one, sees that agency's dat
 
 > Map each story to OM capability. Piotr checkpoint: verify mapping.
 
-| Story | Platform Match | Atomic Commits | Notes |
-|-------|---------------|----------------|-------|
-| US-1.1 | auth module (self-onboard) | 0 | Standard signup flow, zero code. Known limitation: no enrollment event for audit trail (accepted for Phase 1). |
-| US-1.1b | auth module (Phase 4: email invitation) | 2 | Email template + invitation API route + UI |
-| US-1.2 | entities module custom fields | 1 | Seed field definitions in setup.ts (includes CaseStudy minimum required fields) |
-| US-1.3 | entities module custom entity | 0 | Bundled with US-1.2 seed commit |
-| US-1.4 | auth module | 0 | Same mechanism as self-onboard / invitation |
-| US-1.5 | auth module | 0 | Same mechanism |
-| US-1.6 | customers module CRM | 0 | Zero code — CRM exists |
-| US-2.1 | customers module CRM | 0 | Zero code |
-| US-2.2 | UMES API interceptor + entities custom field | 1 | Interceptor stamps `wip_registered_at` on deal at SQL stage. Custom field seeded in setup.ts (bundled with US-1.2). Interceptor = 1 commit. |
-| US-2.3 | partnerships widget injection | 1 | KPI dashboard widget. Live query: `COUNT WHERE wip_registered_at IN month`. No batch worker needed. |
-| US-3.1 | entities custom field on User | 1 | GH username field seed in setup.ts. Unique, immutable once WIC recorded. |
-| US-3.2 | partnerships import API | 1 | Import route validates WicScoringResult schema, enforces Feature Key dedup, versioned import (replace+archive). |
-| US-3.3 | partnerships backend widget | 0 | Bundled with US-2.3 KPI dashboard (same widget, scoped data) |
-| US-3.4 | n8n workflow (GitHub+LLM) → POST to import API — Phase 4 | 2-3 | n8n workflow definition + n8n-nodes enhancements + docs. WicAssessmentSource = `automated_pipeline`. |
-| US-4.1 | partnerships entity + workflows | 2 | 1: PartnerRfpCampaign entity (with file attachments) + CRUD route. 2: RFP workflow JSON definition. CampaignPublished event. |
-| US-4.2 | workflows SEND_EMAIL | 0 | Covered by workflow activity |
-| US-4.3 | workflows USER_TASK + partnerships entity | 1 | PartnerRfpResponse entity (free-form text + attachments) + USER_TASK form. Auto-links agency case studies. |
-| US-4.4 | partnerships backend page | 1 | Comparison page (responses + case studies side-by-side) + workflow advance. RfpAwarded event. |
-| US-4.5 | n8n webhook + LLM — Phase 4 | 1-2 | n8n workflow: webhook trigger → Open Mercato node (read data) → LLM node (score) → Open Mercato node (POST scores). Scoring rubric from lead-agency-matching skill. |
-| US-5.1 | queue worker + partnerships | 1 | Aggregation worker: reads WIC (ContributionUnits), WIP (`wip_registered_at`), MIN (PartnerLicenseDeals). Computes TierEligibility. Cron trigger shared. |
-| US-5.2a/b | partnerships + TierEvaluationState | 0 | Bundled with US-5.1 (grace period state machine + TierChangeProposal generation in same worker) |
-| US-5.3 | workflows USER_TASK | 1 | Tier evaluation workflow JSON definition. Publishes AgencyTierChanged on approval. |
-| US-5.4 | partnerships widget injection | 1 | Tier progress widget (TierEligibility vs TierAssignment, grace period warning) |
-| US-5.5 | partnerships widget | 0 | Scoped view of US-5.4 widget |
-| US-5.6 | partnerships entity + search + CRUD | 2 | 1: PartnerLicenseDeal entity + PM-only CRUD. 2: Cross-org company search + CRM read-only jump + attribution UI. |
-| US-6.1 | auth org switcher (Program Scope) | 0 | Platform feature (`organizationsJson: null`) |
-| — | Cron trigger mechanism (shared) | 1 | External crontab or API trigger for WF3/WF5 scheduled workers |
-| **Total** | | **15 (Ph1-3) + 6-8 (Ph4) = 21-23** | |
+| Story | Platform Match | Atomic Commits | Scope | Notes |
+|-------|---------------|----------------|-------|-------|
+| US-1.1 | auth module (self-onboard) | 0 | — | Standard signup flow, zero code. Known limitation: no enrollment event for audit trail (accepted for Phase 1). |
+| US-1.1b | auth module (Phase 4: email invitation) | 2 | `core-module` FLAG — invitation flow requires auth module changes (upstream PR + core team approval) | Email template + invitation API route + UI |
+| US-1.2 | entities module custom fields | 1 | `app` | Seed field definitions in setup.ts (includes CaseStudy minimum required fields) |
+| US-1.3 | entities module custom entity | 0 | — | Bundled with US-1.2 seed commit |
+| US-1.4 | auth module | 0 | — | Same mechanism as self-onboard / invitation |
+| US-1.5 | auth module | 0 | — | Same mechanism |
+| US-1.6 | customers module CRM | 0 | — | Zero code — CRM exists |
+| US-2.1 | customers module CRM | 0 | — | Zero code |
+| US-2.2 | UMES API interceptor + entities custom field | 1 | `app` | Interceptor stamps `wip_registered_at` on deal at SQL stage. Custom field seeded in setup.ts (bundled with US-1.2). Interceptor = 1 commit. |
+| US-2.3 | partnerships widget injection | 1 | `app` | KPI dashboard widget. Live query: `COUNT WHERE wip_registered_at IN month`. No batch worker needed. |
+| US-3.1 | entities custom field on User | 1 | `app` | GH username field seed in setup.ts. Unique, immutable once WIC recorded. |
+| US-3.2 | partnerships import API | 1 | `app` | Import route validates WicScoringResult schema, enforces Feature Key dedup, versioned import (replace+archive). |
+| US-3.3 | partnerships backend widget | 0 | — | Bundled with US-2.3 KPI dashboard (same widget, scoped data) |
+| US-3.4 | n8n workflow (GitHub+LLM) → POST to import API — Phase 4 | 2-3 | `n8n` | n8n workflow definition + n8n-nodes enhancements + docs. WicAssessmentSource = `automated_pipeline`. |
+| US-4.1 | partnerships entity + workflows | 2 | `app` | 1: PartnerRfpCampaign entity (with file attachments) + CRUD route. 2: RFP workflow JSON definition. CampaignPublished event. |
+| US-4.2 | workflows SEND_EMAIL | 0 | — | Covered by workflow activity |
+| US-4.3 | workflows USER_TASK + partnerships entity | 1 | `app` | PartnerRfpResponse entity (free-form text + attachments) + USER_TASK form. Auto-links agency case studies. |
+| US-4.4 | partnerships backend page | 1 | `app` | Comparison page (responses + case studies side-by-side) + workflow advance. RfpAwarded event. |
+| US-4.5 | n8n webhook + LLM — Phase 4 | 1-2 | `n8n` | n8n workflow: webhook trigger → Open Mercato node (read data) → LLM node (score) → Open Mercato node (POST scores). Scoring rubric from lead-agency-matching skill. |
+| US-5.1 | queue worker + partnerships | 1 | `app` | Aggregation worker: reads WIC (ContributionUnits), WIP (`wip_registered_at`), MIN (PartnerLicenseDeals). Computes TierEligibility. Cron trigger shared. |
+| US-5.2a/b | partnerships + TierEvaluationState | 0 | — | Bundled with US-5.1 (grace period state machine + TierChangeProposal generation in same worker) |
+| US-5.3 | workflows USER_TASK | 1 | `app` | Tier evaluation workflow JSON definition. Publishes AgencyTierChanged on approval. |
+| US-5.4 | partnerships widget injection | 1 | `app` | Tier progress widget (TierEligibility vs TierAssignment, grace period warning) |
+| US-5.5 | partnerships widget | 0 | — | Scoped view of US-5.4 widget |
+| US-5.6 | partnerships entity + search + CRUD | 2 | `app` | 1: PartnerLicenseDeal entity + PM-only CRUD. 2: Cross-org company search + CRM read-only jump + attribution UI. |
+| US-6.1 | auth org switcher (Program Scope) | 0 | — | Platform feature (`organizationsJson: null`) |
+| — | Cron trigger mechanism (shared) | 1 | `app` | External crontab or API trigger for WF3/WF5 scheduled workers |
+| **Total** | | **15 (Ph1-3) + 6-8 (Ph4) = 21-23** | | |
 
 #### Checklist
 - [x] Every story mapped to specific OM module/mechanism with atomic commit estimate `Mat`
@@ -701,12 +701,30 @@ Success: Org switcher shows all agencies, PM selects one, sees that agency's dat
 **Total: 3 atomic commits** (setup.ts seed + WIP interceptor + KPI dashboard widget)
 **Workaround:** Invitation flow replaced by PM sharing signup link manually. Good enough for 15 agencies.
 
-**Acceptance criteria:**
+**Acceptance criteria:** `Vernon writes, Mat challenges`
+
+**Domain criteria** `Vernon` (10 criteria — all accepted by Mat):
+- [ ] `wip_registered_at` is never overwritten once set — moving a stamped deal backward and forward does not change the timestamp
+- [ ] `wip_registered_at` is only stamped when deal transitions INTO SQL+ for the first time — not on creation, not on non-qualifying stage changes
+- [ ] A deal without `wip_registered_at` does not appear in any WIP count regardless of pipeline stage
+- [ ] `wip_registered_at` stored in UTC; WIP period attribution uses UTC month boundaries (stamped 2026-03-31T23:59:59Z = March)
+- [ ] Every Deal has non-null `organization_id` matching BD's org at creation time
+- [ ] Company records scoped to BD's org — no cross-org CRM data leaks
+- [ ] BD cannot create or modify `wip_registered_at` directly — only the API interceptor writes it
+- [ ] PM's org switcher reads are read-only — no write operations through switched-org context
+- [ ] Case study requires all 5 minimum fields (industry tag, tech stack tag, budget range, duration, description) — partial saves rejected at entity level
+- [ ] WIP live-query widget scopes by authenticated user's org (or PM's switched org) — no unscoped cross-org counts
+
+**Business criteria** `Mat`:
 - [ ] PM can onboard an agency (share link → Admin creates account → fills profile → adds case study → invites BD)
 - [ ] BD can log a deal and move it to SQL → WIP count appears on dashboard immediately
 - [ ] PM can switch between agencies and see each agency's CRM data (read-only) and WIP count
+
+**Value delivered:**
 - **Business value:** Pipeline visibility. PM knows which agencies are generating prospects. Without this, PM has zero data on agency activity.
 - **ROI metric:** Number of active agencies with ≥1 WIP. Target: 3+ agencies onboarded and logging deals.
+
+**Mat's challenges:** All 10 domain criteria accepted. Essential WIP integrity rules — no over-engineering.
 
 ### Phase 2: Governance + KPI Visibility + MIN (WF5 + WF3 workaround)
 
@@ -728,15 +746,42 @@ Success: Org switcher shows all agencies, PM selects one, sees that agency's dat
 **Total: 8 atomic commits** (GH field + import API + aggregation worker + tier workflow + tier widget + MIN entity + MIN attribution UI + cron trigger)
 **Workaround:** WIC automated pipeline deferred. PM runs external `wic_assessment.mjs` script and imports via API.
 
-**Acceptance criteria:**
+**Acceptance criteria:** `Vernon writes, Mat challenges`
+
+**Domain criteria** `Vernon` (18 accepted, 1 clarified by Mat):
+- [ ] GH username unique across entire system — duplicate rejected with validation error
+- [ ] GH username immutable for non-PM actors once ContributionUnit recorded against it
+- [ ] At most one open TierChangeProposal per org per evaluation period — re-running worker is a no-op, not a duplicate
+- [ ] TierEvaluationState transitions one-directional within period: OK → GracePeriod → ProposedDowngrade (no skipping)
+- [ ] GracePeriod resets to OK only when ALL thresholds met (conjunctive) — partial recovery does not reset
+- [ ] PartnerLicenseDeal references exactly one CRM Company (non-null, non-array)
+- [ ] No double-attribution: unique key `(license_identifier, year)` enforced at database level
+- [ ] MIN counted only if `type=enterprise, status=won, is_renewal=false` — all three enforced by aggregation query
+- [ ] Every ContributionUnit has non-null `organization_id` from contributor's org membership at import time
+- [ ] WIC import for org+month archives previous assessment and replaces — exactly one active assessment per org+month (clarified: dedup is at assessment level, not per-unit)
+- [ ] `WicAssessmentSource` always set on import — no null or unrecognized source values
+- [ ] TierAssignment only mutated via PM-approval path — no worker can directly update active tier
+- [ ] Approved TierChangeProposal is immutable — cannot be re-approved or re-rejected
+- [ ] `AgencyTierChanged` published on every PM approval with full payload (agencyId, previousTier, newTier, effectiveDate, approvedBy)
+- [ ] `AgencyTierChanged` NOT published on rejection
+- [ ] Agency users cannot create/update/delete PartnerLicenseDeal — PM-only routes
+- [ ] WIC import rejects unmatched GH usernames with rejection list — no ghost users
+- [ ] MIN calendar year boundary is UTC (Dec 31 23:59:59Z = current year, Jan 1 00:00:00Z = next year)
+- [ ] WIC import API rejects non-conforming records (missing fields, unknown levels, bad month format) — 422 with field-level errors, no partial batch insertion
+
+**Business criteria** `Mat`:
 - [ ] Contributor can link GH username to profile
 - [ ] PM can import WIC scores (upload → system validates → replaces previous import for same org+month)
 - [ ] PM can attribute a license sale to an agency (cross-org company search → verify in CRM → create PartnerLicenseDeal)
 - [ ] System evaluates tiers monthly: computes TierEligibility, applies grace period, generates TierChangeProposal
 - [ ] PM can approve/reject tier changes with reason. AgencyTierChanged event published on approval.
 - [ ] Agency Admin sees current tier, KPI values vs thresholds, progress %, grace period warning
+
+**Value delivered:**
 - **Business value:** Governance active. The partner program has meaning — agencies with strong KPIs get higher tiers, underperformers get grace period then downgrade. PM saves ~4h/week of manual spreadsheet work.
 - **ROI metric:** Number of agencies with evaluated tiers. PM approval turnaround < 1 week. Grace period correctly applied for agencies below threshold.
+
+**Mat's challenges:** 18 accepted. 1 clarified: "ContributionUnit dedup" — Vernon said per-unit replacement; Mat corrected to assessment-level (org+month) versioned replace, which is the actual import model. No criteria deferred.
 
 ### Phase 3: Lead Distribution (WF4)
 
@@ -754,14 +799,34 @@ Success: Org switcher shows all agencies, PM selects one, sees that agency's dat
 
 **Total: 4 atomic commits** (RFP entity with file attachments + RFP workflow + response entity with free-form text + comparison page)
 
-**Acceptance criteria:**
+**Acceptance criteria:** `Vernon writes, Mat challenges`
+
+**Domain criteria** `Vernon` (11 accepted, 1 deferred by Mat):
+- [ ] RFP campaign has exactly one lifecycle state at any point — states do not overlap
+- [ ] No submissions after deadline — USER_TASK form closed, late submissions rejected
+- [ ] Exactly one winning agency per campaign — second winner-selection on Awarded campaign rejected
+- [ ] One response per agency per campaign — duplicate submissions replaced or rejected
+- [ ] Every PartnerRfpResponse has non-null `rfp_campaign_id` and `responding_agency_id`
+- [ ] `CampaignPublished` payload includes audience definition — consumers can derive exact notified agencies from event alone
+- [ ] `RfpAwarded` payload includes `{ rfpId, winningAgencyId }` both non-null
+- [ ] Audience filtering by tier uses current TierAssignment (approved), NOT TierEligibility
+- [ ] `CampaignPublished` published on explicit publish action, not at draft creation
+- [ ] Contributor cannot view, create, or respond to RFP — inaccessible for `partner_contributor` role
+- [ ] Agency not in campaign audience cannot submit response — audience membership validated at submission time
+- ~~Case studies auto-linked are read-only snapshots~~ — **DEFERRED by Mat** (see challenges below)
+
+**Business criteria** `Mat`:
 - [ ] PM can create RFP campaign with requirements, deadline, and file attachments (lead brief, specs)
 - [ ] Agencies receive notification, BD/Admin can view RFP details and attached files
 - [ ] BD/Admin submits free-form response (text + optional attachments), agency case studies auto-linked
 - [ ] PM sees all responses side-by-side on comparison page, selects winner
 - [ ] Winning agency notified (RfpAwarded), losing agencies notified of outcome
+
+**Value delivered:**
 - **Business value:** Lead distribution is fair and scalable. PM no longer sends emails manually. Agencies compete on evidence. Full flywheel loop complete: onboard → pipeline → contribute → bid on leads → tier evaluation reflects all 3 KPIs.
 - **ROI metric:** RFP campaigns created per month. Agency response rate. Lead-to-selection conversion rate. Target: 3+ RFPs/month, >50% response rate.
+
+**Mat's challenges:** 11 accepted. 1 deferred: "Case study snapshots at link time" — Vernon wants to copy case study data at submission to prevent post-submission edits from changing what PM evaluates. For 15 agencies where RFP evaluation takes days (not months), this adds a snapshot mechanism for a low-probability scenario. If an agency edits a case study mid-evaluation, PM will notice. **Defer to Phase 5+ if proven needed.**
 
 ### Phase 4: n8n Automation Layer + Enhancements
 
@@ -798,13 +863,33 @@ All LLM work lives in n8n. PRM app has zero LLM dependencies. One integration po
 - _Not standalone scripts:_ n8n gives visible orchestration, run history, failure alerts. PM can inspect and re-trigger.
 - _n8n node exists:_ `open-mercato/n8n-nodes` (generic REST node, pushed 2026-03-07) already speaks OM's API.
 
-**Acceptance criteria:**
+**Acceptance criteria:** `Vernon writes, Mat challenges`
+
+**Domain criteria** `Vernon` (12 criteria — all accepted by Mat):
+- [ ] n8n automated pipeline uses the same WIC import API as Phase 2 manual import — no direct DB writes bypassing validation
+- [ ] `WicAssessmentSource = automated_pipeline` set by n8n on every automated import — never set by manual path; mutually exclusive per import run
+- [ ] Re-running n8n daily pipeline for same org+month follows same versioned replace+archive semantics — no duplicate ContributionUnits
+- [ ] Invitation flow produces exactly one User per email — second invite before acceptance resends token, no duplicate accounts
+- [ ] AI-generated RFP scores stored as attributes on PartnerRfpResponse — do not affect workflow state, are not approval records
+- [ ] RFP score re-scoring is idempotent — overwrites prior scores, not appends
+- [ ] Invitation token is single-use — accepted token invalidated, second click = error
+- [ ] If n8n WIC pipeline fails mid-run, no partial batch committed — full batch or nothing
+- [ ] AI scores marked as `source: ai_assisted` — PM cannot mistake AI score for PM decision
+- [ ] n8n service account has write access limited to WIC import endpoint and RFP score endpoint only — cannot approve tiers, create MIN, modify TierAssignment
+- [ ] AI scores validated for range (tech_fit and domain_fit: numeric, 0–5 inclusive) — out-of-range rejected with 422
+- [ ] n8n reads OM data via access-controlled API (Open Mercato node) — no raw DB exports or unstructured dumps
+
+**Business criteria** `Mat`:
 - [ ] WIC scores arrive daily without PM intervention. Contributors see updated scores. PM can see n8n run history.
 - [ ] PM clicks "Score responses" on any RFP → tech fit + domain fit scores appear within 1 minute
 - [ ] PM can invite agencies by email (replaces manual link sharing)
 - [ ] Onboarding has guided steps tracked by the system
+
+**Value delivered:**
 - **Business value:** PM time reclaimed. WIC import goes from manual monthly task to automated daily. RFP evaluation goes from reading every response manually to AI-assisted scoring. Invitation flow is professional, not "here's a link."
 - **ROI metric:** PM hours saved per week (target: 6+ hours). WIC import delay (target: <24h from PR merge to score visible). RFP scoring time (target: <2 min from click to scores).
+
+**Mat's challenges:** All 12 accepted. These are anti-corruption boundary rules that prevent n8n from bypassing the domain. Essential for trust in automated scoring.
 
 ### Rollout Summary
 
