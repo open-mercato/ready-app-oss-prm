@@ -242,12 +242,19 @@ These are enforced at entity level in setup.ts seed configuration. Required for 
 | Business Developer | `partner_member` | User | own org only | CRM (own records write, others read), KPI (WIC/WIP/MIN), tier, RFP responses | Creates deals, edits profile + case studies, responds to RFP. NO user management. |
 | Contributor | `partner_contributor` | User | own org only | WIC score, tier level only | Views WIC, configures own profile (e.g. GH username). Nothing else. |
 
+**Non-app persona (distribution):**
+
+| Persona | Identity | What they do |
+|---------|----------|-------------|
+| Developer | N/A (CLI user) | Bootstraps PRM via `create-mercato-app --example b2b-prm`. Reads code to learn OM patterns. Not an app user — a distribution consumer per SPEC-068. |
+
 **Portal:** NOT USED. Zero portal pages. Zero CustomerUser accounts. Backend + RBAC + org scoping = sufficient for all personas.
 
 **Decision log:**
 - _Why User not CustomerUser?_ — BD needs CRM module (customers). CRM lives in backend. Portal doesn't expose CRM. Building CRM in portal = rebuilding what backend already has.
 - _Why not portal for Contributor?_ — Contributor is minimal, but still a User with restricted role. One identity system, not two. Simplicity > convenience.
 - _Could CustomerUser enable self-registration?_ — Yes, but at the cost of dual accounts or a promotion flow. Not worth the complexity for the example app.
+- _Why Developer is not in the role table?_ — Developer doesn't use the running app. They bootstrap and read code. Their "user stories" are about distribution (SPEC-068), not about app workflows.
 
 #### Checklist
 - [x] Every persona has ONE identity type — all User, zero CustomerUser `Mat`
@@ -623,10 +630,29 @@ Success: PM opens "Create License Deal" -> searches all companies across all age
 **US-6.1** As PM, I switch between agency organizations so that I can review any agency's CRM, KPIs, and tier status.
 Success: Org switcher shows all agencies, PM selects one, sees that agency's data read-only. PM's own actions (RFP, tier approval) remain in PM context.
 
+### Distribution (SPEC-068)
+
+**US-7.1** As a Developer, I run `create-mercato-app --example b2b-prm` and get a running PRM app so that I can see how OM solves partner relationship management.
+Success: One command → app scaffolded with PRM modules in `src/modules/`. `yarn install && yarn initialize` → app starts with demo data. Developer sees working dashboards, CRM with deals, tier widgets — no manual setup needed.
+
+**US-7.2** As a Developer, I run `yarn initialize` and see example data that exercises every workflow so that I understand what the app does without reading docs first.
+Success: `seedExamples` populates:
+- 3 demo agencies (different tiers: OM Agency, AI-native Agency, AI-native Expert) with company profiles and case studies
+- Demo BD users per agency with deals at various pipeline stages (some with `wip_registered_at` stamps)
+- Demo Contributor users with GH usernames linked
+- Demo WIC scores (ContributionUnits for current and previous month)
+- Demo PartnerLicenseDeals (MIN attribution for demo agencies)
+- Demo tier history (TierAssignments showing progression)
+- 1 demo RFP campaign (Published, with agency responses and a selected winner)
+All data is clearly labeled as demo (e.g., company names like "Acme Agency (Demo)").
+
+**US-7.3** As a Developer, I read any piece of PRM code and understand which OM pattern it uses so that I can apply the same pattern to my own app.
+Success: Every file follows OM conventions (auto-discovery paths, UMES patterns, setup.ts hooks). Code comments reference the pattern name when non-obvious. README in `src/modules/partnerships/` explains the module structure and which OM capabilities each file demonstrates.
+
 #### Checklist
 - [x] Every story has: persona + action + measurable outcome + success criteria
-- [x] Every story traces to a workflow step — US-x.y maps to WFx
-- [x] Identity checkpoint per story — all personas are User with specific role keys from §2
+- [x] Every story traces to a workflow step — US-x.y maps to WFx (US-7.x maps to SPEC-068)
+- [x] Identity checkpoint per story — all app personas are User with specific role keys from §2. Developer is a CLI user, not an app user.
 - [x] No weak stories — all have concrete actions with observable results
 
 ---
@@ -664,11 +690,15 @@ Success: Org switcher shows all agencies, PM selects one, sees that agency's dat
 | US-5.6 | partnerships entity + search + CRUD | 2 | `app` | 1: PartnerLicenseDeal entity + PM-only CRUD. 2: Cross-org company search + CRM read-only jump + attribution UI. |
 | US-6.1 | auth org switcher (Program Scope) | 0 | — | Platform feature (`organizationsJson: null`) |
 | — | Cron trigger mechanism (shared) | 1 | `app` | External crontab or API trigger for WF3/WF5 scheduled workers |
-| **Total** | | **15 (Ph1-3) + 6-8 (Ph4) = 21-23** | | |
+| US-7.1 | create-mercato-app + SPEC-068 | 0 | — | SPEC-068 provides the `--example` flag. PRM is the content, not the mechanism. |
+| US-7.2 | setup.ts `seedExamples` | 1 per phase | `app` | Each phase adds demo data to `seedExamples`: Ph1 = agencies+deals, Ph2 = WIC+tiers+MIN, Ph3 = RFP campaign. Bundled with phase commits — not a separate commit. |
+| US-7.3 | code conventions + README | 0 | `app` | No separate commit — conventions followed throughout. Module README written once at Phase 1. |
+| **Total** | | **15 (Ph1-3) + 6-8 (Ph4) = 21-23** | | seedExamples bundled per phase, not additional commits |
 
 #### Checklist
 - [x] Every story mapped to specific OM module/mechanism with atomic commit estimate `Mat`
 - [x] Piotr checkpoint: story-to-OM mapping verified — simplest solution per story, no overengineering, scheduler gap flagged `Piotr`
+- [x] SPEC-068 distribution stories (US-7.x) mapped — seedExamples bundled per phase, zero extra commits
 
 ---
 
@@ -733,6 +763,12 @@ Success: Org switcher shows all agencies, PM selects one, sees that agency's dat
 - Org switcher for cross-org visibility — PM sees all agencies read-only
 - Pipeline stages seeded via setup.ts — PRM-specific deal stages
 - **Copy test:** Every piece of Phase 1 code shows "this is how you extend OM with RBAC + CRM + UMES"
+
+**seedExamples for Phase 1** (SPEC-068, US-7.2):
+- 3 demo agencies with company profiles + case studies (different verticals)
+- 1 PM user, 1 Admin + 1 BD + 1 Contributor per agency
+- Demo deals at various pipeline stages (some with `wip_registered_at` stamps, some not yet at SQL)
+- All demo data labeled clearly (e.g., "Acme Digital (Demo)")
 
 **Mat's challenges:** All 10 domain criteria accepted. Essential WIP integrity rules — no over-engineering.
 
@@ -800,6 +836,13 @@ Success: Org switcher shows all agencies, PM selects one, sees that agency's dat
 - Cron trigger mechanism — external trigger for scheduled workers
 - **Copy test:** Phase 2 shows "this is how you build governance with workers + workflows + validated imports"
 
+**seedExamples for Phase 2** (SPEC-068, US-7.2):
+- Demo WIC scores (ContributionUnits for 2 months — current and previous)
+- Demo PartnerLicenseDeals (MIN attribution for 2 agencies)
+- Demo TierAssignments: Agency 1 = OM Agency, Agency 2 = AI-native Agency, Agency 3 = AI-native Expert
+- Demo TierChangeProposal (one approved upgrade, one in GracePeriod)
+- GH usernames linked on demo Contributor users
+
 **Mat's challenges:** 18 accepted. 1 clarified: "ContributionUnit dedup" — Vernon said per-unit replacement; Mat corrected to assessment-level (org+month) versioned replace, which is the actual import model. No criteria deferred.
 
 ### Phase 3: Lead Distribution (WF4)
@@ -852,6 +895,11 @@ Success: Org switcher shows all agencies, PM selects one, sees that agency's dat
 - Domain events — CampaignPublished, RfpAwarded as explicit facts
 - File attachments on custom entities — RFP campaigns and responses
 - **Copy test:** Phase 3 shows "this is how you build a multi-party workflow with the workflows module"
+
+**seedExamples for Phase 3** (SPEC-068, US-7.2):
+- 1 demo RFP campaign (Published state, past deadline) with file attachment
+- 2 agency responses (free-form text + linked case studies)
+- 1 winner selected (Awarded state) — demonstrates full RFP lifecycle end-to-end
 
 **Mat's challenges:** 11 accepted. 1 deferred: "Case study snapshots at link time" — Vernon wants to copy case study data at submission to prevent post-submission edits from changing what PM evaluates. For 15 agencies where RFP evaluation takes days (not months), this adds a snapshot mechanism for a low-probability scenario. If an agency edits a case study mid-evaluation, PM will notice. **Defer to Phase 5+ if proven needed.**
 
@@ -1010,10 +1058,22 @@ Each phase delivers a complete, usable increment. No phase leaves a workflow hal
 - Two identity systems in one app
 - Building user management UI (auth module has it)
 
+**SPEC-068 alignment:**
+- This app IS `b2b-prm` for `create-mercato-app --example b2b-prm` — the first official example
+- Distribution: `open-mercato/examples/b2b-prm/` (or partner repo per SPEC-068 community model)
+- App structure: domain modules in `src/modules/partnerships/` following OM auto-discovery conventions
+- Bootstrap: `yarn initialize` runs `seedDefaults` (roles, fields, pipelines) + `seedExamples` (demo agencies, deals, tiers, RFPs)
+- Developer can run the app, see every workflow working with demo data, and read the code to learn patterns
+- `.env.example` included, `@open-mercato/*` versions pinned in `package.json`
+- Module README explains structure and which OM capabilities each file demonstrates
+
 #### Checklist
 - [x] Every piece of new code passes the "copy test"
 - [x] Anti-patterns explicitly listed
 - [x] Platform features demonstrated
+- [x] SPEC-068 distribution model acknowledged — `b2b-prm` is the first official example
+- [x] seedExamples defined per phase — demo data exercises every workflow
+- [x] Developer persona and user stories (US-7.x) documented in §5
 
 ---
 
