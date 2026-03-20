@@ -67,9 +67,13 @@ All 5 must work for the flywheel to spin. Missing any one = broken loop.
 | Term | Definition | Source of data | Period |
 |------|-----------|----------------|--------|
 | **WIC** | Wildly Important Contribution. Code contributions to OM codebase, scored by level (L1-L4) with impact bonus and bounty multiplier. | GitHub PRs, scored by algorithm (LLM-assisted) | Monthly |
-| **WIP** | Work In Progress. Active prospect deals in CRM at "Sales Qualified Lead" stage or above. | CRM deals (customers module) | Monthly |
-| **MIN** | Minimum Implementations Needed. Enterprise license deals sold and implemented by agency. | PM-maintained license deal records | Yearly |
-| **Tier** | Partnership level determining agency visibility and lead priority. 4 levels. | Calculated from WIC + WIP + MIN thresholds | Evaluated monthly, valid 12 months |
+| **WIP** | Work In Progress. Deals that first reached "Sales Qualified Lead" stage or above during a given month. Stamped at qualification moment via `wip_registered_at` custom field. Once stamped, immutable — deal stage changes don't affect the count. | CRM deals (customers module), stamped by API interceptor | Monthly |
+| **MIN** | Minimum Implementations Needed. Enterprise license deals sold and attributed to an agency via CRM company lookup. PM searches across all agencies' CRMs to find which agency brought the company into pipeline, then creates attribution record. | PM-created PartnerLicenseDeal linked to CRM Company | Calendar year (Jan 1 – Dec 31 UTC) |
+| **Tier** | Partnership level determining agency visibility and lead priority. 4 levels. Distinct from TierEligibility (computed) — Tier refers to the PM-approved TierAssignment. | Calculated from WIC + WIP + MIN thresholds | Evaluated monthly, valid 12 months |
+| **TierEligibility** | Computed comparison of an agency's current KPIs (WIC+WIP+MIN) against tier thresholds. Ephemeral, recalculated each evaluation. Not the actual tier — just the recommendation. | KPI aggregation worker | Monthly |
+| **TierAssignment** | The actual tier an agency holds. Durable, auditable, requires PM approval to change. Published via AgencyTierChanged event. | PM approval via workflow | Until next evaluation |
+| **TierChangeProposal** | A proposal to upgrade or downgrade an agency's tier. States: Draft → PendingApproval → Approved | Rejected. Invariant: at most one open proposal per org per period. | Tier evaluation worker | Per evaluation period |
+| **Program Scope** | PM-level visibility grant spanning all partner organizations. Distinct from org-level scope. Implementation: `organizationsJson: null` in auth module — but business rules reference Program Scope, not the implementation detail. | Auth module | — |
 | **RFP** | Request for Proposal. PM distributes leads to qualified agencies, agencies respond with structured proposals. | PM creates campaign, agencies respond | Per campaign |
 | **Pipeline** | CRM deal stages: New -> Contacted -> Qualified -> SQL -> Proposal -> Won/Lost | customers module pipeline | Continuous |
 | **Case Study** | Agency's past project documentation (tech stack, industry, budget, duration). Used for RFP matching. | Custom entity in entities module | Maintained by agency |
@@ -77,6 +81,12 @@ All 5 must work for the flywheel to spin. Missing any one = broken loop.
 | **Feature Key** | Grouping key for WIC: SPEC-xxx, #issue, or PR-id. Anti-double-counting: same feature key + same month + same person = one unit. | WIC algorithm | Monthly |
 | **PM** | Partnership Manager. OM employee who runs the partner program. | — | — |
 | **BD** | Business Developer. Agency salesperson who prospects clients and creates deals. | — | — |
+| **Contributor** | Agency team member whose primary contribution to the program is code (WIC). Has no sales or administrative responsibilities. Identified in the system to enable WIC attribution via GitHub username. | — | — |
+| **ContributionUnit** | Aggregate representing one person's contribution to one feature in one month. Dedup key: person + month + feature_key (enforced as invariant at creation, not just grouping). `organization_id` set at PR merge time. | WIC scoring algorithm or manual import | Monthly |
+| **WicAssessmentSource** | Enum tracking how WIC scores were produced: `manual_import` (PM uploads) or `automated_pipeline` (GitHub+LLM). Each import for a given org+month replaces the previous one; old version archived with timestamp. | WIC import/pipeline | Per import |
+| **AgencyTierChanged** | Domain event published when PM approves a tier change. Payload: agencyId, previousTier, newTier, effectiveDate, approvedBy. Downstream consumers: RFP audience filtering, agency dashboard, future website visibility. | Tier approval workflow | Per tier change |
+| **CampaignPublished** | Domain event: PM published an RFP campaign, agencies notified. | RFP workflow | Per campaign |
+| **RfpAwarded** | Domain event: PM selected winning agency for an RFP. Payload: rfpId, winningAgencyId. | RFP workflow | Per campaign |
 
 #### Checklist
 - [x] Every domain term defined once
@@ -91,22 +101,24 @@ Source: Mat's business requirements (session 2026-03-19).
 
 | Tier | WIC/month | WIP/month | MIN/year | Special Requirements | Benefit |
 |------|-----------|-----------|----------|---------------------|---------|
-| **OM Agency** | 1 (L1-2) | 1 | 1 | 2 devs familiar with project, approved for L3-4 within 3 months | Foundational partner status |
+| **OM Agency** | 1 (L1-2) | 1 | 1 | 2 devs familiar with project, approved for L3-4 within 3 months (manual PM gate at onboarding — not automated monthly check) | Foundational partner status |
 | **OM AI-native Agency** | 2 (L1-4) | 5 | 2 | — | Higher match score, visibility on website |
 | **OM AI-native Expert** | 3 (L1-4) | 15 | 5 (3 in vertical) | Vertical dominance in specific industry niche | Highest match score in their vertical, #1 choice for niche clients |
 | **OM AI-native Core** | 4 (L3-4) | 15 | 5 | Horizontal dominance, core OM expertise | Highest match score overall, #1 choice for demanding technical clients |
 
 **Tier governance rules:**
-- Evaluation: monthly automated check against thresholds
+- Evaluation: monthly automated check against thresholds (except Tier 1 admission which is a manual PM gate)
 - Grace period: 1 month (agency falling below threshold gets 1 calendar month to recover before downgrade proposal is generated)
-- Downgrade: PM approval required before tier change takes effect
-- History: all tier changes audited with reason and approver
+- Grace period state machine: `OK` → `GracePeriod` (first month below threshold, no proposal generated) → `ProposedDowngrade` (second consecutive month below, proposal created for PM). `GracePeriod` resets to `OK` if agency recovers within the month. Entity: `TierEvaluationState { agencyId, currentTier, evaluationMonth, gracePeriodStartedAt, status }`
+- Downgrade: PM approval required before tier change takes effect. TierChangeProposal states: Draft → PendingApproval → Approved | Rejected. One open proposal per org per period.
+- Upgrade: no grace period needed. System proposes, PM approves.
+- History: all tier changes audited with reason and approver. Published via AgencyTierChanged domain event.
 
 #### 1.4.2 KPI Formulas
 
 **WIC Score per contribution unit:**
 ```
-unit = person + month + feature_key  (anti-double-counting)
+unit = person + month + feature_key  (anti-double-counting — enforced as invariant at ContributionUnit creation)
 base_score = L4:1.0, L3:0.5, L2:1.0, L1:0.5/0.25, routine:0.0
 impact_bonus = +0.25 (scope: >=40 files) + 0.25 (completeness: spec+impl+tests)
 wic_pre_bounty = base_score + impact_bonus
@@ -114,16 +126,39 @@ wic_final = wic_pre_bounty * bounty_multiplier  (1.5x if linked to active bounty
 ```
 WIC/month per agency = sum of wic_final for all contributors in that org for that month.
 
+**Note on WIC levels:** Levels are NOT ordinal difficulty. They measure different types of contribution:
+- L1 (0.5/0.25) = small fixes, routine work. Discriminator for 0.5 vs 0.25: **TODO — verify against SDRC source** (Open Question #9).
+- L2 (1.0) = substantial implementation work (high volume, moderate complexity)
+- L3 (0.5) = design review, architecture guidance (lower volume, strategic value)
+- L4 (1.0) = strategic/architectural contributions (highest impact)
+
 Algorithm source: `/Users/maciejgren/Documents/SDRC/` (WIC Assessment Guide + scoring rules).
 Requires LLM for: bounty auto-adjudication, ownership analysis, quality assessment.
+
+**WIC import semantics:** One active WIC assessment per org per month. Re-importing for the same org+month replaces the previous version; old version archived with timestamp for audit trail. Source tracked via WicAssessmentSource enum (`manual_import` | `automated_pipeline`).
+
+**WIC scoring contract (ACL interface):** External scoring results must conform to:
+```
+WicScoringResult {
+  contributorGithubUsername: string,
+  prId: string,
+  month: YYYY-MM,
+  featureKey: string,
+  level: L1 | L2 | L3 | L4 | routine,
+  impactBonus: boolean,
+  bountyApplied: boolean
+}
+```
+Import API validates against this schema. Non-conforming records rejected, not silently accepted.
 
 **WIP count:**
 ```
 WIP(org, month) = COUNT(DISTINCT deals)
   WHERE deal.organization_id = org
-  AND deal.pipeline_stage IN ('sql', 'proposal', 'won')
-  AND deal.created_at or deal.stage_changed_at IN month
+  AND deal.wip_registered_at IS NOT NULL
+  AND deal.wip_registered_at IN month
 ```
+**WIP registration:** When BD moves a deal to SQL stage (or above) for the first time, an API interceptor stamps `wip_registered_at` (custom field) with the current timestamp. This stamp is immutable — once set, deal stage changes (forward to Proposal/Won, or backward) don't affect it. First qualification only: recycling a deal back to Qualified and forward to SQL again does NOT re-stamp. "Won" deals are NOT in WIP — they graduated. MIN is a separate attribution.
 
 **MIN count:**
 ```
@@ -132,41 +167,66 @@ MIN(org, year) = COUNT(DISTINCT license_deals)
   AND license_deal.type = 'enterprise'
   AND license_deal.status = 'won'
   AND license_deal.is_renewal = false
-  AND license_deal.closed_at IN year
+  AND license_deal.closed_at IN year   -- calendar year: Jan 1 – Dec 31 UTC
 ```
+**MIN attribution workflow:** PM has a license sale → opens "Create License Deal" → searches all companies across all agencies (cross-org search) → sees results with agency name + date created + deal count → clicks company → jumps to that agency's CRM (read-only) to verify deals, people, history → confirms → PartnerLicenseDeal created with agency attribution.
+
+**MIN invariants:**
+- No double-attribution: a PartnerLicenseDeal references exactly one CRM Company in one agency. Same company cannot be attributed to two agencies.
+- No duplicate period counting: one PartnerLicenseDeal per license per year. Unique key: license identifier + year.
+- Qualification: deal must be type=enterprise, status=won, is_renewal=false. PM sets these at creation; system enforces.
 
 #### 1.4.3 Business Rules
 
 **Permissions hierarchy:**
-- Admin can do everything BD can, but BD cannot do what Admin does (user management)
-- BD and Admin both need to understand what qualifies as WIP — deal must reach specific pipeline stage
+- Admin can do everything BD can (including RFP responses), but BD cannot do what Admin does (user management)
+- Admin has full CRM write access within own org, including records created by BD users. BD has write access only to their own CRM records.
+- BD and Admin both need to understand what qualifies as WIP — deal must reach SQL stage to trigger `wip_registered_at` stamp
 - Contributor sees almost nothing — only WIC score and tier level
 
 **Cross-org visibility:**
-- PM sees CRM data of ALL agencies (read-only) via org switcher
+- PM has Program Scope — sees CRM data of ALL agencies (read-only) via org switcher
 - Agency users see ONLY their own organization's data
 - KPI data (WIC/WIP/MIN) visible to agency users for their own org only
 - PM sees KPI dashboard across all agencies
+- Org switcher scopes PM's reads. PM writes (tier approval, MIN attribution, RFP creation) are global actions attributed to specific agencies — not scoped by the currently selected org in switcher.
 
 **Data ownership:**
-- WIC: system-generated (external algorithm), PM can override
-- WIP: agency-generated (BD creates deals in CRM), system counts
-- MIN: PM-generated (PM creates PartnerLicenseDeal, assigns agency attribution)
+- WIC: system-generated (external algorithm or manual import), PM can override. Override = re-import corrected data for that org+month; old version archived. WicAssessmentSource tracks provenance.
+- WIP: agency-generated (BD creates deals in CRM), system stamps `wip_registered_at` at SQL stage
+- MIN: PM-generated (PM creates PartnerLicenseDeal via cross-org company search + attribution)
 - Agency users CANNOT create/modify MIN source records
+
+**GitHub username attribution:**
+- Contributor sets GH username on their profile (custom field via entities module)
+- GH username is unique across all Contributors. System rejects duplicates.
+- Once WIC has been recorded against a GH username, the username is immutable except by PM override with audit log. Changes do not retroactively alter past scores.
+- ContributionUnit.organization_id is set at PR merge time based on contributor's org membership at that moment.
 
 **Onboarding requirements:**
 - Agency Admin must: fill company profile, add min 1 case study, invite min 1 BD, invite min 1 Contributor
 - BD must: add first prospect company, create first deal, move deal to "Contacted"
 - Both are sub-workflows tracked by the system
 
+**Case Study minimum fields (required at creation):**
+- At least one industry tag (from dictionaries)
+- At least one tech stack tag (from dictionaries)
+- Budget range (enum: small/medium/large/enterprise)
+- Duration (months)
+- Project description (free text)
+These are enforced at entity level in setup.ts seed configuration. Required for RFP comparison quality in Phase 3.
+
 #### Domain Model Checklist
-- [x] Domain entities identified — PartnerAgency, tiers, KPIs, case studies, RFP, license deals
-- [x] Domain rules documented — tier thresholds, KPI formulas, onboarding requirements
+- [x] Domain entities identified — PartnerAgency, tiers, KPIs, case studies, RFP, license deals, ContributionUnit, TierChangeProposal, TierEvaluationState
+- [x] Domain rules documented — tier thresholds, KPI formulas, onboarding requirements, grace period state machine, MIN invariants
 - [x] Tiers: all 4 real tiers with thresholds and benefits (was 3 in old spec, caught and fixed)
-- [x] Tiers: governance rules complete — 1 month grace period before downgrade
-- [x] KPIs: complete formulas with input source, period, anti-gaming (feature key dedup for WIC)
-- [x] Access control: permissions hierarchy (Admin > BD > Contributor), cross-org visibility (PM all orgs read-only)
-- [x] Data ownership: WIC system-generated, WIP agency-generated, MIN PM-generated
+- [x] Tiers: governance rules complete — grace period state machine (OK → GracePeriod → ProposedDowngrade), TierChangeProposal with uniqueness invariant
+- [x] KPIs: complete formulas with input source, period, anti-gaming (feature key dedup enforced as invariant at ContributionUnit creation)
+- [x] KPIs: WIP = stamp-based (`wip_registered_at`), immutable, first qualification only. MIN = calendar year, cross-org attribution workflow.
+- [x] Access control: permissions hierarchy (Admin > BD > Contributor), cross-org visibility (PM Program Scope), Admin full CRM write, BD own records only
+- [x] Data ownership: WIC system-generated with versioned import, WIP stamp-based, MIN PM-generated via cross-org search
+- [x] Domain events: AgencyTierChanged, CampaignPublished, RfpAwarded
+- [x] Challenger review: 2026-03-20 — all CRITICAL findings addressed, 3 pushbacks documented
 
 ---
 
@@ -176,9 +236,9 @@ MIN(org, year) = COUNT(DISTINCT license_deals)
 
 | Persona | Role key | Identity | Org scope | Sees | Does |
 |---------|----------|----------|-----------|------|------|
-| Partnership Manager | `partnership_manager` | User | all orgs (`organizationsJson: null`) | All CRM read-only, all KPIs, all tiers, RFP campaigns | Invites agencies, creates RFP, evaluates responses, approves tiers, manages MIN |
-| Agency Admin | `partner_admin` | User | own org only | CRM (full), KPI (WIC/WIP/MIN), tier, team management, case studies | Fills profile, manages case studies, invites BD/Contributor, creates deals |
-| Business Developer | `partner_member` | User | own org only | CRM (full), KPI (WIC/WIP/MIN), tier, RFP responses | Creates deals, edits profile + case studies, responds to RFP. NO user management. |
+| Partnership Manager | `partnership_manager` | User | Program Scope (all orgs) | All CRM read-only, all KPIs, all tiers, RFP campaigns, cross-org company search | Invites agencies, creates RFP, evaluates responses, approves tiers, attributes MIN via cross-org company search |
+| Agency Admin | `partner_admin` | User | own org only | CRM (full write, including BD records), KPI (WIC/WIP/MIN), tier, team management, case studies, RFP responses | Fills profile, manages case studies, invites BD/Contributor, creates deals, responds to RFP |
+| Business Developer | `partner_member` | User | own org only | CRM (own records write, others read), KPI (WIC/WIP/MIN), tier, RFP responses | Creates deals, edits profile + case studies, responds to RFP. NO user management. |
 | Contributor | `partner_contributor` | User | own org only | WIC score, tier level only | Views WIC, configures own profile (e.g. GH username). Nothing else. |
 
 **Portal:** NOT USED. Zero portal pages. Zero CustomerUser accounts. Backend + RBAC + org scoping = sufficient for all personas.
@@ -231,29 +291,31 @@ MIN(org, year) = COUNT(DISTINCT license_deals)
 
 ### WF2: Pipeline Building (WIP)
 
-**Journey:** BD creates Company (prospect) in CRM -> creates Deal on that Company -> moves Deal through pipeline stages -> at "Sales Qualified Lead" stage = 1 WIP -> BD sees WIP count on KPI dashboard
+**Journey:** BD creates Company (prospect) in CRM -> creates Deal on that Company -> moves Deal through pipeline stages -> at "Sales Qualified Lead" stage, API interceptor stamps `wip_registered_at` on the deal -> BD sees WIP count on KPI dashboard
 
 **ROI:** 15 agencies x 5 WIP/month = 75 prospects/month. Agency without WIP loses tier.
 
-**Key personas:** BD (creates deals), System (counts WIP)
+**Key personas:** BD (creates deals), System (stamps WIP on stage change)
 
 **Boundaries:**
 - Starts when: BD creates deal in CRM
-- Ends when: Deal saved with correct stage, WIP count updated
+- Ends when: Deal reaches SQL stage, `wip_registered_at` stamped, WIP visible on dashboard
 - NOT this workflow: closing deal -> sale -> MIN attribution (WF5)
 
 **Edge cases:**
-1. BD creates deal without reaching SQL stage -> doesn't count as WIP, BD confused
-2. BD creates fake deals to inflate WIP -> PM must audit manually
-3. Same prospect in two agencies -> both count WIP -> conflict at RFP
-4. Period boundary: deal created March 31, counted in March or April?
+1. BD creates deal without reaching SQL stage -> no stamp, doesn't count as WIP. BD sees "0 WIP" and understands deals must reach SQL.
+2. BD creates fake deals and pushes them to SQL to inflate WIP -> PM must audit manually. Stamp is immutable so fake deals can be identified.
+3. Same prospect in two agencies -> both count WIP -> known limitation for v1. Companies are per-org in CRM, so duplication is invisible to system. PM audits manually. (Documented as known domain model limitation, not just edge case.)
+4. Period boundary: resolved. `wip_registered_at` timestamp determines the month. Deal stamped March 31 23:59 UTC = March WIP. No ambiguity.
+5. BD moves deal back to Qualified then forward to SQL again -> no re-stamp. First qualification only.
 
 **OM readiness:**
 - CRM (companies, deals, activities) -> `customers` module ✅
 - Pipeline + stages -> `customers` module ✅ (seed PRM pipeline in setup.ts)
 - Deal CRUD + pipeline UI -> `customers` backend pages ✅
-- **Gap: WIP count aggregation** — scheduled job (~30 lines)
-- **Gap: KPI dashboard widget** — widget injection (~50 lines)
+- WIP stamp on stage change -> API interceptor (UMES) ✅ — 1 commit
+- **Gap: `wip_registered_at` custom field** — seed in setup.ts (bundled with pipeline stages)
+- **Gap: KPI dashboard widget** — widget injection, uses live query in Phase 1 (count deals with `wip_registered_at` in period)
 
 ### WF3: Code Contribution (WIC)
 
@@ -264,15 +326,16 @@ MIN(org, year) = COUNT(DISTINCT license_deals)
 **Key personas:** Contributor (views score), System (scheduled job), PM (optional override)
 
 **Boundaries:**
-- Starts when: Scheduled job triggers (daily)
-- Ends when: WIC scores recorded for all contributors for current period
+- Starts when: PM imports WIC assessment (Phase 1-3) or scheduled job triggers (Phase 4)
+- Ends when: ContributionUnits created/updated for all contributors for current period
 - NOT this workflow: PR review process (GitHub), tier calculation (WF5)
 
 **Edge cases:**
-1. Dev's GH profile not linked to User in OM -> contributions not counted
-2. Dev changes agency -> old WIC stays with old org? follows them?
-3. PR merged but WIC batch hasn't run yet -> dev doesn't see contribution
-4. Dev uses private GH account, different from registered username
+1. Dev's GH profile not linked to User in OM -> import API rejects unmatched GH usernames, PM resolves
+2. Dev changes agency -> ContributionUnit.organization_id set at PR merge time. Old WIC stays with old org. New contributions go to new org.
+3. PR merged but WIC batch hasn't run yet -> dev doesn't see contribution (Phase 4 only; Phase 1-3 manual import is immediate)
+4. Dev uses private GH account, different from registered username -> GH username is unique + immutable once scored. Dev must set correct username before first import.
+5. PM re-imports WIC for same org+month -> old assessment archived, new one becomes primary. No duplicates.
 
 **OM readiness:**
 - Contributor sees WIC score -> backend page with RBAC ✅ (~50 lines widget)
@@ -311,30 +374,36 @@ MIN(org, year) = COUNT(DISTINCT license_deals)
 
 ### WF5: Tier Governance
 
-**Journey:** System aggregates WIC+WIP+MIN per org per period -> compares with 4 tier thresholds -> generates upgrade/downgrade proposal -> PM reviews + approves -> system updates tier -> agency sees new status + progress to next level
+**Journey:** System reads TierEvaluationState per org -> aggregates WIC+WIP+MIN for current period -> computes TierEligibility against 4 tier thresholds -> checks grace period state machine (OK → GracePeriod → ProposedDowngrade) -> generates TierChangeProposal if needed (one per org per period max) -> PM reviews + approves/rejects -> system publishes AgencyTierChanged event -> agency sees new status + progress to next level
 
 **ROI:** Automated governance saves PM ~4h/week. Network quality maintained.
 
-**Key personas:** System (aggregates), PM (approves), all agency users (see tier)
+**Key personas:** System (aggregates, evaluates), PM (approves), all agency users (see tier)
 
 **Boundaries:**
 - Starts when: Scheduled job triggers (monthly)
-- Ends when: PM approved tier change, agency sees updated status
-- NOT this workflow: KPI data collection (WF2, WF3), RFP matching based on tier (WF4)
+- Ends when: PM approved/rejected tier change proposal, AgencyTierChanged event published (if approved), agency sees updated status
+- NOT this workflow: KPI data collection (WF2, WF3), RFP matching based on tier (WF4). RFP audience filtering uses current TierAssignment — until AgencyTierChanged is published, old tier governs.
 
 **Edge cases:**
-1. Agency on tier boundary (4 WIC, needs 5) -> downgrade? grace period?
-2. Great WIC but zero WIP -> contributes code but no pipeline
-3. New agency, no data for full period -> how to evaluate?
-4. PM doesn't approve tier change for weeks -> agency doesn't know tier
-5. Vertical dominance for Expert -> how does system know 3 MIN are "in vertical"?
+1. Agency on tier boundary (4 WIC, needs 5) -> first month: TierEvaluationState moves to GracePeriod, no proposal generated. Second consecutive month: moves to ProposedDowngrade, TierChangeProposal created for PM. If agency recovers in grace month: resets to OK.
+2. Great WIC but zero WIP -> contributes code but no pipeline -> tier thresholds are conjunctive (all 3 KPIs must meet), so agency doesn't qualify regardless of WIC
+3. New agency, no data for full period -> grace period protects them for first month. After that, evaluated against thresholds like everyone else.
+4. PM doesn't approve tier change for weeks -> old TierAssignment governs all dependent workflows (RFP filtering). TierChangeProposal stays in PendingApproval state. System can remind PM via notification.
+5. Vertical dominance for Expert -> how does system know 3 MIN are "in vertical"? -> requires industry tag on PartnerLicenseDeal (same tag set as CaseStudy)
+
+**MIN attribution sub-workflow:**
+PM has license sale -> opens "Create License Deal" -> searches all companies across all agencies (cross-org search, Program Scope) -> sees results: agency name, company name, date created, deal count -> clicks company -> jumps to that agency's CRM (read-only) to verify deals + people -> confirms -> PartnerLicenseDeal created with agency attribution, industry tag.
 
 **OM readiness:**
 - PM approval -> `workflows` USER_TASK ✅
-- Tier history -> `audit_logs` module ✅
-- **Gap: KPI aggregation** — scheduled job (~50 lines)
-- **Gap: Tier comparison** — threshold logic (~30 lines)
+- Tier history / audit -> `audit_logs` module ✅
+- TierChangeProposal state machine -> `workflows` module ✅
+- AgencyTierChanged event -> platform event system ✅
+- **Gap: KPI aggregation + TierEligibility computation** — worker (~50 lines)
+- **Gap: Grace period state machine (TierEvaluationState entity)** — bundled with aggregation worker
 - **Gap: Tier status widget** — widget injection on dashboard (~50 lines)
+- **Gap: Cross-org company search for MIN attribution** — search API + attribution UI (~1 commit)
 
 #### Checklist (per workflow)
 - [x] End-to-end journey — all 5 workflows have full journey `Mat`
@@ -343,6 +412,8 @@ MIN(org, year) = COUNT(DISTINCT license_deals)
 - [x] Boundaries — start, end, NOT-this-workflow for all 5 `Mat`
 - [x] 3-5 edge cases per workflow — production-realistic scenarios `Mat`
 - [x] Every step mapped to OM module with gap identified `Piotr`
+- [x] Domain events explicitly named — AgencyTierChanged, CampaignPublished, RfpAwarded `Mat`
+- [x] Challenger review: 2026-03-20 — WIP formula fixed (stamp-based), MIN attribution workflow added, tier governance state machine added, 3 pushbacks documented
 
 #### Checklist (overall)
 - [x] 5 core workflows defined (3-7 range) `Mat`
@@ -389,12 +460,12 @@ Each gap is measured in **atomic commits** — one self-contained, testable incr
 |------|-----------|-----|---------|-------|
 | BD creates Company | customers module | Covered | 0 | |
 | BD creates Deal | customers module | Covered | 0 | |
-| Pipeline stages | customers module | Covered | 1 | Seed PRM pipeline stages in setup.ts |
-| BD moves deal through stages | customers module | Covered | 0 | Pipeline UI exists |
-| WIP count aggregation | queue worker + API trigger | Gap: worker + trigger | 1 | Worker queries deals in SQL+ stage per org. **Note:** OM has no cron/scheduler module — needs external trigger (cron/API call) to enqueue the job |
-| WIP displayed on dashboard | partnerships | Covered | 0 | Bundled with aggregation commit (same data, widget injection) |
+| Pipeline stages + `wip_registered_at` field | customers module + entities | Covered | 1 | Seed PRM pipeline stages + WIP custom field in setup.ts |
+| BD moves deal to SQL | customers module | Covered | 0 | Pipeline UI exists |
+| WIP stamp on stage change | UMES API interceptor | Gap: interceptor | 1 | Stamps `wip_registered_at` when deal first reaches SQL+. Immutable, first qualification only. |
+| WIP displayed on dashboard | partnerships widget | Covered | 0 | Bundled with interceptor commit. Phase 1: live query (`COUNT WHERE wip_registered_at IN month`). Phase 2+: same query, can also be used by aggregation worker. |
 
-**Piotr note:** Spec said "scheduler module" — **no such module exists on upstream.** OM has `queue` package with workers, but no built-in cron trigger. Worker needs an external trigger: system crontab, Docker cron, or API endpoint called externally. This applies to all "scheduled job" gaps (WF2, WF3, WF5).
+**Piotr note:** Spec said "scheduler module" — **no such module exists on upstream.** OM has `queue` package with workers, but no built-in cron trigger. Worker needs an external trigger: system crontab, Docker cron, or API endpoint called externally. This applies to all "scheduled job" gaps (WF3, WF5). WF2 no longer needs a scheduled worker — WIP is stamp-based with live query.
 
 #### WF3: Code Contribution (WIC) — Total: 3 atomic commits (with workaround) / 8+ (full)
 
@@ -406,9 +477,9 @@ Each gap is measured in **atomic commits** — one self-contained, testable incr
 | Score recorded | partnerships entities | Covered | 0 | Entity already in spec |
 | Score displayed | partnerships backend | Gap: widget | 1 | Widget injection on dashboard |
 | PM override | workflows USER_TASK | Covered | 0 | Workflow step, bundled with tier workflow |
-| **WORKAROUND: Manual import** | partnerships API | Gap: import route | 1 | Import API endpoint + parsing logic |
+| **WORKAROUND: Manual import** | partnerships API | Gap: import route | 1 | Import API validates against WicScoringResult schema, enforces Feature Key dedup invariant, versioned import (re-import replaces + archives old). WicAssessmentSource = `manual_import`. |
 
-**Workaround detail:** Instead of automated GitHub+LLM pipeline (5+ commits), PM runs external script and imports via API. Commits drop from 8+ to 3. Automated pipeline deferred to Phase 4.
+**Workaround detail:** Instead of automated GitHub+LLM pipeline (5+ commits), PM runs external script and imports via API. Commits drop from 8+ to 3. Automated pipeline deferred to Phase 4. Phase 4 uses same ContributionUnit entities but with WicAssessmentSource = `automated_pipeline`.
 
 #### WF4: Lead Distribution (RFP) — Total: 4 atomic commits
 
@@ -422,16 +493,17 @@ RFP lifecycle uses workflows module: START → SEND_EMAIL → WAIT_FOR_TIMER →
 | PM evaluates responses | partnerships backend | Gap: comparison page | 1 | Side-by-side backend page |
 | PM selects winner | workflows USER_TASK | Covered | 0 | Workflow completes, status updated |
 
-#### WF5: Tier Governance — Total: 4 atomic commits
+#### WF5: Tier Governance — Total: 5 atomic commits
 
 | Step | OM Module | Gap | Commits | Notes |
 |------|-----------|-----|---------|-------|
-| KPI aggregation | queue worker + partnerships | Gap: worker + logic | 1 | Worker aggregates WIC+WIP+MIN per org. Same cron trigger note as WF2 |
-| Tier comparison + proposal | partnerships | Gap: threshold logic + entity | 1 | Compare 3 KPIs against 4 tier thresholds, generate PartnerTierAssignment draft. Grace period check (1 month). Bundled — same commit |
+| KPI aggregation (WIC+WIP+MIN) | queue worker + partnerships | Gap: worker + logic | 1 | Worker reads WIC (from ContributionUnits), WIP (from `wip_registered_at` stamps), MIN (from PartnerLicenseDeals). Computes TierEligibility per org. |
+| Grace period check + TierChangeProposal | partnerships | Gap: state machine + entity | 1 | Reads TierEvaluationState, applies grace period state machine (OK → GracePeriod → ProposedDowngrade). Creates TierChangeProposal (one per org per period max). Bundled with aggregation. |
 | PM approval | workflows USER_TASK | Covered | 0 | Workflow JSON definition (bundled with tier workflow) |
-| Tier workflow definition | workflows | Gap: workflow JSON | 1 | Tier evaluation workflow: START → AUTOMATED (aggregate) → USER_TASK (PM approval) → END |
-| Tier updated + audit | partnerships | Gap: command | 0 | Bundled with workflow — UPDATE_ENTITY activity |
-| Agency sees tier + progress | partnerships backend | Gap: widget | 1 | Widget injection on dashboard (with grace period warning) |
+| Tier workflow definition | workflows | Gap: workflow JSON | 1 | Tier evaluation workflow: START → AUTOMATED (aggregate + grace check) → USER_TASK (PM approval) → END. Publishes AgencyTierChanged event on approval. |
+| Tier updated + audit | partnerships | Gap: command | 0 | Bundled with workflow — UPDATE_ENTITY activity + audit log |
+| Agency sees tier + progress | partnerships backend | Gap: widget | 1 | Widget injection on dashboard (with grace period warning, TierEligibility vs TierAssignment) |
+| MIN attribution (cross-org search) | partnerships + search | Gap: search + attribution UI | 1 | Cross-org company search + CRM read-only jump + PartnerLicenseDeal creation. Moved from Phase 3 to Phase 2. |
 
 ### Gap Summary
 
@@ -439,12 +511,12 @@ RFP lifecycle uses workflows module: START → SEND_EMAIL → WAIT_FOR_TIMER →
 |----------|------------------|---------------------|-------------|---------------------|-------------|
 | WF2: Pipeline (WIP) | High | 2 | No | 2 | Yes — core flywheel |
 | WF1: Onboarding | High | 4 | Partial (self-onboard Ph1) | 2 (Ph1) | Yes — enables all other WFs |
-| WF5: Tier Governance | High | 4 | No | 4 | Yes — governance loop |
+| WF5: Tier Governance | High | 5 | No | 5 | Yes — governance loop |
 | WF4: RFP | Medium | 4 | No | 4 | Partial — PM can email manually |
 | WF3: WIC | Medium | 8+ | Yes (manual import) | 3 | Yes — but workaround unblocks |
-| **Total** | | **22+** | | **15 (Ph1-3)** | |
+| **Total** | | **23+** | | **16 (Ph1-3)** | |
 
-**Piotr finding — no scheduler module:** All "scheduled job" gaps (WF2/WF3/WF5) reference a scheduler that doesn't exist on OM upstream. The `queue` package provides workers but no cron trigger. Solution: one shared commit adds a cron trigger mechanism (external crontab or API endpoint) that enqueues jobs for all three workflows. This is **1 additional commit** counted once, not per workflow.
+**Piotr finding — no scheduler module:** "Scheduled job" gaps (WF3/WF5) reference a scheduler that doesn't exist on OM upstream. The `queue` package provides workers but no cron trigger. Solution: one shared commit adds a cron trigger mechanism (external crontab or API endpoint) that enqueues jobs. This is **1 additional commit** counted once. Note: WF2 no longer needs a scheduled worker — WIP is stamp-based with live query.
 
 #### Checklist
 - [x] Every workflow step scored in atomic commits `Mat`
@@ -486,7 +558,7 @@ Success: Company + Deal created in CRM, onboarding workflow marks BD step as don
 Success: Deal appears in pipeline view, assigned to correct stage.
 
 **US-2.2** As BD, I move a deal to "Sales Qualified Lead" stage so that it counts as WIP.
-Success: Deal stage updated, WIP count increments on next aggregation, visible on KPI dashboard.
+Success: Deal stage updated, API interceptor stamps `wip_registered_at` with current timestamp. WIP count visible on KPI dashboard immediately (live query). Stamp is immutable — moving deal backward and forward does not re-stamp.
 
 **US-2.3** As PM, I audit pipeline activity per agency per month so that I can flag underperforming agencies before tier evaluation.
 Success: Dashboard shows table of agencies with WIP count for selected period. PM can filter by period and sort by WIP count.
@@ -497,7 +569,7 @@ Success: Dashboard shows table of agencies with WIP count for selected period. P
 Success: GH username field saved on User, visible to WIC import process.
 
 **US-3.2** As PM, I import WIC scores from external assessment so that contributor scores are up to date.
-Success: Upload CSV/markdown, system parses and maps GH profiles to users, scores recorded.
+Success: Upload CSV/markdown for a given org+month, system validates against WicScoringResult schema, enforces Feature Key dedup invariant, maps GH profiles to users. If importing for an org+month that already has data, old assessment archived (with timestamp), new one becomes primary. WicAssessmentSource = `manual_import`.
 
 **US-3.3** As Contributor, I verify my WIC score and level breakdown so that I can flag missing contributions to my Admin.
 Success: Dashboard shows: total WIC this month, per-contribution breakdown (feature key, level, bonus). Contributor can identify if a merged PR is missing.
@@ -522,13 +594,16 @@ Success: Comparison view shows all responses with key fields aligned. PM selects
 ### WF5: Tier Governance
 
 **US-5.1** As PM, I trust that KPIs are aggregated monthly per agency so that tier proposals are based on current data.
-Success: Scheduled job runs monthly, metric snapshots (WIC+WIP+MIN) recorded per org per period. PM sees last-run timestamp.
+Success: Scheduled job runs monthly, computes TierEligibility per org from WIC (ContributionUnits), WIP (`wip_registered_at` count), MIN (PartnerLicenseDeals). PM sees last-run timestamp.
 
-**US-5.2** As PM, I receive tier upgrade/downgrade proposals so that I can review them before they take effect.
-Success: System compares aggregated KPIs against tier thresholds, generates proposal with current vs required values and recommended change. Downgrade proposals respect 1-month grace period.
+**US-5.2a** As PM, I receive tier upgrade proposals so that I can reward agencies that have grown.
+Success: System computes TierEligibility above current TierAssignment, generates TierChangeProposal (type: upgrade) with current KPI values vs next-tier thresholds. One proposal per org per period max.
+
+**US-5.2b** As PM, I receive tier downgrade proposals only after grace period expires so that agencies get a fair chance to recover.
+Success: First month below threshold: TierEvaluationState moves to GracePeriod, no proposal. Second consecutive month: moves to ProposedDowngrade, TierChangeProposal (type: downgrade) created. If agency recovers during grace month: state resets to OK, no proposal.
 
 **US-5.3** As PM, I approve or reject a tier change with a reason so that governance is auditable.
-Success: PM sees proposal, approves/rejects with reason, tier updated on approval, audit log created.
+Success: PM sees proposal (TierChangeProposal in PendingApproval state), approves/rejects with reason. On approval: TierAssignment updated, AgencyTierChanged event published, audit log created. On rejection: proposal moves to Rejected state with reason.
 
 **US-5.4** As Agency Admin, I see my agency's current tier and progress toward next level so that I can motivate my team.
 Success: Dashboard shows: current tier, KPI values vs thresholds, % progress to next tier, grace period warning if below threshold.
@@ -536,8 +611,8 @@ Success: Dashboard shows: current tier, KPI values vs thresholds, % progress to 
 **US-5.5** As BD, I see my agency's tier status and my personal contribution to KPIs so that I know my impact.
 Success: Dashboard shows: current tier, agency WIP count (with my deals highlighted), WIC score for my org.
 
-**US-5.6** As PM, I create a PartnerLicenseDeal and attribute it to an agency so that MIN is tracked for tier evaluation.
-Success: License deal record created with agency attribution, MIN count increments for that agency's current year, visible on KPI dashboard.
+**US-5.6** As PM, I attribute a license sale to the agency that brought the company into pipeline so that MIN is tracked for tier evaluation.
+Success: PM opens "Create License Deal" -> searches all companies across all agencies (cross-org, Program Scope) -> sees results with agency name, company name, date created, deal count -> clicks company -> jumps to that agency's CRM (read-only) to verify deals, people, history -> confirms -> PartnerLicenseDeal created with: agency attribution, industry tag, license identifier. MIN count increments for that agency's calendar year. No double-attribution (unique: license identifier + year). Visible on KPI dashboard.
 
 ### Cross-workflow
 
@@ -558,33 +633,33 @@ Success: Org switcher shows all agencies, PM selects one, sees that agency's dat
 
 | Story | Platform Match | Atomic Commits | Notes |
 |-------|---------------|----------------|-------|
-| US-1.1 | auth module (self-onboard) | 0 | Standard signup flow, zero code |
+| US-1.1 | auth module (self-onboard) | 0 | Standard signup flow, zero code. Known limitation: no enrollment event for audit trail (accepted for Phase 1). |
 | US-1.1b | auth module (Phase 4: email invitation) | 2 | Email template + invitation API route + UI |
-| US-1.2 | entities module custom fields | 1 | Seed field definitions in setup.ts |
+| US-1.2 | entities module custom fields | 1 | Seed field definitions in setup.ts (includes CaseStudy minimum required fields) |
 | US-1.3 | entities module custom entity | 0 | Bundled with US-1.2 seed commit |
 | US-1.4 | auth module | 0 | Same mechanism as self-onboard / invitation |
 | US-1.5 | auth module | 0 | Same mechanism |
 | US-1.6 | customers module CRM | 0 | Zero code — CRM exists |
 | US-2.1 | customers module CRM | 0 | Zero code |
-| US-2.2 | customers module pipeline | 0 | Stages seeded in US-1.2 setup.ts commit |
-| US-2.3 | partnerships widget injection | 1 | KPI dashboard widget (WIP table + period filter) |
-| US-3.1 | entities custom field on User | 1 | GH username field seed in setup.ts |
-| US-3.2 | partnerships import API | 1 | Import route + parsing logic |
+| US-2.2 | UMES API interceptor + entities custom field | 1 | Interceptor stamps `wip_registered_at` on deal at SQL stage. Custom field seeded in setup.ts (bundled with US-1.2). Interceptor = 1 commit. |
+| US-2.3 | partnerships widget injection | 1 | KPI dashboard widget. Live query: `COUNT WHERE wip_registered_at IN month`. No batch worker needed. |
+| US-3.1 | entities custom field on User | 1 | GH username field seed in setup.ts. Unique, immutable once WIC recorded. |
+| US-3.2 | partnerships import API | 1 | Import route validates WicScoringResult schema, enforces Feature Key dedup, versioned import (replace+archive). |
 | US-3.3 | partnerships backend widget | 0 | Bundled with US-2.3 KPI dashboard (same widget, scoped data) |
-| US-3.4 | external (GitHub+LLM) — Phase 4 | 5+ | Major — deferred to Phase 4 |
-| US-4.1 | partnerships entity + workflows | 2 | 1: PartnerRfpCampaign entity + CRUD route. 2: RFP workflow JSON definition |
+| US-3.4 | external (GitHub+LLM) — Phase 4 | 5+ | Major — deferred to Phase 4. WicAssessmentSource = `automated_pipeline`. |
+| US-4.1 | partnerships entity + workflows | 2 | 1: PartnerRfpCampaign entity + CRUD route. 2: RFP workflow JSON definition. CampaignPublished event. |
 | US-4.2 | workflows SEND_EMAIL | 0 | Covered by workflow activity |
 | US-4.3 | workflows USER_TASK + partnerships entity | 1 | PartnerRfpResponse entity + USER_TASK form |
-| US-4.4 | partnerships backend page | 1 | Comparison page + workflow advance |
-| US-5.1 | queue worker + partnerships | 1 | Aggregation worker. Cron trigger shared (see §4 Piotr note) |
-| US-5.2 | partnerships lib | 0 | Bundled with US-5.1 (threshold logic in same worker) |
-| US-5.3 | workflows USER_TASK | 1 | Tier evaluation workflow JSON definition |
-| US-5.4 | partnerships widget injection | 1 | Tier progress widget (with grace period warning) |
+| US-4.4 | partnerships backend page | 1 | Comparison page + workflow advance. RfpAwarded event on winner selection. |
+| US-5.1 | queue worker + partnerships | 1 | Aggregation worker: reads WIC (ContributionUnits), WIP (`wip_registered_at`), MIN (PartnerLicenseDeals). Computes TierEligibility. Cron trigger shared. |
+| US-5.2a/b | partnerships + TierEvaluationState | 0 | Bundled with US-5.1 (grace period state machine + TierChangeProposal generation in same worker) |
+| US-5.3 | workflows USER_TASK | 1 | Tier evaluation workflow JSON definition. Publishes AgencyTierChanged on approval. |
+| US-5.4 | partnerships widget injection | 1 | Tier progress widget (TierEligibility vs TierAssignment, grace period warning) |
 | US-5.5 | partnerships widget | 0 | Scoped view of US-5.4 widget |
-| US-5.6 | partnerships entity + CRUD | 1 | PartnerLicenseDeal entity + PM-only CRUD route |
-| US-6.1 | auth org switcher | 0 | Platform feature (`organizationsJson: null`) |
-| — | Cron trigger mechanism (shared) | 1 | External crontab or API trigger for all scheduled workers |
-| **Total** | | **12 (Ph1-3) + 7+ (Ph4)** | |
+| US-5.6 | partnerships entity + search + CRUD | 2 | 1: PartnerLicenseDeal entity + PM-only CRUD. 2: Cross-org company search + CRM read-only jump + attribution UI. |
+| US-6.1 | auth org switcher (Program Scope) | 0 | Platform feature (`organizationsJson: null`) |
+| — | Cron trigger mechanism (shared) | 1 | External crontab or API trigger for WF3/WF5 scheduled workers |
+| **Total** | | **14 (Ph1-3) + 7+ (Ph4)** | |
 
 #### Checklist
 - [x] Every story mapped to specific OM module/mechanism with atomic commit estimate `Mat`
@@ -608,57 +683,58 @@ Success: Org switcher shows all agencies, PM selects one, sees that agency's dat
 
 | Story | What ships | Commits |
 |-------|-----------|---------|
-| US-1.1 | Self-onboard (PM shares signup link manually) | 0 |
-| US-1.2 + US-1.3 | Company profile custom fields + case study custom entity (seed in setup.ts) | 1 |
+| US-1.1 | Self-onboard (PM shares signup link manually). Known limitation: no formal enrollment event for audit trail. | 0 |
+| US-1.2 + US-1.3 | Company profile custom fields + case study custom entity + CaseStudy minimum required fields (seed in setup.ts) | 1 |
 | US-1.4 | Admin invites BD (same self-onboard mechanism) | 0 |
 | US-1.5 | Admin invites Contributor (same mechanism) | 0 |
 | US-1.6 | BD creates first deal (CRM ready) | 0 |
-| US-2.1 + US-2.2 | Deal creation + pipeline stages (seeded in same setup.ts) | 0 |
-| US-2.3 | WIP count widget on PM dashboard | 1 |
-| US-6.1 | PM org switcher (cross-agency visibility) | 0 |
+| US-2.1 | Deal creation (CRM ready) | 0 |
+| US-2.2 | WIP stamp interceptor (`wip_registered_at` on SQL stage) + pipeline stages + custom field (seeded in setup.ts) | 1 |
+| US-2.3 | WIP count widget on PM dashboard (live query: `COUNT WHERE wip_registered_at IN month`) | 1 |
+| US-6.1 | PM org switcher / Program Scope (cross-agency visibility) | 0 |
 
-**Total: 2 atomic commits** (setup.ts seed + KPI dashboard widget)
+**Total: 3 atomic commits** (setup.ts seed + WIP interceptor + KPI dashboard widget)
 **Workaround:** Invitation flow replaced by PM sharing signup link manually. Good enough for 15 agencies.
 
-**After Phase 1, client can say:** "I onboarded 3 agencies, they're logging deals, I can switch between orgs and see their WIP counts."
+**After Phase 1, client can say:** "I onboarded 3 agencies, they're logging deals, I see WIP counts update immediately when deals hit SQL."
 
-### Phase 2: Governance + KPI Visibility (WF5 + WF3 workaround)
+### Phase 2: Governance + KPI Visibility + MIN (WF5 + WF3 workaround)
 
-**Goal:** PM can evaluate tiers. WIC scores visible via manual import.
+**Goal:** PM can evaluate tiers with all 3 KPIs. WIC scores visible via manual import. MIN attribution enabled.
 
-**Why second:** Tier governance (WF5) makes the program meaningful — without tiers, agencies have no incentive. WIC (WF3) is a blocker for tier evaluation but the automated pipeline is too expensive. Workaround: PM imports WIC scores manually.
+**Why second:** Tier governance (WF5) makes the program meaningful — without tiers, agencies have no incentive. WIC (WF3) is a blocker for tier evaluation but the automated pipeline is too expensive. Workaround: PM imports WIC scores manually. MIN moved here so tier evaluation has all 3 KPI inputs (Vernon finding: tier eval without MIN = broken invariant).
 
 | Story | What ships | Commits |
 |-------|-----------|---------|
-| US-3.1 | GH username field on User profile | 1 |
-| US-3.2 | WIC manual import API | 1 |
+| US-3.1 | GH username field on User profile (unique, immutable once WIC recorded) | 1 |
+| US-3.2 | WIC manual import API (validates WicScoringResult schema, Feature Key dedup, versioned replace+archive) | 1 |
 | US-3.3 | WIC score display (bundled with KPI dashboard from Phase 1) | 0 |
-| US-5.1 + US-5.2 | KPI aggregation worker + tier threshold logic (bundled) | 1 |
-| US-5.3 | Tier evaluation workflow JSON definition | 1 |
-| US-5.4 + US-5.5 | Tier progress widget (Admin + BD scoped views) | 1 |
-| Cron trigger | External trigger mechanism for scheduled workers | 1 |
+| US-5.1 + US-5.2a/b | KPI aggregation worker + TierEligibility computation + grace period state machine + TierChangeProposal (bundled) | 1 |
+| US-5.3 | Tier evaluation workflow JSON definition (publishes AgencyTierChanged) | 1 |
+| US-5.4 + US-5.5 | Tier progress widget (Admin + BD scoped views, TierEligibility vs TierAssignment, grace period warning) | 1 |
+| US-5.6 | PartnerLicenseDeal entity + PM-only CRUD + cross-org company search + attribution UI | 2 |
+| Cron trigger | External trigger mechanism for scheduled workers (WF3 import trigger, WF5 tier evaluation) | 1 |
 
-**Total: 6 atomic commits** (GH field + import API + aggregation worker + tier workflow + tier widget + cron trigger)
+**Total: 8 atomic commits** (GH field + import API + aggregation worker + tier workflow + tier widget + MIN entity + MIN attribution UI + cron trigger)
 **Workaround:** WIC automated pipeline deferred. PM runs external `wic_assessment.mjs` script and imports via API.
 
-**After Phase 2, client can say:** "Agencies have tiers, I can see who's contributing code and building pipeline, I can promote/demote based on data. Agencies see their progress and grace period warnings."
+**After Phase 2, client can say:** "Agencies have tiers, I can see all 3 KPIs, I can promote/demote based on data, I can attribute license sales to agencies. Agencies see their progress and grace period warnings."
 
-### Phase 3: Lead Distribution + MIN (WF4 + MIN attribution)
+### Phase 3: Lead Distribution (WF4)
 
-**Goal:** PM can distribute leads via RFP. MIN tracking enables full tier evaluation.
+**Goal:** PM can distribute leads via RFP.
 
-**Why third:** RFP (WF4) needs agencies with profiles and case studies (Phase 1) and tier data (Phase 2) to be useful. MIN needs the pipeline to be working.
+**Why third:** RFP (WF4) needs agencies with profiles and case studies (Phase 1) and tier data (Phase 2) to be useful for audience filtering.
 
 | Story | What ships | Commits |
 |-------|-----------|---------|
-| US-4.1 | RFP campaign entity + CRUD route | 1 |
+| US-4.1 | RFP campaign entity + CRUD route (CampaignPublished event) | 1 |
 | US-4.1 | RFP workflow JSON definition + trigger | 1 |
 | US-4.2 | BD notification (covered by workflow SEND_EMAIL) | 0 |
 | US-4.3 | PartnerRfpResponse entity + USER_TASK form | 1 |
-| US-4.4 | PM comparison page + winner selection | 1 |
-| US-5.6 | PartnerLicenseDeal entity + PM-only CRUD route | 1 |
+| US-4.4 | PM comparison page + winner selection (RfpAwarded event) | 1 |
 
-**Total: 5 atomic commits** (RFP entity + RFP workflow + response entity + comparison page + MIN entity)
+**Total: 4 atomic commits** (RFP entity + RFP workflow + response entity + comparison page)
 
 **After Phase 3, client can say:** "Full loop works. Agencies onboard, build pipeline, contribute code, respond to RFPs, get evaluated on all 3 KPIs, tiers reflect reality."
 
@@ -679,22 +755,23 @@ Success: Org switcher shows all agencies, PM selects one, sees that agency's dat
 ### Rollout Summary
 
 ```
-Phase 1: Core Loop          2 commits    WF1 (partial) + WF2
-Phase 2: Governance + WIC   6 commits    WF5 + WF3 (manual) + cron trigger
-Phase 3: RFP + MIN          5 commits    WF4 (workflows) + MIN tracking
-Phase 4: Automation          8+ commits   WF3 (full) + WF1 (full)
-                             ---------
-                             21+ atomic commits total
-                             13 commits for Phases 1-3 (production-ready loop)
+Phase 1: Core Loop              3 commits    WF1 (partial) + WF2 (stamp-based WIP)
+Phase 2: Governance + KPI + MIN 8 commits    WF5 + WF3 (manual) + MIN attribution + cron
+Phase 3: RFP                    4 commits    WF4 (workflows)
+Phase 4: Automation             8+ commits   WF3 (full) + WF1 (full)
+                                ---------
+                                23+ atomic commits total
+                                15 commits for Phases 1-3 (production-ready loop)
 ```
 
-Each phase delivers a complete, usable increment. No phase leaves a workflow half-done.
+Each phase delivers a complete, usable increment. No phase leaves a workflow half-done. Phase 2 now includes MIN so tier evaluation has all 3 KPI inputs.
 
 #### Checklist
 - [x] Phases ordered by: business priority x gap score x blocker status
 - [x] Each phase delivers complete, usable increment
 - [x] Workarounds documented for high-gap blockers — WIC manual import, self-onboard
-- [x] Total atomic commits estimated per phase — 2/6/5/8+ `Piotr`
+- [x] Total atomic commits estimated per phase — 3/8/4/8+ `Piotr`
+- [x] Challenger review: MIN moved to Phase 2 (Vernon finding: tier eval needs all 3 KPIs). Phase 1 WIP uses live query (no batch dependency).
 
 ---
 
@@ -770,12 +847,13 @@ Each phase delivers a complete, usable increment. No phase leaves a workflow hal
 |---|----------|---------|--------|-------|--------|
 | 1 | WIC implementation | a) n8n b) OM scheduler c) standalone cron | Phase 4 architecture | Piotr | Open |
 | 2 | RFP mechanism | a) custom code b) workflows module | Phase 3 code volume | Mat + Piotr | Decided: workflows module. Lifecycle maps to workflow steps, reduces custom code. |
-| 3 | Invitation flow | a) self-onboard b) email invitation | Phase 1 vs Phase 4 | Mat | Decided: self-onboard Phase 1, email Phase 4 |
+| 3 | Invitation flow | a) self-onboard b) email invitation | Phase 1 vs Phase 4 | Mat | Decided: self-onboard Phase 1, email Phase 4. Known limitation: no formal enrollment event in Phase 1 (accepted). |
 | 4 | Existing portal code | a) delete b) refactor | All phases | Mat | Decided: delete. Zero personas need CustomerUser. |
-| 5 | Tier grace period | a) none b) 1 month c) pro-rata | Phase 2 edge cases | Mat | Decided: 1 month. Agency gets 1 calendar month to recover before downgrade. |
+| 5 | Tier grace period | a) none b) 1 month c) pro-rata | Phase 2 edge cases | Mat | Decided: 1 month. State machine: OK → GracePeriod → ProposedDowngrade. |
 | 6 | RFP lead source | a) website form b) email c) PM enters manually | Phase 3 scope | Mat | Open |
 | 7 | RFP matching criteria | a) automated (case study data) b) manual (PM judgment) | Phase 3 complexity | Mat + Piotr | Open |
-| 8 | MIN attribution | a) PM creates record b) deal in CRM with license tag c) both | Phase 3 data model | Mat | Open |
+| 8 | MIN attribution | PM searches all companies across all agencies, verifies in CRM, creates PartnerLicenseDeal with attribution | Phase 2 data model | Mat | Decided: cross-org company search + CRM read-only jump + attribution. Moved from Phase 3 to Phase 2 (tier eval needs MIN). |
+| 9 | WIC L1 score discriminator | L1 has two values (0.5 / 0.25) — what determines which applies? | WIC scoring accuracy | Mat | Open — must verify against SDRC source before Phase 2 WIC import. |
 
 #### Checklist
 - [x] Every question has: options, impact, owner, status
@@ -788,11 +866,11 @@ Each phase delivers a complete, usable increment. No phase leaves a workflow hal
 
 | Workflow | Deployable | Blocker | What client would say |
 |----------|-----------|---------|----------------------|
-| WF1: Agency Onboarding | **No** | No invitation flow in auth module | "How do I invite an agency?" |
-| WF2: Pipeline Building (WIP) | **Almost** | CRM ready, missing WIP count job | "I see CRM but not my WIP count" |
-| WF3: Code Contribution (WIC) | **No** | No GitHub integration, no LLM scoring | "How does my PR become WIC score?" |
+| WF1: Agency Onboarding | **No** | No invitation flow in auth module | "How do I invite an agency?" (Phase 1 workaround: self-onboard link) |
+| WF2: Pipeline Building (WIP) | **Almost** | CRM ready, missing WIP stamp interceptor + dashboard widget | "I see CRM but not my WIP count" |
+| WF3: Code Contribution (WIC) | **No** | No GitHub integration, no LLM scoring | "How does my PR become WIC score?" (Phase 2 workaround: manual import) |
 | WF4: Lead Distribution (RFP) | **No** | No RFP workflow definition, open questions | "How do I send a lead to agencies?" |
-| WF5: Tier Governance | **No** | No KPI aggregation, no tier logic | "What tier am I? How far to next?" |
+| WF5: Tier Governance | **No** | No KPI aggregation, no tier logic, no grace period state machine | "What tier am I? How far to next?" |
 
 #### Checklist
 - [x] Each workflow assessed: deployable or not — binary with specific blocker
@@ -801,7 +879,52 @@ Each phase delivers a complete, usable increment. No phase leaves a workflow hal
 
 ---
 
+## Challenger Pushbacks `Mat`
+
+Vernon raised these findings. Mat disagrees with good business reason:
+
+1. **GH username on User crosses Identity context** (Stories C4) — In OM, custom fields via the `entities` module IS the standard extension pattern. GH username is stored as a custom field on User, not a modification to the User aggregate. Creating a separate ContributorProfile entity is overengineering for 15 agencies. The dependency from WIC scoring to the custom field is read-only and uses the platform's standard field access API.
+
+2. **WF1 should split into two workflows** (Workflows W1) — Onboarding IS one business workflow from the PM's perspective. The platform's workflows module handles sub-workflows (SUB_WORKFLOW step type). Admin onboarding and BD onboarding are tracked as sub-workflows within WF1, not independent workflows. The completion gate ("agency is operational = both halves done") is intentional business logic.
+
+3. **Self-onboard erases enrollment event** (Phasing C3) — In Phase 1, PM shares link manually and knows who they invited. The audit gap is real but acceptable for 15 agencies. Documented as known limitation in US-1.1 and Open Question #3. Phase 4 adds formal invitation flow. Not worth engineering a synthetic event for a workaround that serves < 20 agencies.
+
+---
+
 ## Changelog
+
+### 2026-03-20 (update 5) — Vaughn Vernon Challenger Reviews
+
+5 challenger reviews completed (Business Context, Identity Model, Workflows, User Stories, Phasing).
+
+**CRITICAL fixes applied:**
+- WIP formula rewritten: stamp-based (`wip_registered_at` custom field, immutable, first SQL qualification only). Removes snapshot/cumulative ambiguity. "Won" removed from WIP stages — deals graduate to MIN, not both.
+- TierEligibility vs TierAssignment: two distinct concepts named. TierChangeProposal aggregate with states (Draft → PendingApproval → Approved | Rejected) and uniqueness invariant (one per org per period).
+- Grace period state machine: OK → GracePeriod → ProposedDowngrade. TierEvaluationState entity tracks state.
+- AgencyTierChanged domain event: published on PM approval. RFP audience filtering uses current TierAssignment.
+- MIN attribution workflow: PM searches all companies cross-org → verifies in CRM → creates PartnerLicenseDeal. Moved from Phase 3 to Phase 2 (tier eval needs all 3 KPIs).
+- ContributionUnit aggregate: org_id set at PR merge time. Feature Key dedup enforced as invariant at creation.
+- WIC import: versioned (re-import for same org+month replaces + archives old). WicAssessmentSource enum added.
+
+**Glossary additions:**
+- Contributor, Program Scope, TierEligibility, TierAssignment, TierChangeProposal, ContributionUnit, WicAssessmentSource, AgencyTierChanged, CampaignPublished, RfpAwarded
+
+**Business rules clarified:**
+- Admin full CRM write (including BD records), BD own records only
+- Admin can respond to RFP (superset rule)
+- GH username: unique, immutable once WIC recorded
+- PM write context: global actions, not scoped by org switcher
+- MIN: calendar year, no double-attribution, qualification criteria defined
+- CaseStudy minimum fields: industry tag, tech stack, budget range, duration
+
+**Phasing changes:**
+- Phase 1: 2 → 3 commits (added WIP interceptor)
+- Phase 2: 6 → 8 commits (added MIN entity + attribution UI, moved from Phase 3)
+- Phase 3: 5 → 4 commits (MIN moved out)
+- Total: 21+ → 23+ commits, 15 for Phases 1-3
+
+**3 pushbacks documented** (GH username on User, WF1 split, self-onboard event)
+**1 new open question** (#9: WIC L1 score discriminator)
 
 ### 2026-03-20 (update 4) — Piotr Checkpoints
 - Switched gap scoring from lines-of-code to **atomic commits** (Ralph loop methodology)
