@@ -232,14 +232,16 @@ Format:
 |-------|---------|-----------|
 | `app` | Change lives in the app repo (setup.ts, entities, routes, widgets, workers, pages) | No — this is where we build |
 | `n8n` | Change lives in n8n (workflow definition, n8n-nodes enhancement) | No — external automation layer |
-| `official-module` | Change requires modifying an official marketplace module | **YES** — should the app extend it instead? File an issue or propose upstream. |
-| `core-module` | Change requires modifying OM core | **RED FLAG** — almost certainly wrong. Use UMES (interceptors, enrichers, widget injection) to extend. If truly needed, it's a platform contribution, not app work. |
-| `external` | Change lives outside OM entirely (scripts, third-party service config) | Caution — document the dependency. |
+| `official-module` | Change requires modifying an official marketplace module | **FLAG** — needs upstream PR + approval. Plan for the dependency. Can the app extend it via UMES instead? |
+| `core-module` | Change requires modifying OM core | **FLAG** — needs upstream PR + core team review + merge. This is a platform contribution, not app work. Different timeline, different approval chain. |
+| `external` | Change lives outside OM entirely (scripts, third-party service config) | Document the dependency. |
 
-**If any commit has scope `core-module` or `official-module`, STOP.** Ask:
-1. Can UMES extend the module instead? (interceptor, enricher, widget injection, DI override)
-2. Is this a missing platform capability that should be proposed upstream?
-3. If it genuinely needs a core change, it's a **blocker** — flag it, don't plan around it.
+**If any commit has scope `core-module` or `official-module`, FLAG IT.** These are welcome contributions — extending the platform is good. But they carry dependencies:
+
+1. **Approval dependency:** PR to upstream repo → review by core team / module maintainer → merge. Your app can't ship this commit until upstream merges it.
+2. **Timeline risk:** If upstream review takes 2 weeks, your phase is blocked for 2 weeks. Plan accordingly.
+3. **Alternative check:** Can UMES extend the module from the app side instead? (interceptor, enricher, widget injection, DI override). If yes, that's `app` scope — no upstream dependency.
+4. **If core/official-module is the right answer:** Flag it in the gap matrix, note the upstream dependency, and consider whether the phase can ship with a workaround while the upstream PR is in review.
 
 The commit plans become the input for implementation planning (brainstorming → planning → implementation).
 

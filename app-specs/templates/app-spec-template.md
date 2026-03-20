@@ -165,8 +165,8 @@ Each gap is measured in **atomic commits** — one self-contained, testable incr
 |------|-----------|-----|-------|---------|-------|
 | | | | app/n8n/official-module/core-module/external | | |
 
-> **Scope column:** Where does this commit live? `app` = our repo, `n8n` = n8n workflow, `official-module` = marketplace module (RED FLAG — extend instead?), `core-module` = OM core (RED FLAG — use UMES), `external` = outside OM.
-> If any commit is `core-module` or `official-module`, STOP and re-evaluate. See Piotr skill for details.
+> **Scope column:** Where does this commit live? `app` = our repo, `n8n` = n8n workflow, `official-module` = marketplace module, `core-module` = OM core, `external` = outside OM.
+> Commits scoped `core-module` or `official-module` are platform contributions — welcome, but they need upstream PR + approval. Flag these as dependencies: your phase can't ship that commit until upstream merges. Check if UMES can extend from app side instead. See Piotr skill for details.
 
 [Repeat per workflow]
 
