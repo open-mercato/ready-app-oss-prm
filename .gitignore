@@ -4,6 +4,9 @@ node_modules/
 open-mercato/
 *.tsbuildinfo
 
+# Claude Code internals
+.claude/worktrees/
+
 # App-level generated (covered by apps/*/gitignore but also catch at root)
 **/generated/
 **/next/

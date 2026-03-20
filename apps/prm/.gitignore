@@ -1,0 +1,16 @@
+# AI / local config
+.ai/
+
+# Runtime / local storage
+storage/
+newrelic_agent.log
+
+# Next.js generated
+next-env.d.ts
+.next/
+
+# Migration snapshots (local dev only)
+src/modules/*/migrations/.snapshot-*.json
+
+# Yarn
+yarn.lock
