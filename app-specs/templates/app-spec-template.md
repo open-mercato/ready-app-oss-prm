@@ -402,12 +402,16 @@ Phase 2: [name]    [N] commits    [which workflows]
 **Anti-patterns to avoid:**
 - [list of what we're NOT building and why]
 - Leaving scaffold boilerplate modules (`example/`, empty dirs) from `create-mercato-app` in the app
+- Copying or re-implementing OM platform helpers locally (e.g., integration test helpers, auth utilities, fixture builders) instead of importing from `@open-mercato/core/testing/integration`. If a helper doesn't exist in core — contribute it upstream, don't duplicate it in the app. Local copies drift, break on version upgrades, and teach the wrong pattern.
+- Creating app-local Playwright config instead of using `mercato test` CLI and its test discovery. The CLI handles ephemeral environments, test discovery across `__integration__/` dirs, and consistent config. App-local configs bypass all of this.
 
 #### Checklist
 - [ ] Every piece of new code passes the "copy test" — if someone copies this, do they build ON the platform or AROUND it?
 - [ ] Anti-patterns explicitly listed
 - [ ] Platform features demonstrated — the app showcases what the platform can do
 - [ ] Scaffold boilerplate removed — no `example` module, no empty module directories
+- [ ] Integration tests import helpers from `@open-mercato/core/testing/integration` — no local copies of platform utilities
+- [ ] Tests run via `mercato test` / `yarn test:integration:ephemeral` — no app-local playwright config
 
 ---
 

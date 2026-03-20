@@ -1136,6 +1136,8 @@ Each phase delivers a complete, usable increment. No phase leaves a workflow hal
 - Two identity systems in one app
 - Building user management UI (auth module has it)
 - Leaving scaffold boilerplate modules (`example/`, empty dirs) from `create-mercato-app` in the app
+- Copying or re-implementing OM platform helpers locally (integration test helpers, auth utilities, fixture builders) — import from `@open-mercato/core/testing/integration` instead. Local copies drift and teach the wrong pattern.
+- Creating app-local Playwright config — use `mercato test` CLI which handles ephemeral environments and test discovery across `__integration__/` dirs
 
 **SPEC-068 alignment:**
 - This app IS `prm` for `create-mercato-app --example prm` — the first official example
