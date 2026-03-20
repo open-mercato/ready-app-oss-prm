@@ -1,0 +1,22 @@
+{
+  "partnerships": {
+    "widgets": {
+      "wipCount": {
+        "title": "WIP This Month",
+        "subtitle": "{{month}}",
+        "wicPlaceholder": "WIC: —",
+        "noData": "No WIP data for this period"
+      },
+      "onboardingChecklist": {
+        "title": "Getting Started",
+        "fillProfile": "Fill your company profile",
+        "addCaseStudy": "Add a case study",
+        "inviteBd": "Invite a Business Developer",
+        "inviteContributor": "Invite a Contributor",
+        "addProspect": "Add a prospect company",
+        "createDeal": "Create your first deal",
+        "allDone": "All set! You're ready to go."
+      }
+    }
+  }
+}
