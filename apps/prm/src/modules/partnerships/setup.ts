@@ -398,8 +398,7 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
     'customers.*',
     'partnerships.manage',
     'partnerships.widgets.onboarding-checklist',
-    'auth.users.create',
-    'auth.users.view',
+    'auth.users.*',
   ],
   partner_member: [
     ...BACKEND_BASELINE_FEATURES,
@@ -416,11 +415,9 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
     'customers.*',
     'partnerships.manage',
     'partnerships.widgets.wip-count',
-    'auth.users.create',
-    'auth.users.view',
-    'auth.users.manage',
-    // NOTE: PM gets full customers.* because OM RBAC doesn't support per-org
-    // feature scoping. Cross-org read-only is procedural, not enforced (by design).
+    'auth.*',
+    // NOTE: PM gets full customers.* and auth.* because OM RBAC doesn't support
+    // per-org feature scoping. Cross-org read-only is procedural, not enforced (by design).
   ],
 }
 

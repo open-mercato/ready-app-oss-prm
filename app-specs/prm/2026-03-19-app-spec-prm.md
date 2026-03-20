@@ -254,10 +254,10 @@ API contracts use standard OM entities module: `POST /api/entities/definitions.b
 
 | Persona | Role key | Identity | Org scope | Sees | Does |
 |---------|----------|----------|-----------|------|------|
-| Partnership Manager | `partnership_manager` | User | Program Scope (all orgs) | Agency CRM data read-only (cross-org), own org (Open Mercato Backoffice) full write, all KPIs, all tiers, RFP campaigns, cross-org company search | Invites agencies, creates RFP, evaluates responses, approves tiers, attributes MIN via cross-org company search. Full CRM write in own org only. |
-| Agency Admin | `partner_admin` | User | own org only | CRM (full write, including BD records), KPI (WIC/WIP/MIN), tier, team management, case studies, RFP responses | Fills profile, manages case studies, invites BD/Contributor, creates deals, responds to RFP |
-| Business Developer | `partner_member` | User | own org only | CRM (own records write, others read), KPI (WIC/WIP/MIN), tier, RFP responses | Creates deals, edits profile + case studies, responds to RFP. NO user management. |
-| Contributor | `partner_contributor` | User | own org only | WIC score, tier level only | Views WIC, configures own profile (e.g. GH username). Nothing else. |
+| Partnership Manager | `partnership_manager` | User | Program Scope (all orgs) | CRM full write all orgs (procedural read-only on agencies per OM RBAC design), all KPIs, all tiers, RFP campaigns, cross-org company search, full user management (`auth.*`) | Creates agency admin accounts, creates RFP, evaluates responses, approves tiers, attributes MIN via cross-org company search |
+| Agency Admin | `partner_admin` | User | own org only | CRM full write (own org), KPI (WIC/WIP/MIN), tier, case studies, RFP responses, user management for own org (`auth.users.*`) | Fills profile, manages case studies, creates BD/Contributor accounts, creates deals, responds to RFP |
+| Business Developer | `partner_member` | User | own org only | CRM full write (own org — OM has no per-record ownership scoping), KPI (WIC/WIP/MIN), tier, RFP responses, dashboard, messages | Creates deals, edits profile + case studies, responds to RFP. NO user management. |
+| Contributor | `partner_contributor` | User | own org only | Dashboard + backend baseline (dashboards, messages, attachments), onboarding checklist widget | Views onboarding checklist, configures own profile (e.g. GH username). CRM not visible (no `customers.*` feature). WIC/tier visibility added in Phase 2. |
 
 **Non-app persona (distribution):**
 
