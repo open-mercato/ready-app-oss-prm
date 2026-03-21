@@ -154,6 +154,70 @@
 
 ---
 
+## 3.5 UI Architecture `Mat + Krug`
+
+> Defines what each persona sees in the UI. Navigation, pages, dashboard widgets, key user flows.
+> Mat drafts from user stories. Krug reviews for clarity and task completion.
+> Everything here uses OM's existing UI building blocks — no custom components.
+
+### Navigation (per role)
+
+> What sidebar groups and items does each role see? Order matters — most-used first.
+
+| Role | Sidebar groups | Notes |
+|------|---------------|-------|
+| | | |
+
+### Dashboard Widgets (per role)
+
+> What does each role see on their dashboard after login? Widgets should answer "what do I need to do right now?"
+
+| Widget | Roles that see it | Data shown | Click-through |
+|--------|------------------|------------|---------------|
+| | | | |
+
+### Custom Pages
+
+> Pages beyond standard CRM CRUD. Each page is a backend page auto-discovered from `backend/<module>/<path>/page.tsx`.
+
+| Page | URL pattern | Role | Purpose | OM pattern |
+|------|------------|------|---------|------------|
+| | `/backend/...` | | | CrudForm / DataTable / custom |
+
+### Widget Injections
+
+> Where custom widgets inject into existing OM pages (detail pages, list pages).
+
+| Widget | Injects into | Injection spot | Data |
+|--------|-------------|---------------|------|
+| | | | |
+
+### Key User Flows
+
+> For each persona's primary task, trace the click path from login to completion.
+
+| Persona | Task | Flow (login → done) | Clicks | Notes |
+|---------|------|---------------------|--------|-------|
+| | | page → page → action → result | | |
+
+### Empty States
+
+> What does a first-time user see? Empty states should guide, not confuse.
+
+| Page/Widget | Empty state message | Action |
+|-------------|-------------------|--------|
+| | "No X yet. [Create one]" | Link to create page |
+
+#### Checklist
+- [ ] Every persona has a defined login-to-primary-task flow `Mat`
+- [ ] Navigation grouping matches how users think about their work `Krug`
+- [ ] Dashboard widgets answer "what to do next" not just "data" `Krug`
+- [ ] Empty states are helpful, not blank pages `Krug`
+- [ ] Custom pages use OM patterns (CrudForm, DataTable) — no custom UI `Piotr`
+- [ ] Click count from login to primary task is ≤ 3 for each persona `Krug`
+
+---
+
 ## 4. Workflow Gap Analysis `Piotr`
 
 > Gap analysis maps each workflow step to OM platform capability.
