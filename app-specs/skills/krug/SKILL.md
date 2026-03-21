@@ -139,10 +139,12 @@ Step 3: ...
 
 Like Vernon challenges domain model, Krug challenges UI architecture. After Mat defines §3.5, Krug reviews it.
 
-### Subagent prompt
+**Dispatch strategy:** One subagent per workflow (parallel). Each subagent walks one workflow end-to-end. Results consolidated by Mat. Cross-workflow transitions reviewed in a final pass after all workflow reviews return.
 
-The subagent receives:
-1. The full App Spec (§2 Identity Model, §3 Workflows, §3.5 UI Architecture, §5 User Stories)
+### Subagent prompt (one per workflow)
+
+Each subagent receives:
+1. The full App Spec (§2 Identity Model, §3 specific workflow, §3.5 UI Architecture, §5 relevant user stories)
 2. OM UI reference: `open-mercato/.ai/skills/codex/backend-ui-design/SKILL.md`
 3. This instruction:
 
