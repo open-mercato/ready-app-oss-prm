@@ -10,7 +10,7 @@ import {
 } from '@open-mercato/core/modules/customers/data/entities'
 import { Dictionary, DictionaryEntry } from '@open-mercato/core/modules/dictionaries/data/entities'
 import { Organization } from '@open-mercato/core/modules/directory/data/entities'
-import { User, Role, UserRole, UserAcl } from '@open-mercato/core/modules/auth/data/entities'
+import { User, Role, UserRole, UserAcl, RoleAcl } from '@open-mercato/core/modules/auth/data/entities'
 import { ensureCustomFieldDefinitions } from '@open-mercato/core/modules/entities/lib/field-definitions'
 import { hashForLookup } from '@open-mercato/shared/lib/encryption/aes'
 import { seedDashboardDefaultsForTenant } from '@open-mercato/core/modules/dashboards/cli'
@@ -445,22 +445,41 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
   ],
 }
 
-// Seed PRM roles. Features are assigned via defaultRoleFeatures (OM core
-// handles custom role keys since PR #1040, merged 2026-03-20).
+// Seed PRM roles + ACL. Workaround: manually seed RoleAcl because the
+// current canary (0.4.9-develop-97d4cca067) predates PR #1040 merge.
+// Once a canary with PR #1040 is available without build issues, remove
+// the RoleAcl seeding and rely on defaultRoleFeatures alone.
 async function seedPrmRoles(
   em: import('@mikro-orm/postgresql').EntityManager,
   scope: SeedScope
 ): Promise<void> {
-  for (const roleName of Object.keys(PRM_ROLE_FEATURES)) {
-    const existing = await em.findOne(Role, {
+  for (const [roleName, features] of Object.entries(PRM_ROLE_FEATURES)) {
+    let role = await em.findOne(Role, {
       name: roleName,
       tenantId: scope.tenantId,
       deletedAt: null,
     })
-    if (!existing) {
-      em.persist(em.create(Role, {
+    if (!role) {
+      role = em.create(Role, {
         name: roleName,
         tenantId: scope.tenantId,
+        createdAt: new Date(),
+      })
+      em.persist(role)
+      await em.flush()
+    }
+
+    // Seed ACL — workaround until canary with PR #1040 fix is available
+    const existingAcl = await em.findOne(RoleAcl, {
+      role,
+      tenantId: scope.tenantId,
+    })
+    if (!existingAcl) {
+      em.persist(em.create(RoleAcl, {
+        role,
+        tenantId: scope.tenantId,
+        featuresJson: features,
+        isSuperAdmin: false,
         createdAt: new Date(),
       }))
     }
