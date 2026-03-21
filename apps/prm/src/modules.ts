@@ -2,74 +2,41 @@
 // - id: module id (plural snake_case; special cases: 'auth')
 // - from: '@open-mercato/core' | '@app' | custom alias/path in future
 //
-// TODO: Full cleanup — remove unused modules (catalog, sales, payment_gateways,
-// shipping_carriers, content, planner, resources, staff, sync_akeneo, inbox_ops).
-// Requires fresh DB (migration history references their tables).
-// Tracked in App Spec §9 anti-patterns.
-
-import { parseBooleanWithDefault } from '@open-mercato/shared/lib/boolean'
+// Only modules used by PRM are registered (per App Spec §4.5).
+// This is an example app distributed via create-mercato-app --example prm.
 
 export type ModuleEntry = { id: string; from?: '@open-mercato/core' | '@app' | string }
 
 export const enabledModules: ModuleEntry[] = [
+  // --- Platform infrastructure ---
   { id: 'dashboards', from: '@open-mercato/core' },
   { id: 'auth', from: '@open-mercato/core' },
   { id: 'directory', from: '@open-mercato/core' },
-  { id: 'customers', from: '@open-mercato/core' },
   { id: 'perspectives', from: '@open-mercato/core' },
-  { id: 'entities', from: '@open-mercato/core' },
   { id: 'configs', from: '@open-mercato/core' },
   { id: 'query_index', from: '@open-mercato/core' },
   { id: 'audit_logs', from: '@open-mercato/core' },
   { id: 'attachments', from: '@open-mercato/core' },
-  { id: 'catalog', from: '@open-mercato/core' },
-  { id: 'sales', from: '@open-mercato/core' },
   { id: 'api_keys', from: '@open-mercato/core' },
-  { id: 'dictionaries', from: '@open-mercato/core' },
-  { id: 'content', from: '@open-mercato/content' },
-  { id: 'onboarding', from: '@open-mercato/onboarding' },
   { id: 'api_docs', from: '@open-mercato/core' },
   { id: 'business_rules', from: '@open-mercato/core' },
   { id: 'feature_toggles', from: '@open-mercato/core' },
-  { id: 'workflows', from: '@open-mercato/core' },
-  { id: 'search', from: '@open-mercato/search' },
-  { id: 'currencies', from: '@open-mercato/core' },
-  { id: 'planner', from: '@open-mercato/core' },
-  { id: 'resources', from: '@open-mercato/core' },
-  { id: 'staff', from: '@open-mercato/core' },
-  { id: 'events', from: '@open-mercato/events' },
   { id: 'notifications', from: '@open-mercato/core' },
   { id: 'progress', from: '@open-mercato/core' },
-  { id: 'integrations', from: '@open-mercato/core' },
-  { id: 'data_sync', from: '@open-mercato/core' },
   { id: 'messages', from: '@open-mercato/core' },
   { id: 'translations', from: '@open-mercato/core' },
+  { id: 'search', from: '@open-mercato/search' },
+  { id: 'events', from: '@open-mercato/events' },
   { id: 'scheduler', from: '@open-mercato/scheduler' },
-  { id: 'inbox_ops', from: '@open-mercato/core' },
-  { id: 'payment_gateways', from: '@open-mercato/core' },
-  { id: 'gateway_stripe', from: '@open-mercato/gateway-stripe' },
-  { id: 'sync_akeneo', from: '@open-mercato/sync-akeneo' },
-  { id: 'shipping_carriers', from: '@open-mercato/core' },
+
+  // --- OM core modules used by PRM (App Spec §4.5) ---
+  { id: 'customers', from: '@open-mercato/core' },
   { id: 'customer_accounts', from: '@open-mercato/core' },
   { id: 'portal', from: '@open-mercato/core' },
+  { id: 'entities', from: '@open-mercato/core' },
+  { id: 'dictionaries', from: '@open-mercato/core' },
+  { id: 'workflows', from: '@open-mercato/core' },
 
   // --- App module ---
   { id: 'partnerships', from: '@app' },
-
-  // REMOVED: { id: 'example', from: '@app' } — scaffold boilerplate
-  // REMOVED: { id: 'ai_assistant', from: '@open-mercato/ai-assistant' } — not used by PRM
 ]
-
-const enterpriseModulesEnabled = parseBooleanWithDefault(process.env.OM_ENABLE_ENTERPRISE_MODULES, false)
-const enterpriseSsoEnabled = parseBooleanWithDefault(process.env.OM_ENABLE_ENTERPRISE_MODULES_SSO, false)
-
-if (enterpriseModulesEnabled) {
-  enabledModules.push(
-    { id: 'record_locks', from: '@open-mercato/enterprise' },
-    { id: 'system_status_overlays', from: '@open-mercato/enterprise' },
-  )
-}
-
-if (enterpriseModulesEnabled && enterpriseSsoEnabled) {
-  enabledModules.push({ id: 'sso', from: '@open-mercato/enterprise' })
-}
