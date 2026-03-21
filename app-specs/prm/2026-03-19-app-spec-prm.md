@@ -466,14 +466,14 @@ PM has license sale -> opens "Create License Deal" -> searches all companies acr
 | Partnership Manager | **CRM** (Companies, People, Deals, Pipeline), **Partnerships** (Add Agency, Agencies list), **Directory** (Organizations) | PM spends most time in CRM (cross-org) and Partnerships (manage agencies). Directory needed for org management. |
 | Agency Admin | **CRM** (Companies, People, Deals, Pipeline), **Users** (manage team) | Admin works primarily in CRM. Users section for creating BD/Contributor accounts. No Partnerships group — that's PM-only. |
 | Business Developer | **CRM** (Companies, People, Deals, Pipeline) | BD lives in CRM. Creates prospects, manages deals. No user management, no partnerships. |
-| Contributor | _(minimal — dashboard only)_ | Contributor sees dashboard with onboarding checklist. No CRM sidebar items (no `customers.*` feature). Phase 2 adds WIC score widget. |
+| Contributor | _(minimal — dashboard + profile)_ | Contributor sees dashboard with onboarding checklist (1 item: set GH username). Profile page always accessible via header dropdown. No CRM sidebar items (no `customers.*` feature). Phase 2 adds WIC score widget. |
 
 ### Dashboard Widgets (per role)
 
 | Widget | Roles that see it | Data shown | Click-through |
 |--------|------------------|------------|---------------|
-| Onboarding Checklist | Admin (4 items), BD (2 items) | Pending steps: fill profile, add case study, create BD, create Contributor (Admin) / add prospect, create deal (BD). Disappears when done. | Each item links to relevant page |
-| WIP Count | PM, BD (own org) | WIP deals this month per agency (PM: all agencies table, BD: own agency number) | PM: click agency row → switch to that org's CRM |
+| Onboarding Checklist | Admin (4 items), BD (2 items), Contributor (1 item) | Pending steps: fill profile, add case study, create BD, create Contributor (Admin) / add prospect, create deal (BD) / set GitHub username (Contributor). Disappears when done. **Display order: first widget on dashboard** (above KPI widgets). | Each item links to relevant page. "Create BD" links to `/backend/users/create` with note: "Assign the partner_member role." |
+| WIP Count | PM (cross-org table), BD (own org number) | PM: all agencies WIP table (cross-org query, visible on PM's home-org dashboard). BD: own agency WIP count. | PM: click agency row → org switches → see agency CRM |
 | Tier Status | Admin, BD (Phase 2+) | Current tier, progress to next, grace period warning | Link to tier detail page |
 
 ### Custom Pages
@@ -481,7 +481,7 @@ PM has license sale -> opens "Create License Deal" -> searches all companies acr
 | Page | URL pattern | Role | Purpose | OM pattern |
 |------|------------|------|---------|------------|
 | Add Agency | `/backend/partnerships/add-agency` | PM | One-step agency creation: name + email + demo data checkbox. Returns invite message. | Custom form (not CrudForm — custom submit with atomic multi-entity creation) |
-| Agency List | `/backend/partnerships/agencies` | PM | DataTable of all agencies: name, org, admin email, tier, WIP count, created date | DataTable with filters |
+| Agency List | `/backend/partnerships/agencies` | PM | DataTable of all agencies: name, org, admin email, tier, WIP count, onboarding status (EnumBadge: complete/incomplete), created date | DataTable with filters |
 | Tier Review | `/backend/partnerships/tier-review` | PM (Phase 2+) | Pending TierChangeProposals for approval/rejection | DataTable + detail dialog |
 | RFP Campaigns | `/backend/partnerships/rfp` | PM (Phase 3+) | Campaign list + create form + response comparison | DataTable + CrudForm |
 | RFP Response | `/backend/partnerships/rfp/[id]/respond` | Admin, BD (Phase 3+) | Submit response to RFP with text + attachments | CrudForm |
@@ -504,25 +504,27 @@ PM has license sale -> opens "Create License Deal" -> searches all companies acr
 | Admin | Create BD account | Login → Sidebar "Users" → "Create User" → Fill email + password + select role → Done | 3 | Standard OM user creation page |
 | BD | Create deal | Login → Sidebar "Deals" → "New Deal" → Fill form → Save | 3 | Standard CRM deal creation |
 | BD | Move deal to SQL | Login → Sidebar "Pipeline" → Drag deal to SQL stage | 2 | Pipeline board view, drag & drop |
+| Contributor | Set GH username | Login → Dashboard (checklist: "Set GitHub username") → Click → Profile page → Fill field → Save | 3 | Checklist item links to profile page. OM profile page always accessible via header dropdown. |
 
 ### Empty States
 
 | Page/Widget | Empty state message | Action |
 |-------------|-------------------|--------|
 | Dashboard (Admin, first login) | Onboarding checklist widget shows all items pending | Each item links to relevant page |
-| Dashboard (PM, own org) | "Your organization has no CRM data. Switch to an agency to view their pipeline." | Org switcher highlighted |
+| Dashboard (PM, own org) | PM sees cross-org WIP widget (all agencies table) on their home-org dashboard. No generic empty state needed — if no agencies exist, WIP widget shows "No agencies yet" with link to Add Agency. | WIP widget is PM's primary dashboard content |
 | CRM Companies (new agency) | "No companies yet. Add your first prospect." | Link to Create Company |
 | CRM Deals (new agency) | "No deals yet. Create your first deal to start tracking pipeline." | Link to Create Deal |
-| WIP Widget (new agency) | "No WIP this month. Deals reaching SQL stage will appear here." | — |
+| WIP Widget (new agency) | "No WIP this month. Move a deal to Sales Qualified to start counting." | — |
 | Agency List (PM, no agencies) | "No agencies yet. Add your first agency to start the partner program." | Link to Add Agency |
 
 #### Checklist
 - [x] Every persona has a defined login-to-primary-task flow `Mat`
-- [ ] Navigation grouping matches how users think about their work `Krug`
-- [ ] Dashboard widgets answer "what to do next" not just "data" `Krug`
-- [ ] Empty states are helpful, not blank pages `Krug`
+- [x] Navigation grouping matches how users think about their work `Krug` — reviewed 2026-03-22, no blockers
+- [x] Dashboard widgets answer "what to do next" not just "data" `Krug` — checklist first, KPI widgets below
+- [x] Empty states are helpful, not blank pages `Krug` — PM dashboard uses cross-org WIP widget instead of empty state, agency empty states have CTAs
 - [x] Custom pages use OM patterns (CrudForm, DataTable) `Piotr`
-- [ ] Click count from login to primary task is ≤ 3 for each persona `Krug`
+- [x] Click count from login to primary task is ≤ 3 for each persona `Krug` — all flows verified ≤ 3 clicks
+- [x] Contributor has actionable UI in Phase 1 `Krug` — onboarding checklist with "Set GitHub username" + profile page via header dropdown
 
 ---
 
