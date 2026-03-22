@@ -191,18 +191,20 @@ test.describe('TC-PRM-002: WIP Count KPI Dashboard Widget API', () => {
       sqlStageId = await findSqlStage(request, token, pipelineId)
       preSqlStageId = await findPreSqlStage(request, token, pipelineId)
 
-      companyId = await createCompany(request, token, `QA TC-PRM-002 T1 Co ${Date.now()}`)
+      // Use BD user token for deal creation so deals land in BD user's org
+      // (wip-count query scopes by org, so deals must be in the same org)
+      companyId = await createCompany(request, wipToken!, `QA TC-PRM-002 T1 Co ${Date.now()}`)
       const ts = Date.now()
 
       // Create 3 deals, start all at pre-SQL stage
-      const deal1 = await createDeal(request, token, `QA TC-PRM-002 T1 Deal A ${ts}`, companyId, pipelineId, preSqlStageId)
-      const deal2 = await createDeal(request, token, `QA TC-PRM-002 T1 Deal B ${ts}`, companyId, pipelineId, preSqlStageId)
-      const deal3 = await createDeal(request, token, `QA TC-PRM-002 T1 Deal C ${ts}`, companyId, pipelineId, preSqlStageId)
+      const deal1 = await createDeal(request, wipToken!, `QA TC-PRM-002 T1 Deal A ${ts}`, companyId, pipelineId, preSqlStageId)
+      const deal2 = await createDeal(request, wipToken!, `QA TC-PRM-002 T1 Deal B ${ts}`, companyId, pipelineId, preSqlStageId)
+      const deal3 = await createDeal(request, wipToken!, `QA TC-PRM-002 T1 Deal C ${ts}`, companyId, pipelineId, preSqlStageId)
       dealIds.push(deal1, deal2, deal3)
 
       // Move only 2 deals to SQL stage — triggers wip_registered_at stamp
-      await moveDealToStage(request, token, deal1, sqlStageId)
-      await moveDealToStage(request, token, deal2, sqlStageId)
+      await moveDealToStage(request, wipToken!, deal1, sqlStageId)
+      await moveDealToStage(request, wipToken!, deal2, sqlStageId)
       // deal3 stays at pre-SQL — no WIP stamp
 
       const currentMonth = toYearMonth()
@@ -221,9 +223,9 @@ test.describe('TC-PRM-002: WIP Count KPI Dashboard Widget API', () => {
         `Expected count >= 2 (the 2 deals we moved to SQL), got ${body!.count}`,
       ).toBeGreaterThanOrEqual(2)
     } finally {
-      if (token) {
-        for (const id of dealIds) await deleteDeal(request, token, id)
-        await deleteCompany(request, token, companyId)
+      if (wipToken) {
+        for (const id of dealIds) await deleteDeal(request, wipToken, id)
+        await deleteCompany(request, wipToken, companyId)
       }
     }
   })

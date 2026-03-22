@@ -20,7 +20,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "jest --config jest.config.cjs",
-    "test:integration": "mercato test integration",
+    "test:integration": "npx playwright test --config .ai/qa/tests/playwright.config.ts",
     "test:integration:ephemeral": "mercato test ephemeral",
     "test:integration:ephemeral:start": "mercato test ephemeral --start-only",
     "test:integration:report": "mercato test coverage",

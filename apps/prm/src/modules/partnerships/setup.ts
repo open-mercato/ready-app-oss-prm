@@ -10,7 +10,7 @@ import {
 } from '@open-mercato/core/modules/customers/data/entities'
 import { Dictionary, DictionaryEntry } from '@open-mercato/core/modules/dictionaries/data/entities'
 import { Organization } from '@open-mercato/core/modules/directory/data/entities'
-import { User, Role, UserRole, UserAcl } from '@open-mercato/core/modules/auth/data/entities'
+import { User, Role, RoleAcl, UserRole, UserAcl } from '@open-mercato/core/modules/auth/data/entities'
 import { ensureCustomFieldDefinitions } from '@open-mercato/core/modules/entities/lib/field-definitions'
 import { hashForLookup } from '@open-mercato/shared/lib/encryption/aes'
 import { seedDashboardDefaultsForTenant } from '@open-mercato/core/modules/dashboards/cli'
@@ -524,11 +524,13 @@ async function seedUser(
     console.warn(`[partnerships.seedExamples] Role "${opts.roleName}" not found — user "${opts.email}" created without role`)
   }
 
-  if (opts.restrictToOrg) {
+  if (opts.restrictToOrg && role) {
+    const roleAcl = await em.findOne(RoleAcl, { role, tenantId: opts.tenantId })
     em.persist(em.create(UserAcl, {
       user,
       tenantId: opts.tenantId,
       organizationsJson: [opts.organizationId],
+      featuresJson: roleAcl?.featuresJson ?? [],
       isSuperAdmin: false,
       createdAt: new Date(),
     }))

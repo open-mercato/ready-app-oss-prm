@@ -42,10 +42,13 @@ export const interceptors: ApiInterceptor[] = [
 
       if (!dealId || !pipelineStageId) return {}
 
-      const stage = await context.em.findOne(CustomerPipelineStage, { id: pipelineStageId })
+      // Fork EM to avoid dirty state from the CRUD route's prior flush
+      const em = context.em.fork()
+
+      const stage = await em.findOne(CustomerPipelineStage, { id: pipelineStageId })
       if (!stage || stage.order < PRM_SQL_STAGE_ORDER) return {}
 
-      const existingValue = await context.em.findOne(CustomFieldValue, {
+      const existingValue = await em.findOne(CustomFieldValue, {
         entityId: DEAL_ENTITY_ID,
         recordId: dealId,
         fieldKey: WIP_FIELD_KEY,
@@ -54,16 +57,16 @@ export const interceptors: ApiInterceptor[] = [
 
       if (existingValue?.valueText) return {}
 
-      const cfValue = new CustomFieldValue()
-      cfValue.entityId = DEAL_ENTITY_ID
-      cfValue.recordId = dealId
-      cfValue.fieldKey = WIP_FIELD_KEY
-      cfValue.valueText = new Date().toISOString()
-      cfValue.organizationId = context.organizationId
-      cfValue.tenantId = context.tenantId
-
-      context.em.persist(cfValue)
-      await context.em.flush()
+      em.persist(em.create(CustomFieldValue, {
+        entityId: DEAL_ENTITY_ID,
+        recordId: dealId,
+        fieldKey: WIP_FIELD_KEY,
+        valueText: new Date().toISOString(),
+        organizationId: context.organizationId,
+        tenantId: context.tenantId,
+        createdAt: new Date(),
+      }))
+      await em.flush()
 
       return {}
     },
