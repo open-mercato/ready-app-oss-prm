@@ -792,21 +792,34 @@ export const setup: ModuleSetupConfig = {
     await seedDictionaries(ctx.em, scope)
     await seedPrmRoles(ctx.em, scope)
 
-    // Replace default OM dashboard widgets with PRM-only widgets for built-in roles.
-    // seedDashboardDefaultsForTenant with explicit widgetIds does a full replace
-    // when records already exist (cli.ts line 76). Custom PRM roles (partner_admin etc.)
-    // are already filtered by feature gating — they don't have customers.widgets.* features.
+    // Replace default OM dashboard widgets with PRM-only widgets.
+    // PM gets cross-org management widgets (visible on home org dashboard).
+    // Agency roles get per-agency widgets (visible when in agency org).
+    // seedDashboardDefaultsForTenant with explicit widgetIds does a full replace.
+    const PM_WIDGETS = [
+      'partnerships.dashboard.wip-count', // cross-org table variant for PM
+      // Phase 2+: 'partnerships.dashboard.pending-proposals',
+    ]
+    const AGENCY_WIDGETS = [
+      'partnerships.dashboard.onboarding-checklist',
+      'partnerships.dashboard.wip-count', // per-org single-number variant
+      // Phase 2+: 'partnerships.dashboard.tier-status',
+      // Phase 3+: 'partnerships.dashboard.incoming-rfps',
+    ]
+    // PM role — management widgets
     await seedDashboardDefaultsForTenant(ctx.em, {
       tenantId: ctx.tenantId,
       organizationId: ctx.organizationId,
-      roleNames: [
-        'admin', 'employee',
-        ...Object.keys(PRM_ROLE_FEATURES),
-      ],
-      widgetIds: [
-        'partnerships.dashboard.wip-count',
-        'partnerships.dashboard.onboarding-checklist',
-      ],
+      roleNames: ['partnership_manager'],
+      widgetIds: PM_WIDGETS,
+      logger: () => {},
+    })
+    // Agency roles — per-agency widgets
+    await seedDashboardDefaultsForTenant(ctx.em, {
+      tenantId: ctx.tenantId,
+      organizationId: ctx.organizationId,
+      roleNames: ['admin', 'employee', 'partner_admin', 'partner_member', 'partner_contributor'],
+      widgetIds: AGENCY_WIDGETS,
       logger: () => {},
     })
   },

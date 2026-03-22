@@ -470,14 +470,20 @@ PM has license sale -> opens "Create License Deal" -> searches all companies acr
 
 ### Dashboard Widgets (per role)
 
-| Widget | Roles that see it | Data shown | Click-through |
-|--------|------------------|------------|---------------|
-| Onboarding Checklist | Admin (4 items), BD (2 items), Contributor (1 item) | Pending steps: fill profile, add case study, create BD, create Contributor (Admin) / add prospect, create deal (BD) / set GitHub username with format hint (Contributor). Shows brief "All done!" flash before disappearing. **Display order: first widget on dashboard** (above KPI widgets). | Each item links to relevant page. "Create BD" links to `/backend/users/create` with note: "Assign the partner_member role." |
-| WIP Count | PM (cross-org table), BD (own org number) | PM: all agencies WIP table (cross-org query, visible on PM's home-org dashboard). BD: own agency WIP count. Clicking agency row in WIP widget triggers same org switch as org switcher dropdown — header org label updates. | PM: click agency row → org switches → see agency CRM |
-| Tier Status | Admin, BD (Phase 2+) | Current tier, KPI values vs thresholds, progress %, grace period warning (EnumBadge: OK/Grace/Downgrade) | Link to `/backend/partnerships/my-tier` (read-only tier history + KPI breakdown for own agency) |
-| Pending Proposals | PM (Phase 2+) | Count of TierChangeProposals in PendingApproval state. Badge shows count. | Link to `/backend/partnerships/tier-review` |
-| Incoming RFPs | BD, Admin (Phase 3+) | Active RFP campaigns where agency is in audience. Shows: title, deadline, response status (Not submitted / Submitted). | Link to `/backend/partnerships/rfp/[id]/respond` |
-| WIC Score | Contributor (Phase 2+), Admin (aggregate in Tier widget) | Contributor: total WIC this month. "View breakdown" link. | Link to `/backend/partnerships/my-wic` (DataTable of ContributionUnits) |
+| Widget | Roles | Org context | Data shown | Click-through |
+|--------|-------|-------------|------------|---------------|
+| **Cross-org WIP Table** | PM only | PM home org (Open Mercato Backoffice) | All agencies table: agency name, WIP count this month, trend. Cross-org query bypassing standard org scoping. **PM's primary dashboard content.** | Click agency row → org switches (header updates) → see agency CRM |
+| **Pending Proposals** | PM only (Phase 2+) | PM home org | Count of TierChangeProposals in PendingApproval state. Badge shows count. | Link to `/backend/partnerships/tier-review` |
+| **Onboarding Checklist** | Admin (4 items), BD (2 items), Contributor (1 item) | Agency org only | Pending steps. Shows "All done!" flash before disappearing. **Display order: first widget** (above KPI widgets). | Each item links to relevant page |
+| **Per-org WIP Count** | Admin, BD | Agency org only | Own agency WIP count this month (single number). | — |
+| **Tier Status** | Admin, BD (Phase 2+) | Agency org only | Current tier, KPI values vs thresholds, progress %, grace period warning (EnumBadge) | Link to `/backend/partnerships/my-tier` |
+| **Incoming RFPs** | BD, Admin (Phase 3+) | Agency org only | Active RFP campaigns. Title, deadline, response status. | Link to response page |
+| **WIC Score** | Contributor (Phase 2+) | Agency org only | Total WIC this month. "View breakdown" link. | Link to `/backend/partnerships/my-wic` |
+
+**Dashboard widget seeding strategy:**
+- PM (`partnership_manager`): seed with `[cross-org-wip-table, pending-proposals]` at tenant level (`organizationId: null`)
+- Agency roles (`partner_admin`, `partner_member`, `partner_contributor`): seed with `[onboarding-checklist, per-org-wip-count, tier-status, incoming-rfps, wic-score]` at tenant level
+- OM `DashboardRoleWidgets` has `(roleId, tenantId, organizationId)` specificity — org-specific overrides possible in future
 
 ### Custom Pages
 
@@ -800,7 +806,7 @@ Success: PM opens "Create License Deal" -> searches all companies across all age
 Success: Org switcher shows all agencies, PM selects one, sees that agency's data (procedural read-only per OM RBAC design — technically full write). PM's own actions (RFP, tier approval) remain in PM context.
 
 **US-6.2** As PM, I log in and see my own organization (Open Mercato Backoffice) by default so that I start in my management context, not in an agency context.
-Success: PM logs in, lands on dashboard. No agency KPI widgets visible (PM's own org has no deals/WIP). Org switcher shows all agencies. PM must switch to an agency to see their KPI dashboard.
+Success: PM logs in, lands on dashboard scoped to Open Mercato Backoffice. Cross-org WIP widget (all-agencies table) is visible — this is PM's primary management view. Per-agency widgets (Onboarding Checklist, Tier Status, per-org WIP number) are NOT visible — PM must switch to an agency org to see those.
 
 **US-6.3** As Agency Admin, I log in and see only my agency's data so that I cannot access other agencies' CRM, deals, or KPIs.
 Success: Admin logs in, sees CRM with only their agency's companies, deals, case studies. Org switcher shows only their own organization — no other agencies listed. Cannot navigate to or access data from other agencies.
