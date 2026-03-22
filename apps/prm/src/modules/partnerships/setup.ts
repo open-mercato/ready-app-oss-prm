@@ -799,7 +799,10 @@ export const setup: ModuleSetupConfig = {
     await seedDashboardDefaultsForTenant(ctx.em, {
       tenantId: ctx.tenantId,
       organizationId: ctx.organizationId,
-      roleNames: ['admin', 'employee'],
+      roleNames: [
+        'admin', 'employee',
+        ...Object.keys(PRM_ROLE_FEATURES),
+      ],
       widgetIds: [
         'partnerships.dashboard.wip-count',
         'partnerships.dashboard.onboarding-checklist',
