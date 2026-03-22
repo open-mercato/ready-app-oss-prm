@@ -186,7 +186,7 @@ test.describe('TC-PRM-002: WIP Count KPI Dashboard Widget API', () => {
 
     try {
       token = await getAuthToken(request, 'admin')
-      wipToken = await getAuthToken(request, 'partner-member@demo.local', 'Demo123!')
+      wipToken = await getAuthToken(request, 'acme-bd@demo.local', 'Demo123!')
       pipelineId = await findPrmPipeline(request, token)
       sqlStageId = await findSqlStage(request, token, pipelineId)
       preSqlStageId = await findPreSqlStage(request, token, pipelineId)
@@ -246,7 +246,7 @@ test.describe('TC-PRM-002: WIP Count KPI Dashboard Widget API', () => {
 
     try {
       token = await getAuthToken(request, 'admin')
-      wipToken = await getAuthToken(request, 'partner-member@demo.local', 'Demo123!')
+      wipToken = await getAuthToken(request, 'acme-bd@demo.local', 'Demo123!')
       pipelineId = await findPrmPipeline(request, token)
       sqlStageId = await findSqlStage(request, token, pipelineId)
       preSqlStageId = await findPreSqlStage(request, token, pipelineId)
@@ -299,7 +299,7 @@ test.describe('TC-PRM-002: WIP Count KPI Dashboard Widget API', () => {
 
     try {
       token = await getAuthToken(request, 'admin')
-      wipToken = await getAuthToken(request, 'partner-member@demo.local', 'Demo123!')
+      wipToken = await getAuthToken(request, 'acme-bd@demo.local', 'Demo123!')
       pipelineId = await findPrmPipeline(request, token)
       sqlStageId = await findSqlStage(request, token, pipelineId)
       preSqlStageId = await findPreSqlStage(request, token, pipelineId)
@@ -352,7 +352,7 @@ test.describe('TC-PRM-002: WIP Count KPI Dashboard Widget API', () => {
    * actually exercised.
    */
   test('T4: invalid month format returns 400', async ({ request }) => {
-    const wipToken = await getAuthToken(request, 'partner-member@demo.local', 'Demo123!')
+    const wipToken = await getAuthToken(request, 'acme-bd@demo.local', 'Demo123!')
 
     const invalidMonths = ['2026-3', '2026/03', 'March-2026', 'not-a-date', '2026-00', '2026-13']
 

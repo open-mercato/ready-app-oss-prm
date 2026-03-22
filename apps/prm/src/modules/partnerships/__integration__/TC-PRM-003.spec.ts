@@ -10,8 +10,8 @@ import { createCompanyFixture, createDealFixture, deleteEntityIfExists } from '@
  * Source: apps/prm/src/modules/partnerships/api/get/onboarding-status.ts
  * Route: GET /api/partnerships/onboarding-status
  *
- * These tests authenticate as the seeded demo users (partner-admin@demo.local /
- * partner-member@demo.local). Because seedExamples runs on app startup, the demo
+ * These tests authenticate as the seeded demo users (acme-admin@demo.local /
+ * acme-bd@demo.local). Because seedExamples runs on app startup, the demo
  * org already contains companies, deals, case studies, and users with the BD /
  * Contributor roles — so all checklist items will be completed.
  *
@@ -72,7 +72,7 @@ function assertResponseShape(body: unknown): asserts body is OnboardingStatusRes
 // ---------------------------------------------------------------------------
 
 test.describe('TC-PRM-003: Admin role — onboarding checklist API contract', () => {
-  const ADMIN_EMAIL = 'partner-admin@demo.local'
+  const ADMIN_EMAIL = 'acme-admin@demo.local'
   const ADMIN_PASSWORD = 'Demo123!'
 
   /**
@@ -161,8 +161,8 @@ test.describe('TC-PRM-003: Admin role — onboarding checklist API contract', ()
     // invite_bd and invite_contributor should be completed (demo users are seeded)
     const inviteBd = body.items.find((item) => item.id === 'invite_bd')
     const inviteContributor = body.items.find((item) => item.id === 'invite_contributor')
-    expect(inviteBd!.completed, 'invite_bd should be completed — partner-member@demo.local is seeded').toBe(true)
-    expect(inviteContributor!.completed, 'invite_contributor should be completed — partner-contributor@demo.local is seeded').toBe(true)
+    expect(inviteBd!.completed, 'invite_bd should be completed — acme-bd@demo.local is seeded').toBe(true)
+    expect(inviteContributor!.completed, 'invite_contributor should be completed — acme-contributor@demo.local is seeded').toBe(true)
 
     // allCompleted must be consistent with items
     const expectedAllCompleted = body.items.every((item) => item.completed)
@@ -175,7 +175,7 @@ test.describe('TC-PRM-003: Admin role — onboarding checklist API contract', ()
 // ---------------------------------------------------------------------------
 
 test.describe('TC-PRM-003: BD role — onboarding checklist API contract', () => {
-  const BD_EMAIL = 'partner-member@demo.local'
+  const BD_EMAIL = 'acme-bd@demo.local'
   const BD_PASSWORD = 'Demo123!'
 
   /**
