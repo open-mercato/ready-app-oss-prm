@@ -414,7 +414,7 @@ External persona?
 
 | Role | Sidebar groups | Notes |
 |------|---------------|-------|
-| **Admin** (Backend) | Event Command Center, Competitions, Tracks, Teams, Projects, Demos & Judging, Sponsors & Prizes, Incidents, Check-In | Command Center on top — "what needs attention now" |
+| **Admin** (Backend) | Competitions, Participants, Tracks, Teams, Projects, Demos & Judging, Sponsors & Prizes, Incidents, Check-In, Event Command Center | Competitions first — admin starts here. Participants added (Krug fix). Command Center last — monitoring, not setup. |
 | **Participant** (Portal) | Dashboard, Competition, Agenda, Participants, Announcements, My Team, Browse Teams, My Project, Presentations, Vote, Results, Sponsors & Prizes | Stage-aware: items always visible, unavailable = disabled with tooltip |
 | **Judge** (Portal) | Dashboard, Competition, Agenda, Announcements, Judging, Presentations, Results, Sponsors & Prizes | Judging is the primary item |
 | **Mentor** (Portal) | Dashboard, Competition, Agenda, Announcements, Mentor Tracks, Results, Sponsors & Prizes | Read-only in v1 |
@@ -439,14 +439,14 @@ External persona?
 | Agenda | `/portal/agenda` | All | Timeline with "now" indicator, filter by track | Always |
 | Participants Directory | `/portal/participants` | All | Search/filter by skills, org, looking-for-team | Always |
 | Announcements | `/portal/announcements` | All | Feed with priority (info/warning/urgent) | Always |
-| My Team | `/portal/my-team` | Participant | Roster, invitations, track selection | TEAM_FORMATION+ |
+| My Team | `/portal/my-team` | Participant | Roster, pending join requests (incoming + outgoing), invitations, track selection | TEAM_FORMATION+ |
 | Browse Teams | `/portal/teams` | Participant | Teams with spots, join request | TEAM_FORMATION, TRACK_SELECTION |
 | My Project | `/portal/my-project` | Participant | Editor, submit, deadline countdown | HACKING+ |
 | Presentations | `/portal/presentations` | All | Live queue, timer, current/on-deck | DEMOS+ |
 | Kiosk View | `/portal/presentations/kiosk` | All (projector) | Full-screen timer, dark bg, auto-advance via SSE | DEMOS+ |
-| Vote | `/portal/vote` | Participant | Grid of projects, vote/unvote, counter | Voting window |
+| Vote | `/portal/vote` | Participant | Grid of projects, vote/unvote, personal counter ("3 of 5 votes used") + per-project count | DELIBERATION (voting window = DELIBERATION stage) |
 | Judging | `/portal/judging` | Judge | Assigned projects, scored/unscored | DEMOS+ |
-| Score Card | `/portal/judging/:projectId` | Judge | Per-criterion scoring (tappable numbers), feedback | DEMOS+ |
+| Score Card | `/portal/judging/:projectId` | Judge | Per-criterion scoring (tappable numbers), feedback, "Now Presenting" header from SSE | DEMOS+ |
 | Mentor Tracks | `/portal/mentor-tracks` | Mentor | Tracks with teams/projects overview | Always |
 | Results | `/portal/results` | All | Leaderboard, scores, prizes, feedback | FINISHED+ |
 | Sponsors & Prizes | `/portal/sponsors` | All | Sponsor list, prize categories | Always |
@@ -470,15 +470,46 @@ External persona?
 |-------------|------------|--------|
 | My Team | "You haven't joined a team yet" | Browse Teams / Create Team |
 | Browse Teams | "No teams formed yet. Be the first!" | Create Team |
-| My Project | "Your project will appear here when hacking starts" | -- (stage gate) |
+| My Project | "Your project will appear here when hacking starts" | -- (stage gate). After submit: status banner says "Submitted" (not "Published") |
 | Judging | "No projects assigned yet" | -- (admin assigns panels) |
 | Announcements | "No announcements yet. Check back later" | -- |
-| Results | "Results will be published after judging" | -- (stage gate) |
+| Results (not finished) | "Results will be published after judging" | -- (stage gate) |
+| Results (finished, computing) | "Results are being calculated..." | Spinner. Distinct from "not published" |
+
+### UX Rules (Krug review)
+
+**Admin backend:**
+- Competitions first in sidebar — admin starts here, not Command Center (which is monitoring)
+- "Participants" gets its own sidebar item (CSV import, participant list)
+- Competition detail page shows "current competition" context — all sub-pages (Tracks, Teams, etc.) scope to selected competition
+- Stage advance uses business language: "Open Registration" not "Advance to OPEN"
+- "Publish Results" wired to stage advance DELIBERATION→FINISHED (same Stage Control panel)
+- Demo Control page: "Open Kiosk" button that opens kiosk URL in new tab
+
+**Portal:**
+- "Your Current Task" widget always renders FIRST on dashboard (above fold on mobile)
+- After join request: "Your Task" changes to "Waiting for Team X to accept" (prevents spam requests)
+- My Team page shows incoming join requests for team owners (Krug blocker fix)
+- Browse Teams: filter by track (dropdown), show team card with track + member count + skills wanted
+- Submit dialog: "Submit project — your project will be locked for editing. Judges will see it." (explicit copy)
+- Status labels use user language: DB "published" → UI "Submitted". DB "DELIBERATION" → UI "Judging in progress"
+- Project submit: team owner only. Non-owners see read-only with "Only your team owner can submit"
+- Deadline countdown escalation: color change at < 1 hour (yellow), < 15 min (red/pulsing)
+- Auto-save error: red indicator "Unsaved — check your connection" when save fails
+- Score Card: "Now Presenting: Team X" header from SSE (judge always knows which team is live)
+- Demo Control keyboard: Ctrl+Space (not bare Space) to avoid browser scroll conflict
+- Vote page: two separate counters — global "You used 3 of 5 votes" + per-card "12 votes"
+- Results page: leaderboard highlights "your team" row
+- Judge feedback visibility: `ProjectScore.comment` = public, `ProjectScore.privateNotes` = private, `CriterionScore.note` = private (never shown to teams)
+
+**Notifications (Krug transition fixes):**
+- Auto-published project: notify participant "Hacking ended — your project was submitted as-is"
+- Stage change: participant-facing label in notification, not stage enum name
 
 #### Checklist
 - [x] Every persona has a defined login-to-primary-task flow `Mat`
-- [ ] Navigation grouping matches how users think about their work `Krug` [PENDING KRUG]
-- [ ] Dashboard widgets answer "what to do next" not just "data" `Krug` [PENDING KRUG]
+- [x] Navigation grouping matches how users think about their work `Krug`
+- [x] Dashboard widgets answer "what to do next" not just "data" `Krug`
 - [x] Empty states are helpful, not blank pages `Krug`
 - [x] Custom pages use OM patterns (makeCrudRoute, DataTable, CrudForm for backend; PortalCard, PortalPageHeader for portal) `Piotr`
 - [x] Click count from login to primary task is <= 3 for each persona `Krug`
@@ -1080,7 +1111,10 @@ Phase 6: Incidents & Polish                9 commits    Cross-cutting
 | 1 | Should mentor role have active features in v1 (session requests) or read-only? | A) Read-only (current), B) Session requests | 2-3 commits if B | Mat | DECIDED: A, defer to v2 |
 | 2 | Single-round or two-round judging in v1? | A) Single round only, B) Support both | 3-4 extra commits if B | Mat | OPEN |
 | 3 | Should competition archiving trigger GDPR data anonymization automatically? | A) Manual, B) Automatic after retention period | 2-3 commits if B | Mat | OPEN |
-| 4 | Kiosk view — separate URL or same portal with ?mode=kiosk? | A) Separate portal page, B) Query param mode | Minimal diff | Mat | OPEN |
+| 4 | Kiosk view — separate URL or same portal with ?mode=kiosk? | A) Separate portal page, B) Query param mode | Minimal diff | Mat | DECIDED: A, separate page at `/portal/presentations/kiosk`. Demo Control page gets "Open Kiosk" button (Krug) |
+| 5 | When does voting window open? | A) DEMOS stage, B) DELIBERATION stage | Defines Vote page gate | Mat | DECIDED: B, voting = DELIBERATION. WF4 ends at DELIBERATION, voting is part of that stage (Krug blocker fix) |
+| 6 | Who can submit a project? | A) Team owner only, B) Any team member | UX clarity for non-owners | Mat | DECIDED: A, team owner only. Non-owners see read-only with explanation (Krug) |
+| 7 | Is CriterionScore.note visible to teams? | A) Public, B) Private | Trust/safety for judges | Mat | DECIDED: B, private. Only ProjectScore.comment is public feedback (Krug) |
 
 #### Checklist
 - [x] Every question has: options, impact, owner, status
@@ -1117,4 +1151,12 @@ Phase 6: Incidents & Polish                9 commits    Cross-cutting
 - §4 Gap Analysis, §4.5 Module Architecture, §6 Story Gap Analysis completed (Piotr)
 - 74 atomic commits across 6 phases, all `app` scope — zero upstream dependencies
 - Commit plans saved to `piotr-notes/commits-WF*.md`
-- Remaining: §3.5 Krug review pending
+- §3.5 Krug review completed — 7 blockers fixed, UX rules added:
+  - Admin sidebar reordered (Competitions first, not Command Center)
+  - "Participants" added to admin sidebar
+  - My Team shows incoming join requests for team owners
+  - Voting window defined: DELIBERATION stage
+  - Judge Score Card shows "Now Presenting" from SSE
+  - "Publish Results" wired to stage advance
+  - Results page: separate "calculating" loading state
+  - Resolved open questions: kiosk URL, voting window, submit ownership, feedback visibility
