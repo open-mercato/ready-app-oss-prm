@@ -6,7 +6,7 @@ Build Open Mercato applications from App Specs. Each app follows the same proces
 
 ```
 skills/                          # Shared AI skills (Mat, Piotr, Krug) + templates
-$OM_REPO/                        # OM monorepo (external, resolved via ensure-om-repo.sh)
+$OM_REPO/                        # OM monorepo (resolved: env var → ./open-mercato/ → .cache/)
 apps/<app-name>/                 # Ready app (code + app-spec + docs)
   app-spec/                      # Business analysis (forkable, drives AI-assisted dev)
   src/modules/                   # Application code
@@ -17,19 +17,21 @@ Each app is self-contained: code, spec, and docs live together in `apps/<app>/`.
 
 ## OM Monorepo Reference
 
-The OM monorepo is accessed via the `$OM_REPO` environment variable. It provides:
+The OM monorepo is referenced as `$OM_REPO` throughout this repo. It provides:
 
 1. **Platform skills** — `$OM_REPO/.ai/skills/<skill>/SKILL.md`. Read the file with Read tool, NOT the Skill tool.
 2. **Reference implementations** — `$OM_REPO/packages/core/src/modules/`. The `customers` module is the canonical CRUD reference.
 3. **Platform conventions** — `$OM_REPO/AGENTS.md`.
 
-**Before any implementation work:** ensure `$OM_REPO` is set and up to date:
+**`$OM_REPO` resolution** — check in order, use the first that exists:
+1. `$OM_REPO` env var (if set)
+2. `./open-mercato/` in repo root (if exists)
+3. `.cache/open-mercato/` (clone from GitHub if neither above exists)
+
+**Before any implementation work:** verify `$OM_REPO` is on `develop` and up to date:
 ```bash
-source scripts/ensure-om-repo.sh
 cd "$OM_REPO" && git checkout develop && git pull
 ```
-
-If `$OM_REPO` is not set, `ensure-om-repo.sh` will auto-clone to `.cache/open-mercato/`. OM team members can set `OM_REPO` in `.env` to point to their local checkout — see `.env.example`.
 
 ## Task Router
 
@@ -64,7 +66,7 @@ Before writing any spec or code, read these files in order:
 
 ## §2. OM Package Strategy
 
-The OM monorepo is at `$OM_REPO` (run `source scripts/ensure-om-repo.sh` if not set). Build and publish to Verdaccio from whichever branch has the changes you need.
+The OM monorepo is at `$OM_REPO` (see resolution order in §OM Monorepo Reference above). Build and publish to Verdaccio from whichever branch has the changes you need.
 
 1. **Check for open upstream PRs:** `gh pr list -R open-mercato/open-mercato --author matgren --state open`
 2. **If any PR has review comments** -> flag to user BEFORE starting any other work
