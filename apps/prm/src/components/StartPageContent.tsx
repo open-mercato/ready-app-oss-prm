@@ -19,9 +19,13 @@ function LoginButton({ email, password, title, variant = 'default' }: {
       const form = new FormData()
       form.set('email', email)
       form.set('password', password)
-      const res = await fetch('/api/auth/login', { method: 'POST', body: form })
+      const res = await fetch('/api/auth/login', { method: 'POST', body: form, credentials: 'same-origin' })
       if (res.ok) {
+        // Small delay to ensure browser has processed Set-Cookie before navigation
+        await new Promise((r) => setTimeout(r, 100))
         window.location.href = '/backend'
+      } else {
+        setLoading(false)
       }
     } catch {
       setLoading(false)
