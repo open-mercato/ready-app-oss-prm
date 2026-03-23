@@ -19,3 +19,6 @@ src/modules/*/migrations/.snapshot-*.json
 
 # Yarn
 yarn.lock
+
+# Local registry config (Verdaccio)
+.npmrc
