@@ -1,0 +1,6 @@
+# PRM Cron Triggers
+# Monthly tier evaluation — 1st of each month, 02:00 UTC
+0 2 1 * * curl -s -X POST https://$APP_HOST/api/partnerships/trigger-monthly-evaluation -H "x-api-key: $CRON_SECRET"
+
+# Daily WIC import trigger (Phase 4 — currently placeholder)
+# 0 6 * * * curl -s -X POST https://$APP_HOST/api/partnerships/trigger-wic-import -H "x-api-key: $CRON_SECRET"
