@@ -35,16 +35,18 @@ function currentYearMonth(): string {
   return `${year}-${month}`
 }
 
-async function readWic(
+async function readWicYear(
   em: EntityManager,
   organizationId: string,
-  month: string,
+  year: number,
   tenantId: string,
 ): Promise<number> {
+  const months = Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`)
+
   const monthCfvs = await em.find(CustomFieldValue, {
     entityId: CU_ENTITY_ID,
     fieldKey: 'month',
-    valueText: month,
+    valueText: { $in: months },
     organizationId,
     tenantId,
     deletedAt: null,
@@ -64,17 +66,14 @@ async function readWic(
   return scoreCfvs.reduce((sum, cfv) => sum + parseFloat(cfv.valueText ?? '0'), 0)
 }
 
-async function readWip(
+async function readWipYear(
   em: EntityManager,
   organizationId: string,
-  month: string,
+  year: number,
   tenantId: string,
 ): Promise<number> {
-  const [yearStr, monthStr] = month.split('-')
-  const year = parseInt(yearStr, 10)
-  const monthIndex = parseInt(monthStr, 10) - 1
-  const start = new Date(Date.UTC(year, monthIndex, 1, 0, 0, 0, 0))
-  const end = new Date(Date.UTC(year, monthIndex + 1, 1, 0, 0, 0, 0))
+  const start = new Date(Date.UTC(year, 0, 1, 0, 0, 0, 0))
+  const end = new Date(Date.UTC(year + 1, 0, 1, 0, 0, 0, 0))
 
   return em.count(CustomFieldValue, {
     entityId: DEAL_ENTITY_ID,
@@ -148,12 +147,11 @@ async function GET(req: Request) {
     const em = container.resolve('em') as EntityManager
     const now = new Date()
     const year = requestedYear ?? now.getUTCFullYear()
-    const month = currentYearMonth()
 
-    // Read live KPIs (same queries as worker)
+    // Read live KPIs — yearly totals
     const [wic, wip, min] = await Promise.all([
-      readWic(em, organizationId, month, tenantId),
-      readWip(em, organizationId, month, tenantId),
+      readWicYear(em, organizationId, year, tenantId),
+      readWipYear(em, organizationId, year, tenantId),
       readMin(em, organizationId, tenantId, year),
     ])
 
@@ -168,7 +166,7 @@ async function GET(req: Request) {
     // Current month evaluation state
     const evalState = await em.findOne(TierEvaluationState, {
       organizationId,
-      evaluationMonth: month,
+      evaluationMonth: currentYearMonth(),
       tenantId,
     })
     const gracePeriod = evalState?.status === 'GracePeriod'
@@ -182,9 +180,12 @@ async function GET(req: Request) {
     const pendingProposal = !!openProposal
 
     // Compute thresholds: current tier requirements (minimum to maintain)
-    const thresholds = tier
+    // WIC and WIP thresholds are monthly in TIER_THRESHOLDS — annualize (* 12)
+    // MIN is already yearly
+    const monthly = tier
       ? getCurrentTierThreshold(tier)
       : getCurrentTierThreshold('OM Agency')
+    const thresholds = { wic: monthly.wic * 12, wip: monthly.wip * 12, min: monthly.min }
 
     return NextResponse.json({
       tier,

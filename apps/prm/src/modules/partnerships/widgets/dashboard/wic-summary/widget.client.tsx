@@ -27,6 +27,14 @@ function currentYearMonth(): string {
   return `${year}-${month}`
 }
 
+function offsetMonth(yearMonth: string, delta: number): string {
+  const [year, month] = yearMonth.split('-').map(Number)
+  const date = new Date(year, month - 1 + delta, 1)
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  return `${y}-${m}`
+}
+
 async function loadWicScores(month: string): Promise<WicScoresResponse> {
   const call = await apiCall<WicScoresResponse>(
     `/api/partnerships/wic-scores?month=${encodeURIComponent(month)}`,
@@ -66,18 +74,17 @@ const WicSummaryWidget: React.FC<DashboardWidgetComponentProps> = ({
   onRefreshStateChange,
 }) => {
   const t = useT()
+  const [selectedMonth, setSelectedMonth] = React.useState<string>(currentYearMonth)
   const [data, setData] = React.useState<WicScoresResponse | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
-
-  const month = React.useMemo(() => currentYearMonth(), [])
 
   const refresh = React.useCallback(async () => {
     onRefreshStateChange?.(true)
     setLoading(true)
     setError(null)
     try {
-      const result = await loadWicScores(month)
+      const result = await loadWicScores(selectedMonth)
       setData(result)
     } catch (err) {
       console.error('Failed to load WIC summary widget data', err)
@@ -86,7 +93,7 @@ const WicSummaryWidget: React.FC<DashboardWidgetComponentProps> = ({
       setLoading(false)
       onRefreshStateChange?.(false)
     }
-  }, [month, onRefreshStateChange, t])
+  }, [selectedMonth, onRefreshStateChange, t])
 
   React.useEffect(() => {
     refresh().catch(() => {})
@@ -105,7 +112,7 @@ const WicSummaryWidget: React.FC<DashboardWidgetComponentProps> = ({
   }
 
   const totalScore = data?.totalWicScore ?? 0
-  const monthLabel = formatMonthLabel(data?.month ?? month)
+  const monthLabel = formatMonthLabel(data?.month ?? selectedMonth)
 
   // Determine dominant source from records
   const sources = data?.records?.map((r) => r.assessmentSource) ?? []
@@ -121,9 +128,29 @@ const WicSummaryWidget: React.FC<DashboardWidgetComponentProps> = ({
       <p className="text-5xl font-bold tabular-nums text-foreground">
         {totalScore.toFixed(1)}
       </p>
-      <p className="text-sm text-muted-foreground">
-        {t('partnerships.widgets.wicSummary.subtitle', { month: monthLabel })}
-      </p>
+      <div className="flex items-center gap-3 pt-1">
+        <button
+          type="button"
+          onClick={() => setSelectedMonth((prev) => offsetMonth(prev, -1))}
+          className="rounded p-1 hover:bg-muted/50 transition-colors"
+          aria-label="Previous month"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-muted-foreground" aria-hidden="true">
+            <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+        </button>
+        <span className="text-xs font-medium text-foreground">{monthLabel}</span>
+        <button
+          type="button"
+          onClick={() => setSelectedMonth((prev) => offsetMonth(prev, 1))}
+          className="rounded p-1 hover:bg-muted/50 transition-colors"
+          aria-label="Next month"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-muted-foreground" aria-hidden="true">
+            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+          </svg>
+        </button>
+      </div>
       {dominantSource && (
         <div className="pt-1">{sourceBadge(dominantSource)}</div>
       )}
