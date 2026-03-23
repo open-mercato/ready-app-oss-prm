@@ -8,6 +8,7 @@ import { hashForLookup } from '@open-mercato/shared/lib/encryption/aes'
 import { hash } from 'bcryptjs'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { OpenApiMethodDoc, OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
+import { seedAgencyDemoData } from '../../lib/seed-agency-demo'
 
 export const metadata = {
   path: '/partnerships/agencies',
@@ -131,7 +132,27 @@ async function POST(req: Request) {
 
   await em.flush()
 
-  // TODO: if seedDemoData, seed pipeline + demo prospects + deals (Phase 1 enhancement)
+  // Emit AgencyCreated event
+  try {
+    const eventBus = container.resolve('eventBus') as { emitEvent: (id: string, payload: Record<string, unknown>) => Promise<void> }
+    await eventBus.emitEvent('partnerships.agency.created', {
+      organizationId: org.id,
+      adminUserId: user.id,
+      createdBy: auth.sub,
+      demoDataSeeded: seedDemoData,
+      createdAt: new Date().toISOString(),
+    })
+  } catch {
+    // Event emission is non-critical
+  }
+
+  if (seedDemoData) {
+    try {
+      await seedAgencyDemoData(em, { tenantId, organizationId: org.id })
+    } catch (err) {
+      console.warn(`[partnerships/agencies.POST] Demo data seeding failed for ${agencyName}`, err)
+    }
+  }
 
   const inviteMessage = [
     `Your agency account has been created on Open Mercato PRM.`,

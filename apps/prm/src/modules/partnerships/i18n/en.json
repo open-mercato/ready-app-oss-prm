@@ -27,6 +27,7 @@
         "inviteContributor": "Invite a Contributor",
         "addProspect": "Add a prospect company",
         "createDeal": "Create your first deal",
+        "setGhUsername": "Set your GitHub username",
         "allDone": "All set! You're ready to go.",
         "error": "Failed to load onboarding status"
       }

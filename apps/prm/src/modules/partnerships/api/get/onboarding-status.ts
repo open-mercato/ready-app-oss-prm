@@ -27,7 +27,7 @@ export type OnboardingChecklistItem = {
 }
 
 export type OnboardingStatusResponse = {
-  role: 'partner_admin' | 'partner_member'
+  role: 'partner_admin' | 'partner_member' | 'partner_contributor'
   items: OnboardingChecklistItem[]
   allCompleted: boolean
 }
@@ -44,7 +44,7 @@ export type RbacService = {
   ): Promise<boolean>
 }
 
-export type DetectedRole = 'partner_admin' | 'partner_member' | null
+export type DetectedRole = 'partner_admin' | 'partner_member' | 'partner_contributor' | null
 
 export async function detectRole(
   rbacService: RbacService,
@@ -67,7 +67,8 @@ export async function detectRole(
     return 'partner_member'
   }
 
-  return null
+  // Contributor has only partnerships.widgets.onboarding-checklist (no wip-count, no manage)
+  return 'partner_contributor'
 }
 
 // ---------------------------------------------------------------------------
@@ -119,6 +120,17 @@ export async function checkBdInvited(ctx: CompletionContext): Promise<boolean> {
 export async function checkContributorInvited(ctx: CompletionContext): Promise<boolean> {
   const count = await countUsersWithRole(ctx.em, 'partner_contributor', ctx.tenantId)
   return count > 0
+}
+
+export async function checkGhUsernameFilled(ctx: CompletionContext, userId: string): Promise<boolean> {
+  const cfvCount = await ctx.em.count(CustomFieldValue, {
+    entityId: 'auth:user',
+    tenantId: ctx.tenantId,
+    fieldKey: 'github_username',
+    recordId: userId,
+    valueText: { $nin: [null, ''] },
+  })
+  return cfvCount > 0
 }
 
 export async function checkProspectAdded(ctx: CompletionContext): Promise<boolean> {
@@ -206,6 +218,19 @@ export async function buildBdItems(ctx: CompletionContext): Promise<OnboardingCh
   ]
 }
 
+export async function buildContributorItems(ctx: CompletionContext, userId: string): Promise<OnboardingChecklistItem[]> {
+  const ghFilled = await checkGhUsernameFilled(ctx, userId)
+
+  return [
+    {
+      id: 'set_gh_username',
+      label: 'partnerships.widgets.onboardingChecklist.setGhUsername',
+      completed: ghFilled,
+      link: '/backend/auth/users/profile',
+    },
+  ]
+}
+
 // ---------------------------------------------------------------------------
 // Route handler
 // ---------------------------------------------------------------------------
@@ -236,9 +261,14 @@ async function GET(req: Request) {
     const em = container.resolve('em') as EntityManager
     const ctx: CompletionContext = { em, tenantId, organizationId }
 
-    const items = role === 'partner_admin'
-      ? await buildAdminItems(ctx)
-      : await buildBdItems(ctx)
+    let items: OnboardingChecklistItem[]
+    if (role === 'partner_admin') {
+      items = await buildAdminItems(ctx)
+    } else if (role === 'partner_member') {
+      items = await buildBdItems(ctx)
+    } else {
+      items = await buildContributorItems(ctx, userId)
+    }
 
     const allCompleted = items.length > 0 && items.every((item) => item.completed)
 
@@ -265,7 +295,7 @@ const onboardingItemSchema = z.object({
 })
 
 const responseSchema = z.object({
-  role: z.enum(['partner_admin', 'partner_member']).nullable(),
+  role: z.enum(['partner_admin', 'partner_member', 'partner_contributor']).nullable(),
   items: z.array(onboardingItemSchema),
   allCompleted: z.boolean(),
 })

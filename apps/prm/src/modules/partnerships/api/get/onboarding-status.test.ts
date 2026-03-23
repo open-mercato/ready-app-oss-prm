@@ -82,13 +82,13 @@ describe('onboarding-status', () => {
       expect(role).toBe('partner_member')
     })
 
-    it('returns null when user has neither manage nor wip-count', async () => {
+    it('returns partner_contributor when user has neither manage nor wip-count', async () => {
       const rbac = createMockRbacService({
         'partnerships.manage': false,
         'partnerships.widgets.wip-count': false,
       })
       const role = await detectRole(rbac, USER_ID, TENANT_ID, ORG_ID)
-      expect(role).toBeNull()
+      expect(role).toBe('partner_contributor')
     })
   })
 
@@ -209,23 +209,16 @@ describe('onboarding-status', () => {
     })
   })
 
-  describe('partnership_manager (no checklist)', () => {
-    it('returns null role for users without manage and without wip-count', async () => {
-      // partnership_manager has partnerships.manage but NOT onboarding-checklist feature.
-      // The metadata guard blocks the request before the handler runs, so
-      // if somehow called without the feature, detectRole should still work:
-      // partnership_manager that lacks onboarding-checklist would be blocked at metadata level.
-      // But if we test detectRole directly with only manage (no wip-count):
-      // partnership_manager has partnerships.manage, so detectRole returns partner_admin.
-      // The distinction happens at the metadata level (requireFeatures).
-      //
-      // For this test we verify that when NEITHER feature is present, null is returned.
+  describe('partner_contributor (fallback)', () => {
+    it('returns partner_contributor when user has neither manage nor wip-count', async () => {
+      // Contributor has only onboarding-checklist feature (no manage, no wip-count).
+      // detectRole falls through to partner_contributor as the default.
       const rbac = createMockRbacService({
         'partnerships.manage': false,
         'partnerships.widgets.wip-count': false,
       })
       const role = await detectRole(rbac, USER_ID, TENANT_ID, ORG_ID)
-      expect(role).toBeNull()
+      expect(role).toBe('partner_contributor')
     })
   })
 })

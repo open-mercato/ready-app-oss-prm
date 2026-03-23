@@ -263,3 +263,11 @@ export const WIP_REGISTERED_AT_FIELD: FieldDefinition = {
   required: false,
   hidden: true,
 };
+
+// GitHub username field (entity: auth:user)
+export const GH_USERNAME_FIELD: FieldDefinition = {
+  key: 'github_username',
+  type: 'text',
+  label: 'GitHub Username',
+  required: false,
+};

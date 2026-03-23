@@ -14,7 +14,7 @@ type OnboardingChecklistItem = {
 }
 
 type OnboardingStatusResponse = {
-  role: 'partner_admin' | 'partner_member' | null
+  role: 'partner_admin' | 'partner_member' | 'partner_contributor' | null
   items: OnboardingChecklistItem[]
   allCompleted: boolean
 }

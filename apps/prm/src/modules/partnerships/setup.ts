@@ -23,6 +23,7 @@ import {
   AGENCY_PROFILE_FIELDS,
   CASE_STUDY_FIELDS,
   WIP_REGISTERED_AT_FIELD,
+  GH_USERNAME_FIELD,
   SERVICES_OPTIONS,
   INDUSTRIES_OPTIONS,
   TECHNOLOGIES_OPTIONS,
@@ -146,6 +147,10 @@ async function seedCustomFields(
     {
       entity: E.directory.organization,
       fields: mapFieldDefinitions(AGENCY_PROFILE_FIELDS),
+    },
+    {
+      entity: E.auth.user,
+      fields: [cf.text(GH_USERNAME_FIELD.key, { label: GH_USERNAME_FIELD.label })],
     },
     {
       entity: 'partnerships:case_study',
