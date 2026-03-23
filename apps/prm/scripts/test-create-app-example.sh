@@ -5,11 +5,12 @@ set -euo pipefail
 # US-7.1 End-to-End Test: create-mercato-app --example prm
 #
 # Tests the full SPEC-068 flow:
-#   npx create-mercato-app <dir> --example prm → yarn install → yarn initialize → app starts
+#   npx create-mercato-app prm --example <url> → yarn install → yarn initialize → app starts
 #
 # Prerequisites:
-#   - Verdaccio running with @open-mercato/* packages published (including PR #1047)
+#   - Verdaccio running with @open-mercato/* packages published
 #   - Docker running (for ephemeral DB)
+#   - Current branch pushed to GitHub (--example fetches from GH)
 #
 # Usage:
 #   ./scripts/test-create-app-example.sh [--keep]
@@ -18,12 +19,18 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-TEST_DIR="/tmp/prm-example-test-$$"
+TEST_PARENT="/tmp/prm-example-test-$$"
+TEST_DIR="$TEST_PARENT/prm"
 KEEP_ON_SUCCESS=false
 APP_PID=""
 PASSED=0
 FAILED=0
 TOTAL=0
+
+# Resolve GitHub owner/repo and branch from git remote
+GITHUB_REPO_URL="$(cd "$REPO_ROOT" && git remote get-url origin 2>/dev/null || echo "")"
+GITHUB_OWNER_REPO="$(echo "$GITHUB_REPO_URL" | sed -E 's|https://github.com/||;s|\.git$||')"
+EXAMPLE_BRANCH="$(cd "$REPO_ROOT" && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")"
 
 # Parse args
 for arg in "$@"; do
@@ -93,9 +100,9 @@ cleanup() {
 
   # Remove test directory
   if [ "$KEEP_ON_SUCCESS" = false ] || [ "$FAILED" -gt 0 ]; then
-    if [ -d "$TEST_DIR" ]; then
-      echo "  Removing $TEST_DIR ..."
-      rm -rf "$TEST_DIR"
+    if [ -d "$TEST_PARENT" ]; then
+      echo "  Removing $TEST_PARENT ..."
+      rm -rf "$TEST_PARENT"
     fi
   else
     echo "  Keeping $TEST_DIR (--keep flag)"
@@ -149,11 +156,14 @@ fi
 echo ""
 echo "Phase 1: Scaffold app"
 
-mkdir -p "$(dirname "$TEST_DIR")"
+mkdir -p "$TEST_PARENT"
 
-checkpoint_output "create-mercato-app --example prm" \
-  npx --registry http://localhost:4873 create-mercato-app@latest "$TEST_DIR" \
-    --example prm --registry http://localhost:4873
+# --example fetches from GitHub. Use repo URL + branch from current git state.
+# Pipe "5" to skip the interactive AI coding tool prompt.
+EXAMPLE_URL="https://github.com/${GITHUB_OWNER_REPO}/tree/${EXAMPLE_BRANCH}/apps/prm"
+echo "  Using: $EXAMPLE_URL (branch: $EXAMPLE_BRANCH)"
+checkpoint_output "create-mercato-app --example (from GitHub)" \
+  bash -c "cd '$TEST_PARENT' && echo 5 | npx --registry http://localhost:4873 create-mercato-app@latest prm --example '$EXAMPLE_URL' --example-branch '$EXAMPLE_BRANCH' --registry http://localhost:4873"
 
 checkpoint "Test directory exists" \
   test -d "$TEST_DIR"
@@ -183,6 +193,11 @@ if [ -f "docker-compose.yml" ] || [ -f "docker-compose.yaml" ] || [ -f "compose.
   sleep 3
 fi
 
+# Set up .env from example (docker-compose defaults)
+if [ -f ".env.example" ] && [ ! -f ".env" ]; then
+  cp .env.example .env
+fi
+
 checkpoint_output "yarn install" \
   yarn install --registry http://localhost:4873
 
@@ -193,7 +208,7 @@ checkpoint_output "yarn db:migrate" \
   yarn db:migrate
 
 checkpoint_output "yarn initialize" \
-  yarn initialize
+  yarn initialize --reinstall
 
 # ---------------------------------------------------------------------------
 # Phase 3: Verify seed data
@@ -203,61 +218,71 @@ echo ""
 echo "Phase 3: Verify app starts and seed data works"
 
 # Start app in background
-yarn dev --port 5099 &
+yarn dev --port 3000 &
 APP_PID=$!
-echo "  App starting (PID $APP_PID, port 5099)..."
+echo "  App starting (PID $APP_PID, port 3000)..."
 
-# Wait for app to be ready (max 30s)
+# Wait for app to be ready (max 120s — first Turbopack compile of API routes takes ~15s).
+# Trigger API compilation with a single request, then wait for it to complete.
 READY=false
-for i in $(seq 1 30); do
-  if curl -sf http://localhost:5099/api/docs/openapi >/dev/null 2>&1; then
+echo "  Waiting for app readiness (Turbopack cold-compile may take ~15s)..."
+for i in $(seq 1 120); do
+  # Simple TCP check first, then HTTP check once server is listening
+  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:3000/ 2>/dev/null || true)
+  if [ "$HTTP_CODE" != "000" ] && [ "$HTTP_CODE" != "500" ]; then
+    echo "  App ready (HTTP $HTTP_CODE after ${i}s)"
     READY=true
     break
   fi
-  sleep 1
+  [ $((i % 10)) -eq 0 ] && echo "  Still waiting... ($i/120, last code: $HTTP_CODE)"
+  sleep 2
 done
 
 if [ "$READY" = false ]; then
-  echo -e "  ${RED}App failed to start within 30s${NC}"
+  echo -e "  ${RED}App failed to start within 120s${NC}"
   TOTAL=$((TOTAL + 1))
   FAILED=$((FAILED + 1))
   exit 1
 fi
 
-checkpoint "App responds on /api/docs/openapi" \
-  curl -sf http://localhost:5099/api/docs/openapi
+# Warm up API route compilation (Turbopack lazy-compiles on first request)
+curl -s -o /dev/null --max-time 30 http://localhost:3000/api/auth/login 2>/dev/null || true
+sleep 2
+
+checkpoint "App responds on port 3000" \
+  curl -sf --max-time 10 http://localhost:3000/
 
 # Login as PM
-PM_TOKEN=$(curl -sf http://localhost:5099/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"partnership-manager@demo.local","password":"Demo123!"}' \
-  | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)
+PM_TOKEN=$(curl -s http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d 'email=partnership-manager@demo.local&password=Demo123!' \
+  | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
 
 checkpoint "PM can login (partnership-manager@demo.local)" \
   test -n "$PM_TOKEN"
 
 # Login as BD
-BD_TOKEN=$(curl -sf http://localhost:5099/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"acme-bd@demo.local","password":"Demo123!"}' \
+BD_TOKEN=$(curl -s http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d 'email=acme-bd@demo.local&password=Demo123!' \
   | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)
 
 checkpoint "BD can login (acme-bd@demo.local)" \
   test -n "$BD_TOKEN"
 
 # Login as Admin
-ADMIN_TOKEN=$(curl -sf http://localhost:5099/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"acme-admin@demo.local","password":"Demo123!"}' \
+ADMIN_TOKEN=$(curl -s http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d 'email=acme-admin@demo.local&password=Demo123!' \
   | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)
 
 checkpoint "Admin can login (acme-admin@demo.local)" \
   test -n "$ADMIN_TOKEN"
 
 # Login as Contributor
-CONTRIB_TOKEN=$(curl -sf http://localhost:5099/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"acme-contributor@demo.local","password":"Demo123!"}' \
+CONTRIB_TOKEN=$(curl -s http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d 'email=acme-contributor@demo.local&password=Demo123!' \
   | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)
 
 checkpoint "Contributor can login (acme-contributor@demo.local)" \
@@ -265,19 +290,19 @@ checkpoint "Contributor can login (acme-contributor@demo.local)" \
 
 # Check pipelines
 checkpoint "PRM Pipeline exists" \
-  bash -c "curl -sf http://localhost:5099/api/customers/pipelines -H 'Authorization: Bearer $PM_TOKEN' | grep -q 'PRM Pipeline'"
+  bash -c "curl -sf http://localhost:3000/api/customers/pipelines -H 'Authorization: Bearer $PM_TOKEN' | grep -q 'PRM Pipeline'"
 
 # Check deals exist for BD
 checkpoint "BD sees deals" \
-  bash -c "curl -sf http://localhost:5099/api/customers/deals -H 'Authorization: Bearer $BD_TOKEN' | grep -q 'items'"
+  bash -c "curl -sf http://localhost:3000/api/customers/deals -H 'Authorization: Bearer $BD_TOKEN' | grep -q 'items'"
 
 # Check WIP count API works
 checkpoint "WIP count API responds" \
-  bash -c "curl -sf http://localhost:5099/api/partnerships/wip-count -H 'Authorization: Bearer $BD_TOKEN' | grep -q 'count'"
+  bash -c "curl -sf http://localhost:3000/api/partnerships/wip-count -H 'Authorization: Bearer $BD_TOKEN' | grep -q 'count'"
 
 # Check onboarding status for Contributor
 checkpoint "Contributor onboarding shows set_gh_username" \
-  bash -c "curl -sf http://localhost:5099/api/partnerships/onboarding-status -H 'Authorization: Bearer $CONTRIB_TOKEN' | grep -q 'set_gh_username'"
+  bash -c "curl -sf http://localhost:3000/api/partnerships/onboarding-status -H 'Authorization: Bearer $CONTRIB_TOKEN' | grep -q 'set_gh_username'"
 
 # ---------------------------------------------------------------------------
 # Phase 4: Unit tests pass

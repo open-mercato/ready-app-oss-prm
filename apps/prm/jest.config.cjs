@@ -1,17 +1,34 @@
 /** @type {import('jest').Config} */
+
+const fs = require('fs')
+const path = require('path')
+
+// Use monorepo source paths when available (dev), fall back to node_modules (standalone)
+const omMonorepo = path.resolve(__dirname, '../../open-mercato')
+const useMonorepo = fs.existsSync(path.join(omMonorepo, 'packages/core/src'))
+
+const moduleNameMapper = useMonorepo
+  ? {
+      '^@open-mercato/core/generated/(.*)$': `${omMonorepo}/packages/core/generated/$1`,
+      '^@open-mercato/core/(.*)$': `${omMonorepo}/packages/core/src/$1`,
+      '^@open-mercato/shared/(.*)$': `${omMonorepo}/packages/shared/src/$1`,
+      '^@open-mercato/ui/(.*)$': `${omMonorepo}/packages/ui/src/$1`,
+      '^#generated/(.*)$': '<rootDir>/generated/$1',
+    }
+  : {
+      '^@open-mercato/core/(.*)$': '<rootDir>/node_modules/@open-mercato/core/dist/$1',
+      '^@open-mercato/shared/(.*)$': '<rootDir>/node_modules/@open-mercato/shared/dist/$1',
+      '^@open-mercato/ui/(.*)$': '<rootDir>/node_modules/@open-mercato/ui/dist/$1',
+      '^#generated/(.*)$': '<rootDir>/generated/$1',
+    }
+
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   watchman: false,
   rootDir: '.',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
-  moduleNameMapper: {
-    '^@open-mercato/core/generated/(.*)$': '<rootDir>/../../open-mercato/packages/core/generated/$1',
-    '^@open-mercato/core/(.*)$': '<rootDir>/../../open-mercato/packages/core/src/$1',
-    '^@open-mercato/shared/(.*)$': '<rootDir>/../../open-mercato/packages/shared/src/$1',
-    '^@open-mercato/ui/(.*)$': '<rootDir>/../../open-mercato/packages/ui/src/$1',
-    '^#generated/(.*)$': '<rootDir>/generated/$1',
-  },
+  moduleNameMapper,
   transform: {
     '^.+\\.(t|j)sx?$': [
       'ts-jest',
