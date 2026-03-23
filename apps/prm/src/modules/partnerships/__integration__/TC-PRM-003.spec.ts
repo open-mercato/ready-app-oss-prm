@@ -42,7 +42,7 @@ type OnboardingItem = {
 }
 
 type OnboardingStatusResponse = {
-  role: 'partner_admin' | 'partner_member' | null
+  role: 'partner_admin' | 'partner_member' | 'partner_contributor' | null
   items: OnboardingItem[]
   allCompleted: boolean
 }
@@ -62,7 +62,7 @@ function assertItemShape(item: unknown, index: number): asserts item is Onboardi
 function assertResponseShape(body: unknown): asserts body is OnboardingStatusResponse {
   expect(typeof body === 'object' && body !== null, 'response body must be an object').toBe(true)
   const b = body as Record<string, unknown>
-  expect(['partner_admin', 'partner_member'].includes(b.role as string), 'role must be partner_admin or partner_member').toBe(true)
+  expect(['partner_admin', 'partner_member', 'partner_contributor'].includes(b.role as string), 'role must be partner_admin, partner_member, or partner_contributor').toBe(true)
   expect(Array.isArray(b.items), 'items must be an array').toBe(true)
   expect(typeof b.allCompleted, 'allCompleted must be a boolean').toBe('boolean')
 }
@@ -280,6 +280,37 @@ test.describe('TC-PRM-003: BD role — onboarding checklist API contract', () =>
       await deleteGeneralEntityIfExists(request, adminToken, '/api/customers/deals', dealId)
       await deleteGeneralEntityIfExists(request, adminToken, '/api/customers/companies', companyId)
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Contributor role (partner_contributor) scenarios — T6
+// ---------------------------------------------------------------------------
+
+test.describe('TC-PRM-003: Contributor role — onboarding checklist API contract', () => {
+  const CONTRIBUTOR_EMAIL = 'acme-contributor@demo.local'
+  const CONTRIBUTOR_PASSWORD = 'Demo123!'
+
+  test('T6: Contributor gets 1 onboarding item (set GH username) with correct shape', async ({ request }) => {
+    const token = await getAuthToken(request, CONTRIBUTOR_EMAIL, CONTRIBUTOR_PASSWORD)
+    const response = await apiRequest(request, 'GET', '/api/partnerships/onboarding-status', { token })
+    expect(response.status()).toBe(200)
+
+    const body = await readJsonSafe<OnboardingStatusResponse>(response)
+    // Contributor should get partner_contributor role
+    expect(body).not.toBeNull()
+    expect(body!.role).toBe('partner_contributor')
+    expect(body!.items).toHaveLength(1)
+
+    // Verify the single item
+    const item = body!.items[0]
+    assertItemShape(item, 0)
+    expect(item.id).toBe('set_gh_username')
+    expect(item.link).toContain('/backend/auth/users/profile')
+
+    // allCompleted consistency
+    const expectedAllCompleted = body!.items.every((i) => i.completed)
+    expect(body!.allCompleted).toBe(expectedAllCompleted)
   })
 })
 
