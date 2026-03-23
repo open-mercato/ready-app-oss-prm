@@ -47,20 +47,21 @@ yarn dev
 ready-apps/
 ├── apps/                    # Runnable apps (source for --example flag)
 │   └── prm/                 # PRM ready app
-├── app-specs/               # Business specs (domain model, workflows, user stories)
-│   ├── skills/              # AI-assisted spec process (Mat, Piotr, Krug)
-│   └── prm/                 # PRM business spec
+│       ├── app-spec/        # Business spec (forkable, drives AI-assisted dev)
+│       ├── src/modules/     # Application code
+│       └── docs/specs/      # Implementation specs
+├── skills/                  # Shared AI skills (Mat, Piotr, Krug) + templates
 └── docs/                    # Guides for agents and contributors
 ```
 
-- `apps/<name>/` — complete OM application, installable from npm
-- `app-specs/<name>/` — business analysis that produced the app (App Spec, challenger reviews, commit plans)
+- `apps/<name>/` — complete OM application with its app spec, installable from npm
+- `skills/` — AI-assisted process tooling for defining, reviewing, and building apps
 
 ## Building Your Own Ready App
 
-1. Start with the App Spec process in `app-specs/` — define your domain, workflows, and user stories
-2. Use the AI skills (Mat for product ownership, Piotr for platform gap analysis, Krug for UI review) to validate your spec
-3. Generate implementation specs and build your app in `apps/`
+1. Fork an existing app or scaffold with `create-mercato-app`
+2. Modify the `app-spec/` to describe your domain, workflows, and user stories
+3. Use the AI skills (Mat for product ownership, Piotr for platform gap analysis, Krug for UI review) to validate and code
 
 See [docs/agent-guides/](docs/agent-guides/) for detailed guides.
 
