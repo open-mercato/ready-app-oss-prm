@@ -5,6 +5,7 @@ const features = [
   { id: 'partnerships.widgets.cross-org-wip', title: 'View cross-org WIP table', module: 'partnerships' },
   { id: 'partnerships.wic.import', title: 'Import WIC scores', module: 'partnerships' },
   { id: 'partnerships.widgets.wic-summary', title: 'View WIC summary widget', module: 'partnerships' },
+  { id: 'partnerships.tier.approve', title: 'Approve tier change proposals', module: 'partnerships' },
 ]
 
 export { features }
