@@ -16,9 +16,8 @@ const moduleNameMapper = useMonorepo
       '^#generated/(.*)$': '<rootDir>/generated/$1',
     }
   : {
-      '^@open-mercato/core/(.*)$': '<rootDir>/node_modules/@open-mercato/core/dist/$1',
-      '^@open-mercato/shared/(.*)$': '<rootDir>/node_modules/@open-mercato/shared/dist/$1',
-      '^@open-mercato/ui/(.*)$': '<rootDir>/node_modules/@open-mercato/ui/dist/$1',
+      // Standalone: let Node resolve @open-mercato/* from node_modules normally
+      // Only map #generated (path alias not resolvable by Node)
       '^#generated/(.*)$': '<rootDir>/generated/$1',
     }
 

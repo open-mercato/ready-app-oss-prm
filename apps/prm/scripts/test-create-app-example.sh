@@ -217,40 +217,36 @@ checkpoint_output "yarn initialize" \
 echo ""
 echo "Phase 3: Verify app starts and seed data works"
 
-# Start app in background
-yarn dev --port 3000 &
+# Production build — deterministic, no Turbopack lazy compilation issues
+checkpoint_output "yarn build" \
+  yarn build
+
+# Start production server in background
+PORT=3000 yarn start &
 APP_PID=$!
 echo "  App starting (PID $APP_PID, port 3000)..."
 
-# Wait for app to be ready (max 120s — first Turbopack compile of API routes takes ~15s).
-# Trigger API compilation with a single request, then wait for it to complete.
+# Wait for app to be ready (max 30s — production start is fast)
 READY=false
-echo "  Waiting for app readiness (Turbopack cold-compile may take ~15s)..."
-for i in $(seq 1 120); do
-  # Simple TCP check first, then HTTP check once server is listening
-  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:3000/ 2>/dev/null || true)
-  if [ "$HTTP_CODE" != "000" ] && [ "$HTTP_CODE" != "500" ]; then
+for i in $(seq 1 30); do
+  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://localhost:3000/ 2>/dev/null || true)
+  if [ "$HTTP_CODE" != "" ] && [ "$HTTP_CODE" != "000" ]; then
     echo "  App ready (HTTP $HTTP_CODE after ${i}s)"
     READY=true
     break
   fi
-  [ $((i % 10)) -eq 0 ] && echo "  Still waiting... ($i/120, last code: $HTTP_CODE)"
-  sleep 2
+  sleep 1
 done
 
 if [ "$READY" = false ]; then
-  echo -e "  ${RED}App failed to start within 120s${NC}"
+  echo -e "  ${RED}App failed to start within 30s${NC}"
   TOTAL=$((TOTAL + 1))
   FAILED=$((FAILED + 1))
   exit 1
 fi
 
-# Warm up API route compilation (Turbopack lazy-compiles on first request)
-curl -s -o /dev/null --max-time 30 http://localhost:3000/api/auth/login 2>/dev/null || true
-sleep 2
-
 checkpoint "App responds on port 3000" \
-  curl -sf --max-time 10 http://localhost:3000/
+  curl -sf --max-time 5 http://localhost:3000/
 
 # Login as PM
 PM_TOKEN=$(curl -s http://localhost:3000/api/auth/login \
@@ -265,7 +261,7 @@ checkpoint "PM can login (partnership-manager@demo.local)" \
 BD_TOKEN=$(curl -s http://localhost:3000/api/auth/login \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d 'email=acme-bd@demo.local&password=Demo123!' \
-  | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)
+  | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
 
 checkpoint "BD can login (acme-bd@demo.local)" \
   test -n "$BD_TOKEN"
@@ -274,7 +270,7 @@ checkpoint "BD can login (acme-bd@demo.local)" \
 ADMIN_TOKEN=$(curl -s http://localhost:3000/api/auth/login \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d 'email=acme-admin@demo.local&password=Demo123!' \
-  | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)
+  | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
 
 checkpoint "Admin can login (acme-admin@demo.local)" \
   test -n "$ADMIN_TOKEN"
@@ -283,7 +279,7 @@ checkpoint "Admin can login (acme-admin@demo.local)" \
 CONTRIB_TOKEN=$(curl -s http://localhost:3000/api/auth/login \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d 'email=acme-contributor@demo.local&password=Demo123!' \
-  | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)
+  | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
 
 checkpoint "Contributor can login (acme-contributor@demo.local)" \
   test -n "$CONTRIB_TOKEN"

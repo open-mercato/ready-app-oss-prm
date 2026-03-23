@@ -16,6 +16,7 @@ import { hashForLookup } from '@open-mercato/shared/lib/encryption/aes'
 import { seedDashboardDefaultsForTenant } from '@open-mercato/core/modules/dashboards/cli'
 import { hash } from 'bcryptjs'
 import { DefaultDataEngine } from '@open-mercato/shared/lib/data/engine'
+import { PartnerLicenseDeal, TierAssignment, TierEvaluationState, TierChangeProposal } from './data/entities'
 import { E } from '#generated/entities.ids.generated'
 import {
   PRM_PIPELINE_NAME,
@@ -788,6 +789,110 @@ async function seedPrmExamples(
   for (const assign of customFieldAssignments) {
     await assign()
   }
+
+  // =========================================================================
+  // Phase 2 demo data: tiers, license deals, evaluation states
+  // =========================================================================
+
+  // Resolve PM user
+  const pmEmailHash = hashForLookup('partnership-manager@demo.local')
+  const pmUser = await em.findOneOrFail(User, { emailHash: pmEmailHash, deletedAt: null })
+  const pmUserId = pmUser.id
+  const { tenantId } = scope
+
+  // Resolve agency orgs + company entities by demo names
+  const acmeOrg = await em.findOneOrFail(Organization, { tenant: tenantId, slug: 'acme-digital' })
+  const nordicOrg = await em.findOneOrFail(Organization, { tenant: tenantId, slug: 'nordic-ai-labs' })
+  const cloudbridgeOrg = await em.findOneOrFail(Organization, { tenant: tenantId, slug: 'cloudbridge-solutions' })
+  const acmeOrgId = acmeOrg.id
+  const nordicOrgId = nordicOrg.id
+  const cloudbridgeOrgId = cloudbridgeOrg.id
+
+  const acmeCompany = await em.findOneOrFail(CustomerEntity, { tenantId, displayName: 'Acme Digital (Demo)', kind: 'company' })
+  const nordicCompany = await em.findOneOrFail(CustomerEntity, { tenantId, displayName: 'Nordic AI Labs (Demo)', kind: 'company' })
+  const acmeCompanyId = acmeCompany.id
+  const nordicCompanyId = nordicCompany.id
+
+  // --- GH Usernames on Contributors ---
+  const contributorEmailHash = hashForLookup('acme-contributor@demo.local')
+  const contributorUser = await em.findOne(User, { emailHash: contributorEmailHash, deletedAt: null })
+  if (contributorUser) {
+    try {
+      await dataEngine.setCustomFields({
+        entityId: E.auth.user,
+        recordId: contributorUser.id,
+        organizationId: acmeOrgId,
+        tenantId,
+        values: { [GH_USERNAME_FIELD.key]: 'carol-acme' },
+        notify: false,
+      })
+    } catch (err) {
+      console.warn('[partnerships.seedExamples] Failed to set GH username on acme-contributor', err)
+    }
+  }
+
+  // --- TierAssignments ---
+  const tierAssignments = [
+    { organizationId: acmeOrgId, tier: 'OM Agency', effectiveDate: new Date('2025-06-01'), approvedBy: pmUserId, reason: 'Initial onboarding', tenantId },
+    { organizationId: nordicOrgId, tier: 'OM AI-native Agency', effectiveDate: new Date('2025-10-01'), approvedBy: pmUserId, reason: 'Upgrade from OM Agency', tenantId },
+    { organizationId: nordicOrgId, tier: 'OM Agency', effectiveDate: new Date('2025-09-15'), approvedBy: pmUserId, reason: 'Initial onboarding', tenantId },
+    { organizationId: cloudbridgeOrgId, tier: 'OM Agency', effectiveDate: new Date('2026-01-15'), approvedBy: pmUserId, reason: 'Initial onboarding', tenantId },
+  ]
+  for (const ta of tierAssignments) {
+    em.persist(em.create(TierAssignment, ta))
+  }
+  await em.flush()
+
+  // --- PartnerLicenseDeals ---
+  const licenseDeals = [
+    { organizationId: acmeOrgId, companyId: acmeCompanyId, licenseIdentifier: 'LIC-ACME-001', industryTag: 'Finance', type: 'enterprise', status: 'won', isRenewal: false, closedAt: new Date('2026-02-15'), year: 2026, createdBy: pmUserId, tenantId },
+    { organizationId: acmeOrgId, companyId: acmeCompanyId, licenseIdentifier: 'LIC-ACME-002', industryTag: 'Technology', type: 'enterprise', status: 'won', isRenewal: false, closedAt: new Date('2026-03-01'), year: 2026, createdBy: pmUserId, tenantId },
+    { organizationId: nordicOrgId, companyId: nordicCompanyId, licenseIdentifier: 'LIC-NORDIC-001', industryTag: 'Healthcare', type: 'enterprise', status: 'won', isRenewal: false, closedAt: new Date('2025-11-20'), year: 2025, createdBy: pmUserId, tenantId },
+    { organizationId: nordicOrgId, companyId: nordicCompanyId, licenseIdentifier: 'LIC-NORDIC-002', industryTag: 'Healthcare', type: 'enterprise', status: 'won', isRenewal: false, closedAt: new Date('2026-01-10'), year: 2026, createdBy: pmUserId, tenantId },
+    { organizationId: nordicOrgId, companyId: nordicCompanyId, licenseIdentifier: 'LIC-NORDIC-003', industryTag: 'Technology', type: 'enterprise', status: 'won', isRenewal: false, closedAt: new Date('2026-02-28'), year: 2026, createdBy: pmUserId, tenantId },
+  ]
+  for (const ld of licenseDeals) {
+    em.persist(em.create(PartnerLicenseDeal, ld))
+  }
+  await em.flush()
+
+  // --- TierEvaluationState ---
+  const now = new Date()
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+
+  em.persist(em.create(TierEvaluationState, {
+    organizationId: acmeOrgId,
+    currentTier: 'OM Agency',
+    evaluationMonth: currentMonth,
+    status: 'OK',
+    tenantId,
+  }))
+  em.persist(em.create(TierEvaluationState, {
+    organizationId: nordicOrgId,
+    currentTier: 'OM AI-native Agency',
+    evaluationMonth: currentMonth,
+    status: 'GracePeriod',
+    gracePeriodStartedAt: new Date(),
+    tenantId,
+  }))
+  await em.flush()
+
+  // --- TierChangeProposal ---
+  em.persist(em.create(TierChangeProposal, {
+    organizationId: acmeOrgId,
+    evaluationMonth: currentMonth,
+    currentTier: 'OM Agency',
+    proposedTier: 'OM AI-native Agency',
+    type: 'upgrade',
+    status: 'PendingApproval',
+    wicSnapshot: 3.5,
+    wipSnapshot: 6,
+    minSnapshot: 2,
+    tenantId,
+  }))
+  await em.flush()
+
+  console.log(`[partnerships.seedExamples] Phase 2 demo data seeded: ${tierAssignments.length} tier assignments, ${licenseDeals.length} license deals, 2 evaluation states, 1 proposal`)
 
   console.log(`[partnerships.seedExamples] All demo data seeded (password: ${DEMO_PASSWORD})`)
   console.log(`[partnerships.seedExamples] PM: partnership-manager@demo.local (all orgs)`)
