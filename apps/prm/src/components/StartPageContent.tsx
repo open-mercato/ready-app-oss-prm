@@ -5,6 +5,37 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Shield, Users, Briefcase, Code, ArrowRight, Info } from 'lucide-react'
 
+function LoginButton({ email, password, title, variant = 'default' }: {
+  email: string
+  password: string
+  title: string
+  variant?: 'default' | 'secondary' | 'outline'
+}) {
+  const [loading, setLoading] = useState(false)
+
+  async function handleLogin() {
+    setLoading(true)
+    try {
+      const form = new FormData()
+      form.set('email', email)
+      form.set('password', password)
+      const res = await fetch('/api/auth/login', { method: 'POST', body: form })
+      if (res.ok) {
+        window.location.href = '/backend'
+      }
+    } catch {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Button type="button" variant={variant} className="w-full" disabled={loading} onClick={handleLogin}>
+      {loading ? 'Logging in...' : `Login as ${title}`}
+      {!loading && <ArrowRight className="size-4 ml-1" />}
+    </Button>
+  )
+}
+
 interface RoleTileProps {
   icon: ReactNode
   title: string
@@ -53,14 +84,7 @@ function RoleTile({
         <div><span className="text-muted-foreground">Password:</span> <code className="font-mono">{password}</code></div>
       </div>
 
-      <form action="/api/auth/login" method="POST">
-        <input type="hidden" name="email" value={email} />
-        <input type="hidden" name="password" value={password} />
-        <Button type="submit" variant={variant} className="w-full">
-          Login as {title}
-          <ArrowRight className="size-4 ml-1" />
-        </Button>
-      </form>
+      <LoginButton email={email} password={password} title={title} variant={variant} />
     </div>
   )
 }

@@ -432,6 +432,8 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
     'entities.*',
     'partnerships.manage',
     'partnerships.widgets.onboarding-checklist',
+    'partnerships.widgets.wip-count',
+    'partnerships.widgets.wic-summary',
     'partnerships.widgets.tier-status',
     'auth.users.*',
     'directory.organizations.manage',
@@ -439,14 +441,16 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
   partner_member: [
     ...BACKEND_BASELINE_FEATURES,
     'customers.*',
-    'partnerships.widgets.wip-count',
     'partnerships.widgets.onboarding-checklist',
+    'partnerships.widgets.wip-count',
+    'partnerships.widgets.wic-summary',
     'partnerships.widgets.tier-status',
   ],
   partner_contributor: [
     ...BACKEND_BASELINE_FEATURES,
     'partnerships.widgets.onboarding-checklist',
     'partnerships.widgets.wic-summary',
+    'partnerships.widgets.tier-status',
   ],
   partnership_manager: [
     ...BACKEND_BASELINE_FEATURES,
@@ -938,11 +942,20 @@ export const setup: ModuleSetupConfig = {
       widgetIds: PM_WIDGETS,
       logger: () => {},
     })
-    // Agency roles — per-agency widgets
+    // PRM-specific roles — tenant-wide (agencies are in different orgs,
+    // so org-specific records for the default org won't apply to them).
+    await seedDashboardDefaultsForTenant(ctx.em, {
+      tenantId: ctx.tenantId,
+      organizationId: null,
+      roleNames: ['partner_admin', 'partner_member', 'partner_contributor'],
+      widgetIds: AGENCY_WIDGETS,
+      logger: () => {},
+    })
+    // Platform roles in PRM context — org-specific for default org
     await seedDashboardDefaultsForTenant(ctx.em, {
       tenantId: ctx.tenantId,
       organizationId: ctx.organizationId,
-      roleNames: ['admin', 'employee', 'partner_admin', 'partner_member', 'partner_contributor'],
+      roleNames: ['admin', 'employee'],
       widgetIds: AGENCY_WIDGETS,
       logger: () => {},
     })
