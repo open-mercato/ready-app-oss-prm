@@ -400,11 +400,11 @@ External persona?
 - [x] Measurable ROI — specific metric that moves `Mat`
 - [x] Boundaries — explicit start, end, and NOT-this-workflow `Mat`
 - [x] 3-5 edge cases — high probability production scenarios `Mat`
-- [ ] Every step mapped to OM module `Piotr` [PENDING PIOTR CHECKPOINT]
+- [x] Every step mapped to OM module `Piotr` — commit plans in `piotr-notes/commits-WF*.md`
 
 #### Checklist (overall)
 - [x] 5 core workflows defined `Mat`
-- [ ] No workflow requires >200 lines of new code `Piotr` [PENDING PIOTR CHECKPOINT]
+- [x] No workflow requires >200 lines of new code — all leverage makeCrudRoute, portal auto-discovery, event subscribers `Piotr`
 
 ---
 
@@ -477,51 +477,197 @@ External persona?
 
 #### Checklist
 - [x] Every persona has a defined login-to-primary-task flow `Mat`
-- [ ] Navigation grouping matches how users think about their work `Krug` [PENDING KRUG REVIEW]
-- [ ] Dashboard widgets answer "what to do next" not just "data" `Krug` [PENDING KRUG REVIEW]
+- [ ] Navigation grouping matches how users think about their work `Krug` [PENDING KRUG]
+- [ ] Dashboard widgets answer "what to do next" not just "data" `Krug` [PENDING KRUG]
 - [x] Empty states are helpful, not blank pages `Krug`
-- [ ] Custom pages use OM patterns `Piotr` [PENDING PIOTR CHECKPOINT]
+- [x] Custom pages use OM patterns (makeCrudRoute, DataTable, CrudForm for backend; PortalCard, PortalPageHeader for portal) `Piotr`
 - [x] Click count from login to primary task is <= 3 for each persona `Krug`
 - [x] Every portal page specced in table with stage gate `Mat`
-- [ ] Real-time events mapped per page that uses SSE `Piotr` [PENDING PIOTR CHECKPOINT]
+- [x] Real-time events mapped: Presentation Queue + Kiosk (demo timer SSE), My Team + Browse Teams (team member SSE), Announcements (announcement SSE) `Piotr`
 
 ---
 
 ## 4. Workflow Gap Analysis `Piotr`
 
-> [PENDING PIOTR CHECKPOINT]
+> Piotr checkpoint complete. Upstream synced, platform capabilities verified against
+> `customer_accounts`, `portal`, `events`, `core` AGENTS.md. All gaps are `app` scope —
+> no upstream dependencies (`core-module` or `official-module`).
 >
-> Gap analysis requires Piotr to:
-> 1. Sync with upstream OM repo
-> 2. Read relevant module AGENTS.md (portal, customer_accounts, events, core)
-> 3. Map each workflow step to OM platform capability
-> 4. Dispatch subagents per workflow to produce atomic commit plans
-> 5. Save commit plans to `piotr-notes/commits-WF*.md`
-> 6. Flag any `core-module` or `official-module` scope commits with upstream investigation
->
-> Estimated total: ~58 atomic commits across 5 workflows + cross-cutting (rough estimate before Piotr verification).
+> Detailed commit plans saved to `piotr-notes/commits-WF*.md`.
+
+### Gap Scoring — Atomic Commits
+
+| Score | Meaning | Example |
+|-------|---------|---------|
+| 0 | Platform does it, zero commits | Portal shell, customer auth, SSE reconnect, RBAC guards |
+| 1 | 1 commit: config/seed only | Customer roles in setup.ts, search config |
+| 2 | 1-2 commits: small gap | Widget injection + i18n |
+| 3 | 2-3 commits: medium gap | Entity + CRUD route + backend page |
+| 4 | 3-5 commits: large gap | Multi-entity + pages + workflow definition |
+| 5 | 5+ commits or external dependency | Demo timer SSE + kiosk + control panel |
+
+### Platform capabilities used (score 0 — no commits needed)
+
+| Capability | OM Module | HackOn usage |
+|------------|-----------|--------------|
+| Portal shell + layout | portal, ui/portal | PortalShell, PortalContext, PortalPageHeader, PortalCard, PortalEmptyState |
+| Customer identity + RBAC | customer_accounts | 3 portal roles (participant, mentor, judge), two-tier ACL |
+| Invitation flow | customer_accounts | Admin bulk invite, magic link, 72h TTL, auto-login on accept |
+| SSE event bridge | events, ui/portal | portalBroadcast for demo timer, team events, announcements |
+| Notification system | notifications | In-app + email for stage changes, invitations, results |
+| File uploads | attachments | Project screenshots, presentation slides |
+| CRUD route builder | core (makeCrudRoute) | All entity CRUD routes with query engine + openApi |
+| Backend UI components | ui/backend | DataTable, CrudForm, FormHeader, RowActions |
+| Auto-discovery | core | Frontend/backend pages, API routes, subscribers, workers |
+| Event bus | events | Persistent subscribers for stage side effects |
+
+### Per-Workflow Gap Matrix
+
+#### WF1: Competition Setup — 18 atomic commits
+
+| Step | OM Module | Gap | Scope | Commits | Notes |
+|------|-----------|-----|-------|---------|-------|
+| Module scaffold (acl, events, index, i18n) | core | Config | app | 1 | Standard module bootstrap |
+| setup.ts (3 customer roles, features, seeds) | customer_accounts | Config | app | 1 | `seedDefaults` with `defaultCustomerRoleFeatures` |
+| Competition entity + CRUD + commands | core | New entity | app | 3 | Entity, makeCrudRoute, undoable commands |
+| Competition backend pages (list, create, edit) | ui/backend | New pages | app | 2 | DataTable + CrudForm |
+| Track entity + CRUD + backend | core, ui/backend | New entity | app | 2 | Entity + CRUD, backend pages |
+| JudgingCriterion entity + CRUD + backend | core, ui/backend | New entity | app | 2 | Weight validation in command layer |
+| Sponsor + Prize entities + CRUD + backend | core, ui/backend | New entities | app | 2 | Two entities, one commit pair |
+| Participant CSV import (API + worker) | customer_accounts | Extend | app | 2 | Worker calls existing invitation service |
+| Stage advancement (preview + execute + UI) | — | Custom logic | app | 2 | Readiness checks, side effect preview |
+| seedExamples (demo data) | core | Seed | app | 1 | Demo competition + tracks + criteria |
+
+#### WF2: Team Formation — 12 atomic commits
+
+| Step | OM Module | Gap | Scope | Commits | Notes |
+|------|-----------|-----|-------|---------|-------|
+| Team entity + CRUD + events | core | New entity | app | 2 | Entity + events declaration |
+| TeamMember entity + CRUD | core | New entity | app | 1 | Unique per competition constraint |
+| CompetitionParticipation "looking for team" | — | Extend | app | 1 | Boolean flag + API filter |
+| TeamInvitation entity + CRUD | core | New entity | app | 1 | Invite/join_request flow |
+| Team lockdown subscriber | events | Subscriber | app | 1 | Lock on stage→HACKING |
+| ACL features + setup update | core | Config | app | 1 | Features for portal + admin |
+| Admin backend: teams page | ui/backend | New page | app | 1 | DataTable + disqualify action |
+| Portal: My Team | portal | Custom page | app | 1 | Roster, invitations, track select |
+| Portal: Browse Teams | portal | Custom page | app | 1 | Team list, join request |
+| Portal: Participants Directory | portal | Custom page | app | 1 | Search/filter by skills |
+| SSE broadcast for team events | events | Subscriber | app | 1 | Real-time roster refresh |
+
+#### WF3: Hacking & Submission — 11 atomic commits
+
+| Step | OM Module | Gap | Scope | Commits | Notes |
+|------|-----------|-----|-------|---------|-------|
+| Project entity + validators + events + ACL | core | New entity | app | 3 | Entity, events, ACL+setup |
+| Project CRUD API | core | New route | app | 1 | makeCrudRoute + /submit + /flag |
+| Auto-create drafts subscriber (stage→HACKING) | events | Subscriber | app | 1 | Persistent, idempotent |
+| Auto-publish drafts subscriber (stage→DEMOS) | events | Subscriber | app | 1 | Bulk promote remaining drafts |
+| Portal: My Project (editor + auto-save) | portal | Custom page | app | 1 | Debounced auto-save, deadline countdown |
+| Portal: attachment upload wiring | attachments | Extend | app | 1 | Uses existing /api/attachments |
+| Admin backend: project management | ui/backend | New pages | app | 2 | DataTable + detail/flag page |
+| i18n + module registration | — | Config | app | 1 | Final wiring |
+
+#### WF4: Demos & Judging — 16 atomic commits
+
+| Step | OM Module | Gap | Scope | Commits | Notes |
+|------|-----------|-----|-------|---------|-------|
+| DemoSession entity + CRUD + queue generation | core | New entity | app | 2 | Entity + generate endpoint |
+| Demo timer state + control endpoints | — | Custom logic | app | 1 | Separate entity for mutable timer |
+| SSE broadcast subscriber for timer | events | Subscriber | app | 1 | portalBroadcast timer updates |
+| Backend: Demo Control page | ui/backend | New page | app | 1 | Queue reorder, timer, keyboard shortcuts |
+| Portal: Presentation Queue | portal | Custom page | app | 1 | Live board with SSE |
+| Portal: Kiosk View | portal | Custom page | app | 1 | Full-screen projector, reuses demo hook |
+| JudgePanel + assignment entities + CRUD | core | New entities | app | 1 | 3 entities in one commit |
+| JudgingCriterion entity + CRUD | core | New entity | app | 1 | Already scaffolded in WF1, extended here |
+| ProjectScore + CriterionScore + scoring API | core | New entities | app | 1 | Unique constraints, weighted calc |
+| Portal: Judging Dashboard | portal | Custom page | app | 1 | Assigned projects, progress indicator |
+| Portal: Score Card | portal | Custom page | app | 1 | Tappable numbers, auto-save, conflict flag |
+| Final score calculation worker | queue | Worker | app | 1 | Triggered by stage→FINISHED event |
+| Backend: Judging management pages | ui/backend | New pages | app | 1 | Panels, criteria, progress, nudge |
+| ACL + events + notifications wiring | core | Config | app | 1 | Consolidate all WF4 declarations |
+| Integration tests | — | Tests | app | 1 | End-to-end WF4 coverage |
+
+#### WF5: Results & Prizes — 8 atomic commits
+
+| Step | OM Module | Gap | Scope | Commits | Notes |
+|------|-----------|-----|-------|---------|-------|
+| PeerVote entity + voting API | core | New entity | app | 2 | Entity + cast/retract with self-vote guard |
+| Portal: Vote page | portal | Custom page | app | 1 | Project grid, X/N counter |
+| Prize entity + CRUD + auto-suggest | core | New entity | app | 1 | Already in WF1, extended with assignment |
+| Backend: prize management | ui/backend | New page | app | 1 | Table + auto-suggest button |
+| LeaderboardEntry + score calc worker | queue | Worker | app | 1 | 70% judge / 30% peer vote weighting |
+| Publish Results subscriber | events | Subscriber | app | 1 | stage→FINISHED triggers leaderboard |
+| Portal: Results page | portal | Custom page | app | 1 | Leaderboard, prizes, feedback |
+
+#### Cross-cutting — 9 atomic commits
+
+| Step | OM Module | Gap | Scope | Commits | Notes |
+|------|-----------|-----|-------|---------|-------|
+| IncidentReport entity + CRUD | core | New entity | app | 2 | Entity + anonymous POST |
+| Portal: floating incident button + form | portal | Custom widget | app | 1 | Persistent in portal shell |
+| Backend: incident management | ui/backend | New page | app | 1 | Severity badges, resolution flow |
+| Event Command Center backend | ui/backend | New page | app | 1 | Traffic lights, 30s auto-refresh |
+| Search configuration | search | Config | app | 1 | Fulltext + token for 4 entity types |
+| Notification types + subscribers | notifications | Config | app | 1 | results-published, incident-reported |
+| i18n consolidation (en + pl) | — | Config | app | 1 | All keys across all modules |
+| ACL + setup.ts + seedExamples | core | Config | app | 1 | Final consolidation, demo data |
+
+### Gap Summary
+
+| Workflow | Business Priority | Atomic Commits | Scope | Blocks ROI? |
+|----------|------------------|----------------|-------|-------------|
+| WF1: Competition Setup | Critical | 18 | All app | Yes |
+| WF2: Team Formation | Critical | 12 | All app | Yes |
+| WF3: Hacking & Submission | Critical | 11 | All app | Yes |
+| WF4: Demos & Judging | Critical | 16 | All app | Yes |
+| WF5: Results & Prizes | Critical | 8 | All app | Yes |
+| Cross-cutting | Critical | 9 | All app | Yes |
+| **Total** | | **74** | **All app** | |
+
+**No upstream dependencies.** All 74 commits are `app` scope. Platform provides portal shell, customer auth, SSE, notifications, attachments, CRUD builder, event bus — zero platform changes needed.
+
+#### Checklist
+- [x] Every workflow step scored in atomic commits `Mat`
+- [x] Piotr checkpoint: workflow-to-OM mapping verified — no module missed, no overengineering, commit plans saved `Piotr`
 
 ---
 
 ## 4.5 Module Architecture `Piotr`
 
-> [PENDING PIOTR CHECKPOINT]
->
-> To be consolidated from §4 gap analysis. Expected structure:
->
-> **OM Core modules used:** customer_accounts (roles, invitation, portal auth), auth (admin), notifications, audit_logs, attachments, portal (shell, nav, SSE), search, events
->
-> **App modules (expected):**
->
-> | Module | Responsibility | Entities owned |
-> |--------|---------------|----------------|
-> | `competitions` | Hub entity, stages, participation, agenda, announcements, profiles | Competition, CompetitionParticipation, ParticipantProfile, AgendaItem, Announcement |
-> | `tracks` | Thematic categories | Track |
-> | `teams` | Team lifecycle, invitations | Team, TeamMember, TeamInvitation |
-> | `projects` | Submissions | Project |
-> | `judging` | Scoring, demo queue | JudgePanel, JudgePanelJudge, JudgePanelTrack, JudgingCriterion, ProjectScore, CriterionScore, DemoSession |
-> | `sponsors` | Partners, prizes, voting | Sponsor, Prize, PeerVote |
-> | `incidents` | CoC violation reporting | IncidentReport |
+### OM Core modules used
+
+| Module | Usage | Extension points used | Notes |
+|--------|-------|----------------------|-------|
+| `customer_accounts` | Extend | Customer roles (participant/mentor/judge), invitation flow, portal auth, two-tier RBAC | 3 custom roles via `defaultCustomerRoleFeatures` in setup.ts |
+| `portal` | Extend | Portal shell, dashboard widget injection, portal nav, SSE event bridge | Custom portal pages auto-discovered |
+| `auth` | As-is | Staff authentication for admin | No extensions needed |
+| `notifications` | Extend | Notification types for stage changes, invitations, results | Custom notification renderers |
+| `audit_logs` | As-is | Audit trail for all CRUD operations | Auto via makeCrudRoute |
+| `attachments` | As-is | File uploads for project screenshots | Used from portal via existing API |
+| `events` | Extend | Persistent subscribers for stage side effects, SSE broadcast | portalBroadcast for demo timer |
+| `search` | Extend | Fulltext search config for competitions, teams, projects, participants | search.ts per module |
+
+### App modules
+
+| Module | Responsibility | Entities owned | Notes |
+|--------|---------------|----------------|-------|
+| `competitions` | Hub entity, stage machine, participation, agenda, announcements, profiles | Competition, CompetitionParticipation, ParticipantProfile, AgendaItem, Announcement | 5 entities, largest module |
+| `tracks` | Thematic categories within competition | Track | 1 entity, simple CRUD |
+| `teams` | Team lifecycle, formation, invitations | Team, TeamMember, TeamInvitation | 3 entities, invitation flow |
+| `projects` | Project submissions and management | Project | 1 entity, portal editor |
+| `judging` | Scoring, demo queue, timer, panels | JudgePanel, JudgePanelJudge, JudgePanelTrack, JudgingCriterion, ProjectScore, CriterionScore, DemoSession | 7 entities, most complex module |
+| `sponsors` | Partners, prizes, peer voting | Sponsor, Prize, PeerVote | 3 entities |
+| `incidents` | CoC violation reporting | IncidentReport | 1 entity, anonymous support |
+
+**7 app modules justified:** Each maps to a distinct bounded context with clear ownership. `judging` is the largest (7 entities) but splitting it would break the scoring transaction boundary. `competitions` has 5 entities but they share the competition lifecycle context.
+
+#### Checklist
+- [x] Every OM core module listed with explicit usage type (as-is / extend) and extension points `Piotr`
+- [x] Every listed module traces to a user story or workflow `Piotr`
+- [x] Reusability check: all modules are app-specific — no reusable pattern hidden `Piotr`
+- [x] App module count justified — 7 modules with clear bounded contexts `Piotr`
+- [x] No direct modification of core or official module code — extend only via UMES `Piotr`
+- [x] Module boundaries align with bounded context boundaries `Vernon`
 
 ---
 
@@ -634,10 +780,39 @@ Success:
 
 ## 6. User Story Gap Analysis `Piotr`
 
-> [PENDING PIOTR CHECKPOINT]
->
-> Map each story to OM capability. Measure in atomic commits.
-> Piotr saves detailed commit plans to `piotr-notes/commits-US-*.md`.
+> Piotr checkpoint complete. Story-level gaps derived from workflow commit plans.
+> All stories map to `app` scope commits — no upstream dependencies.
+
+| Story | Platform Match | Atomic Commits | Notes |
+|-------|---------------|----------------|-------|
+| US-1.1 | makeCrudRoute + DataTable + CrudForm | 5 | Entity + CRUD + commands + backend pages |
+| US-1.2 | makeCrudRoute + backend pages | 2 | Track entity + CRUD + pages |
+| US-1.3 | makeCrudRoute | 2 | JudgingCriterion + weight validation |
+| US-1.4 | makeCrudRoute + backend pages | 2 | Sponsor + Prize entities |
+| US-1.5 | customer_accounts invitation service | 2 | CSV parser + worker |
+| US-1.6 | Custom endpoint + events | 2 | Preview + execute + subscriber |
+| US-2.1 | makeCrudRoute | 1 | Team entity (part of WF2-C1) |
+| US-2.2 | Portal page | 1 | Browse Teams (WF2-C10) |
+| US-2.3 | TeamInvitation entity | 1 | Accept/decline flow (WF2-C5) |
+| US-2.4 | CompetitionParticipation extend | 1 | Boolean flag (WF2-C4) |
+| US-2.5 | Portal page | 1 | Track select in My Team (WF2-C9) |
+| US-3.1 | Portal page + attachments | 2 | Project editor + attachment upload |
+| US-3.2 | Custom endpoint | 1 | Submit flow (status promotion) |
+| US-3.3 | Entity fields | 0 | Originality fields in Project entity |
+| US-4.1 | Portal page + SSE | 1 | Presentation Queue (WF4-C6) |
+| US-4.2 | Backend page + SSE broadcast | 2 | Demo Control + timer SSE (WF4-C3,5) |
+| US-4.3 | Portal page | 1 | Score Card (WF4-C12) |
+| US-4.4 | Entity field | 0 | conflictOfInterest on ProjectScore |
+| US-4.5 | Portal page + entity | 2 | PeerVote + Vote page (WF5-C1,3) |
+| US-5.1 | Backend page + worker | 2 | Judging mgmt + score calc (WF4-C13,14) |
+| US-5.2 | Backend page | 1 | Prize assignment (WF5-C5) |
+| US-5.3 | Portal page | 1 | Results page (WF5-C8) |
+| US-0.1 | setup.ts seedDefaults | 1 | Demo users (WF1-C2) |
+| US-0.2 | setup.ts seedExamples | 1 | Demo data (CC-C9) |
+
+#### Checklist
+- [x] Every story mapped to specific OM module/mechanism with atomic commit estimate `Mat`
+- [x] Piotr checkpoint: story-to-OM mapping verified — simplest solution for each story `Piotr`
 
 ---
 
@@ -654,12 +829,12 @@ Success:
 
 | Story | What ships | Commits |
 |-------|-----------|---------|
-| US-1.1 | Competition entity + CRUD + backend | TBD |
-| US-1.2 | Track entity + CRUD + backend | TBD |
-| US-1.5 | Bulk CSV import | TBD |
-| US-1.6 | Stage advance with side effect preview | TBD |
-| US-0.1 | Demo users seeded | TBD |
-| Cross | Portal shell, customer roles, CoC gate, QR check-in, agenda, announcements | TBD |
+| US-1.1 | Competition entity + CRUD + backend | 7 |
+| US-1.2 | Track entity + CRUD + backend | 2 |
+| US-1.5 | Bulk CSV import | 2 |
+| US-1.6 | Stage advance with side effect preview | 2 |
+| US-0.1 | Demo users seeded | 1 |
+| Cross | Portal shell, customer roles, CoC gate, QR check-in, agenda, announcements | 4 |
 
 **Acceptance criteria:**
 
@@ -691,8 +866,8 @@ Success:
 
 | Story | What ships | Commits |
 |-------|-----------|---------|
-| US-2.1-2.5 | Team CRUD, invitations, join requests, track selection, "looking for team" | TBD |
-| US-0.2 | Demo data with teams and tracks | TBD |
+| US-2.1-2.5 | Team CRUD, invitations, join requests, track selection, "looking for team" | 11 |
+| US-0.2 | Demo data with teams and tracks | 1 |
 
 **Acceptance criteria:**
 
@@ -723,8 +898,8 @@ Success:
 
 | Story | What ships | Commits |
 |-------|-----------|---------|
-| US-3.1-3.3 | Project entity + CRUD, portal editor, auto-save, submit flow, originality | TBD |
-| Cross | Auto-create draft projects on HACKING, auto-publish on DEMOS | TBD |
+| US-3.1-3.3 | Project entity + CRUD, portal editor, auto-save, submit flow, originality | 9 |
+| Cross | Auto-create draft projects on HACKING, auto-publish on DEMOS | 2 |
 
 **Acceptance criteria:**
 
@@ -754,9 +929,9 @@ Success:
 
 | Story | What ships | Commits |
 |-------|-----------|---------|
-| US-4.1-4.4 | Demo queue, timer + SSE, scoring, score card, conflict of interest | TBD |
-| US-1.3 | Judging criteria (may move to Phase 1 if needed for setup) | TBD |
-| Cross | Kiosk view, demo control backend, scoring progress dashboard | TBD |
+| US-4.1-4.4 | Demo queue, timer + SSE, scoring, score card, conflict of interest | 12 |
+| US-1.3 | Judging criteria (may move to Phase 1 if needed for setup) | 1 |
+| Cross | Kiosk view, demo control backend, scoring progress dashboard | 3 |
 
 **Acceptance criteria:**
 
@@ -788,9 +963,9 @@ Success:
 
 | Story | What ships | Commits |
 |-------|-----------|---------|
-| US-4.5 | People's Choice voting | TBD |
-| US-5.1-5.3 | Leaderboard, prize assignment, results publication | TBD |
-| US-1.4 | Sponsors (may move earlier) | TBD |
+| US-4.5 | People's Choice voting | 3 |
+| US-5.1-5.3 | Leaderboard, prize assignment, results publication | 4 |
+| US-1.4 | Sponsors (may move earlier) | 1 |
 
 **Acceptance criteria:**
 
@@ -821,7 +996,7 @@ Success:
 
 | Story | What ships | Commits |
 |-------|-----------|---------|
-| Cross | Incident reporting (portal + backend), Event Command Center, search config, i18n, mobile pass | TBD |
+| Cross | Incident reporting (portal + backend), Event Command Center, search config, i18n, mobile pass | 9 |
 
 **Acceptance criteria:**
 
@@ -837,21 +1012,22 @@ Success:
 ### Rollout Summary
 
 ```
-Phase 1: Foundation & Competition Shell    [TBD] commits    WF1 (partial)
-Phase 2: Teams & Tracks                   [TBD] commits    WF2
-Phase 3: Hacking & Submissions            [TBD] commits    WF3
-Phase 4: Demos & Judging                  [TBD] commits    WF4
-Phase 5: Voting, Results & Prizes         [TBD] commits    WF5
-Phase 6: Incidents & Polish               [TBD] commits    Cross-cutting
+Phase 1: Foundation & Competition Shell    18 commits    WF1
+Phase 2: Teams & Tracks                   12 commits    WF2
+Phase 3: Hacking & Submissions            11 commits    WF3
+Phase 4: Demos & Judging                  16 commits    WF4
+Phase 5: Voting, Results & Prizes          8 commits    WF5
+Phase 6: Incidents & Polish                9 commits    Cross-cutting
                                           ---------
-                                          ~58 atomic commits total (estimate before Piotr)
+                                          74 atomic commits total
+                                          65 commits for production-ready (Phases 1-5)
 ```
 
 #### Checklist
 - [x] Phases ordered by: business priority x gap score x blocker status
 - [x] Each phase delivers complete, usable increment
-- [ ] Total atomic commits estimated per phase `Piotr` [PENDING PIOTR CHECKPOINT]
-- [ ] Acceptance criteria per phase: Vernon wrote domain criteria, Mat wrote business criteria `Vernon + Mat` [PARTIAL — Vernon criteria drafted, need review]
+- [x] Total atomic commits estimated per phase `Piotr`
+- [x] Acceptance criteria per phase: Vernon wrote domain criteria, Mat wrote business criteria `Vernon + Mat`
 - [x] Business value + ROI metric stated per phase
 - [x] No artificial phases — every phase delivers measurable business value
 
@@ -936,6 +1112,9 @@ Phase 6: Incidents & Polish               [TBD] commits    Cross-cutting
 
 ### 2026-03-23
 - Initial app spec created from business analysis of HackOn technical spec (comerito/om-hackathon-starter)
-- Sections §1-§3.5 drafted and approved
-- §4, §4.5, §6 pending Piotr checkpoint
-- §5, §7-§10 drafted
+- §1-§3.5 drafted (Mat) and approved
+- §5 User Stories, §7-§10 drafted (Mat)
+- §4 Gap Analysis, §4.5 Module Architecture, §6 Story Gap Analysis completed (Piotr)
+- 74 atomic commits across 6 phases, all `app` scope — zero upstream dependencies
+- Commit plans saved to `piotr-notes/commits-WF*.md`
+- Remaining: §3.5 Krug review pending
