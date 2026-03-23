@@ -1,0 +1,83 @@
+name: CI — Validate Examples
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  validate-prm:
+    name: PRM Example — build + unit tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: mercato
+          POSTGRES_PASSWORD: mercato
+          POSTGRES_DB: mercato
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mercato"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      meilisearch:
+        image: getmeili/meilisearch:v1.6
+        ports:
+          - 7700:7700
+        env:
+          MEILI_NO_ANALYTICS: true
+          MEILI_MASTER_KEY: masterKey
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        working-directory: apps/prm
+        run: yarn install --frozen-lockfile
+
+      - name: Generate module artifacts
+        working-directory: apps/prm
+        run: yarn generate
+
+      - name: Build
+        working-directory: apps/prm
+        run: yarn build
+
+      - name: Run unit tests
+        working-directory: apps/prm
+        run: yarn test
+
+      - name: Run database migrations
+        working-directory: apps/prm
+        env:
+          DATABASE_URL: postgresql://mercato:mercato@localhost:5432/mercato
+        run: yarn db:migrate
+
+      - name: Initialize (seed data)
+        working-directory: apps/prm
+        env:
+          DATABASE_URL: postgresql://mercato:mercato@localhost:5432/mercato
+          MEILISEARCH_HOST: http://localhost:7700
+          MEILISEARCH_API_KEY: masterKey
+          REDIS_URL: redis://localhost:6379
+        run: yarn initialize
