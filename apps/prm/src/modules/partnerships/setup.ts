@@ -422,6 +422,7 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
   partner_admin: [
     ...BACKEND_BASELINE_FEATURES,
     'customers.*',
+    'entities.*',
     'partnerships.manage',
     'partnerships.widgets.onboarding-checklist',
     'auth.users.*',

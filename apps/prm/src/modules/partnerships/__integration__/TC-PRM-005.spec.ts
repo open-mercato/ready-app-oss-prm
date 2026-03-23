@@ -72,7 +72,7 @@ test.describe('TC-PRM-005: Org Isolation (US-6.1 through US-6.4)', () => {
 
     // All companies visible to Acme Admin should belong to Acme org context
     // (the org scoping ensures only Acme org data is returned)
-    const acmeCompanyNames = acmeCompanies.map((c) => c.displayName as string)
+    const acmeCompanyNames = acmeCompanies.map((c) => c.display_name as string)
 
     // Auth as Nordic Admin
     const nordicToken = await getAuthToken(request, NORDIC_ADMIN_EMAIL, DEMO_PASSWORD)
@@ -87,7 +87,7 @@ test.describe('TC-PRM-005: Org Isolation (US-6.1 through US-6.4)', () => {
       'Nordic Admin should see at least 1 company from demo seed data',
     ).toBeGreaterThanOrEqual(1)
 
-    const nordicCompanyNames = nordicCompanies.map((c) => c.displayName as string)
+    const nordicCompanyNames = nordicCompanies.map((c) => c.display_name as string)
 
     // Verify no overlap: none of Acme's companies appear in Nordic's list and vice versa
     for (const acmeName of acmeCompanyNames) {

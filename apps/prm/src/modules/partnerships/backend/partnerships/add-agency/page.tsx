@@ -46,13 +46,13 @@ export default function AddAgencyPage() {
     }
 
     setResult(call.result)
-    flash({ type: 'success', message: `Agency "${agencyName}" created successfully` })
+    flash(`Agency "${agencyName}" created successfully`)
   }
 
   const handleCopy = async () => {
     if (!result) return
     await navigator.clipboard.writeText(result.inviteMessage)
-    flash({ type: 'success', message: 'Invite message copied to clipboard' })
+    flash('Invite message copied to clipboard')
   }
 
   if (result) {
