@@ -1,0 +1,103 @@
+{
+  "partnerships": {
+    "nav": {
+      "group": "Partnerships"
+    },
+    "addAgency": {
+      "title": "Add Agency"
+    },
+    "agencies": {
+      "title": "Agencies"
+    },
+    "myWic": {
+      "title": "WIC Scores",
+      "noData": "No WIC scores for this month."
+    },
+    "wicImport": {
+      "title": "Import WIC Scores",
+      "organization": "Agency",
+      "month": "Month",
+      "jsonInput": "WIC Scoring Results (JSON)",
+      "importButton": "Import"
+    },
+    "licenseDeals": {
+      "title": "License Deals",
+      "createTitle": "Add License Deal",
+      "addButton": "Add License Deal",
+      "noData": "No license deals yet.",
+      "created": "License deal created successfully",
+      "submitting": "Creating...",
+      "submitButton": "Create License Deal",
+      "columns": {
+        "licenseId": "License ID",
+        "industry": "Industry",
+        "year": "Year",
+        "type": "Type",
+        "status": "Status",
+        "renewal": "Renewal",
+        "closedAt": "Closed"
+      },
+      "fields": {
+        "agency": "Agency (Organization)",
+        "selectAgency": "Select an agency...",
+        "companyId": "Company ID",
+        "licenseId": "License Identifier",
+        "industry": "Industry Tag",
+        "closedAt": "Closed Date",
+        "type": "Type",
+        "status": "Status",
+        "isRenewal": "This is a renewal"
+      }
+    },
+    "companySearch": {
+      "title": "Attribute License Deal",
+      "placeholder": "Search companies across all agencies...",
+      "noResults": "No companies found matching your search.",
+      "confirmButton": "Attribute License Deal",
+      "success": "License deal attributed successfully."
+    },
+    "tierStatus": {
+      "title": "Tier Status",
+      "currentTier": "Current Tier",
+      "noTier": "No tier assigned",
+      "gracePeriod": "Grace period active — meet all KPI thresholds to recover",
+      "pendingApproval": "Tier change pending PM approval",
+      "wic": "WIC Score",
+      "wip": "WIP Count",
+      "min": "MIN Count"
+    },
+    "errors": {
+      "tenant_required": "Tenant context is required.",
+      "organization_required": "Organization context is required.",
+      "id_required": "Record identifier is required."
+    },
+    "widgets": {
+      "wipCount": {
+        "title": "WIP This Month",
+        "subtitle": "{{month}}",
+        "wicPlaceholder": "WIC: —",
+        "noData": "No WIP data for this period"
+      },
+      "wicSummary": {
+        "noData": "No WIC data",
+        "subtitle": "WIC Score — {{month}}",
+        "viewDetails": "View details"
+      },
+      "crossOrgWip": {
+        "title": "Agency Pipeline Activity"
+      },
+      "onboardingChecklist": {
+        "title": "Getting Started",
+        "fillProfile": "Fill your agency profile",
+        "addCaseStudy": "Add a case study",
+        "inviteBd": "Invite a Business Developer",
+        "inviteContributor": "Invite a Contributor",
+        "addProspect": "Add a prospect company",
+        "createDeal": "Create your first deal",
+        "setGhUsername": "Set your GitHub username",
+        "allDone": "All set! You're ready to go.",
+        "error": "Failed to load onboarding status"
+      }
+    }
+  }
+}

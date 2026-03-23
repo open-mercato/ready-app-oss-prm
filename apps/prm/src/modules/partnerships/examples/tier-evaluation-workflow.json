@@ -1,0 +1,197 @@
+{
+  "workflowId": "partnerships_tier_evaluation_v1",
+  "workflowName": "Tier Evaluation Workflow",
+  "description": "Evaluates an agency's KPI snapshot, lets PM approve or reject tier change, then persists assignment and emits AgencyTierChanged event.",
+  "version": 1,
+  "enabled": true,
+  "metadata": {
+    "category": "Partnerships",
+    "tags": ["partnerships", "tier", "evaluation"],
+    "icon": "award"
+  },
+  "definition": {
+    "steps": [
+      {
+        "stepId": "start",
+        "stepName": "Start",
+        "stepType": "START",
+        "description": "Worker has already computed KPI snapshot and created TierChangeProposal"
+      },
+      {
+        "stepId": "kpi_computed",
+        "stepName": "KPI Computed",
+        "stepType": "AUTOMATED",
+        "description": "Placeholder — tier-evaluation worker already ran and persisted KPI snapshot + proposal"
+      },
+      {
+        "stepId": "pm_review",
+        "stepName": "PM Review",
+        "stepType": "USER_TASK",
+        "description": "Partnership Manager reviews the tier change proposal",
+        "userTaskConfig": {
+          "assignedTo": "partnership_manager",
+          "formSchema": {
+            "type": "object",
+            "required": ["decision"],
+            "properties": {
+              "decision": {
+                "type": "string",
+                "enum": ["approve", "reject"],
+                "title": "Decision",
+                "description": "Approve or reject the tier change proposal"
+              },
+              "comments": {
+                "type": "string",
+                "title": "Comments",
+                "description": "Optional comments or rejection reason"
+              }
+            }
+          },
+          "slaDuration": "P3D"
+        }
+      },
+      {
+        "stepId": "apply_tier_change",
+        "stepName": "Apply Tier Change",
+        "stepType": "AUTOMATED",
+        "description": "Update proposal status, create TierAssignment, emit AgencyTierChanged event, write audit log"
+      },
+      {
+        "stepId": "record_rejection",
+        "stepName": "Record Rejection",
+        "stepType": "AUTOMATED",
+        "description": "Update proposal status to Rejected with rejection reason"
+      },
+      {
+        "stepId": "end",
+        "stepName": "Complete",
+        "stepType": "END",
+        "description": "Tier evaluation workflow complete"
+      }
+    ],
+    "transitions": [
+      {
+        "transitionId": "start_to_kpi_computed",
+        "transitionName": "Begin Evaluation",
+        "fromStepId": "start",
+        "toStepId": "kpi_computed",
+        "trigger": "auto",
+        "priority": 100
+      },
+      {
+        "transitionId": "kpi_computed_to_pm_review",
+        "transitionName": "Submit for PM Review",
+        "fromStepId": "kpi_computed",
+        "toStepId": "pm_review",
+        "trigger": "auto",
+        "priority": 100,
+        "continueOnActivityFailure": true,
+        "activities": [
+          {
+            "activityId": "emit_review_requested",
+            "activityName": "Emit Tier Review Requested Event",
+            "activityType": "EMIT_EVENT",
+            "async": true,
+            "config": {
+              "eventName": "partnerships.tier.review_requested",
+              "payload": {
+                "proposalId": "{{context.proposalId}}",
+                "organizationId": "{{context.organizationId}}",
+                "currentTier": "{{context.currentTier}}",
+                "proposedTier": "{{context.proposedTier}}",
+                "type": "{{context.type}}"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "transitionId": "pm_review_to_apply",
+        "transitionName": "Approve Tier Change",
+        "fromStepId": "pm_review",
+        "toStepId": "apply_tier_change",
+        "trigger": "auto",
+        "priority": 100,
+        "preConditions": [
+          {
+            "ruleId": "workflow_tier_check_approved",
+            "required": true
+          }
+        ],
+        "continueOnActivityFailure": true,
+        "activities": [
+          {
+            "activityId": "emit_tier_changed",
+            "activityName": "Emit Agency Tier Changed Event",
+            "activityType": "EMIT_EVENT",
+            "async": true,
+            "config": {
+              "eventName": "partnerships.agency.tier_changed",
+              "payload": {
+                "proposalId": "{{context.proposalId}}",
+                "organizationId": "{{context.organizationId}}",
+                "previousTier": "{{context.currentTier}}",
+                "newTier": "{{context.proposedTier}}",
+                "type": "{{context.type}}",
+                "approvedBy": "{{task.completedBy}}",
+                "timestamp": "{{now}}"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "transitionId": "pm_review_to_reject",
+        "transitionName": "Reject Tier Change",
+        "fromStepId": "pm_review",
+        "toStepId": "record_rejection",
+        "trigger": "auto",
+        "priority": 90,
+        "preConditions": [
+          {
+            "ruleId": "workflow_tier_check_rejected",
+            "required": true
+          }
+        ],
+        "continueOnActivityFailure": true,
+        "activities": [
+          {
+            "activityId": "emit_tier_rejected",
+            "activityName": "Emit Tier Change Rejected Event",
+            "activityType": "EMIT_EVENT",
+            "async": true,
+            "config": {
+              "eventName": "partnerships.tier.change_rejected",
+              "payload": {
+                "proposalId": "{{context.proposalId}}",
+                "organizationId": "{{context.organizationId}}",
+                "currentTier": "{{context.currentTier}}",
+                "proposedTier": "{{context.proposedTier}}",
+                "rejectedBy": "{{task.completedBy}}",
+                "comments": "{{task.result.comments}}"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "transitionId": "apply_to_end",
+        "transitionName": "Complete After Approval",
+        "fromStepId": "apply_tier_change",
+        "toStepId": "end",
+        "trigger": "auto",
+        "priority": 100,
+        "continueOnActivityFailure": true
+      },
+      {
+        "transitionId": "reject_to_end",
+        "transitionName": "Complete After Rejection",
+        "fromStepId": "record_rejection",
+        "toStepId": "end",
+        "trigger": "auto",
+        "priority": 100,
+        "continueOnActivityFailure": true
+      }
+    ]
+  }
+}

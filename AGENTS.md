@@ -5,59 +5,37 @@ Build Open Mercato applications from App Specs. Each app follows the same proces
 ## Repo Structure
 
 ```
+skills/                          # Shared AI skills (Mat, Piotr, Krug) + templates
 open-mercato/                    # OM monorepo (gitignored, local reference copy)
-  .ai/skills/                    # OM platform skills (spec-writing, implement-spec, etc.)
-  packages/core/src/modules/     # Reference module implementations (customers = reference CRUD)
-  AGENTS.md                      # OM platform conventions and task router
-
-app-specs/
-  <app-name>/                    # Business analysis (App Spec + supporting docs)
-    YYYY-MM-DD-app-spec-<app>.md # THE source of truth
-    piotr-notes/commits-WF*.md   # Atomic commit plans per workflow
-    mat-notes/                   # Challenger review findings
-  skills/mat/SKILL.md            # Product owner skill (spec creation)
-  skills/piotr/SKILL.md          # CTO review skill (platform verification)
-  templates/app-spec-template.md # App Spec checklist template
-
-apps/
-  <app-name>/                    # Implementation (OM application code)
-    src/modules/<module>/        # App modules following OM auto-discovery
-    docs/specs/                  # Implementation specs (one per atomic commit)
-    AGENTS.md                    # App-specific overrides
+apps/<app-name>/                 # Ready app (code + app-spec + docs)
+  app-spec/                      # Business analysis (forkable, drives AI-assisted dev)
+  src/modules/                   # Application code
+  docs/specs/                    # Implementation specs
 ```
 
-**Convention:** `app-specs/<app>/` is the business spec, `apps/<app>/` is the implementation. Same `<app>` name in both.
+Each app is self-contained: code, spec, and docs live together in `apps/<app>/`.
 
 ## OM Monorepo Reference
 
-The OM monorepo lives at `open-mercato/` in this repo (gitignored — local reference copy, not committed). It provides:
+The OM monorepo lives at `open-mercato/` (gitignored — local reference copy). It provides:
 
-1. **Platform skills** — at `open-mercato/.ai/skills/<skill>/SKILL.md`. These are NOT Skill tool skills — read the file directly with the Read tool and follow the process described inside.
-2. **Reference implementations** — at `open-mercato/packages/core/src/modules/`. The `customers` module is the canonical CRUD reference. Search here when you need to understand how an OM pattern works.
-3. **Platform conventions** — at `open-mercato/AGENTS.md`. The root AGENTS.md has the full task router and all OM rules (naming, security, BC contract, etc.).
-4. **Review checklists** — at `open-mercato/.ai/skills/code-review/references/review-checklist.md`.
+1. **Platform skills** — `open-mercato/.ai/skills/<skill>/SKILL.md`. Read the file with Read tool, NOT the Skill tool.
+2. **Reference implementations** — `open-mercato/packages/core/src/modules/`. The `customers` module is the canonical CRUD reference.
+3. **Platform conventions** — `open-mercato/AGENTS.md`.
 
-**Before any implementation work:** verify the monorepo is on the `develop` branch and up to date:
+**Before any implementation work:** verify the monorepo is on `develop` and up to date:
 ```bash
 cd open-mercato && git checkout develop && git pull
 ```
 
-**If `open-mercato/` does not exist:** clone it:
-```bash
-git clone <om-repo-url> open-mercato && cd open-mercato && git checkout develop
-```
-
 ## Task Router
 
-| Task | Where to work | What to use |
-|------|---------------|-------------|
-| Define a new app (business analysis) | `app-specs/<app>/` | Mat skill + Piotr skill + template |
-| Convert App Spec to implementation specs | `apps/<app>/docs/specs/` | This guide §2 (full workflow below) |
-| Implement a spec | `apps/<app>/src/modules/` | This guide §3 + OM `implement-spec` skill |
+| Task | Where to work | What to read |
+|------|---------------|--------------|
+| Define a new app | `apps/<app>/app-spec/` | `skills/` (Mat + Piotr + Krug) + template |
+| Write implementation specs | `apps/<app>/docs/specs/` | [docs/agent-guides/writing-specs.md](docs/agent-guides/writing-specs.md) |
+| Implement a spec | `apps/<app>/src/modules/` | [docs/agent-guides/implementing.md](docs/agent-guides/implementing.md) + OM `implement-spec` skill |
 | Review implementation | `apps/<app>/` | OM `code-review` skill |
-| Check platform capabilities | `app-specs/<app>/` | Piotr skill (fetches OM context on-demand) |
-
-**How to access OM skills:** Read the skill file with the Read tool at `open-mercato/.ai/skills/<skill>/SKILL.md`. Do NOT use the Skill tool — OM skills are not registered there. Read the file, then follow the process it describes.
 
 ---
 
@@ -65,253 +43,50 @@ git clone <om-repo-url> open-mercato && cd open-mercato && git checkout develop
 
 Before writing any spec or code, read these files in order:
 
-1. **App Spec** — `app-specs/<app>/YYYY-MM-DD-app-spec-<app>.md`
-   - §1: Business Context + Domain Model (terms, rules, invariants, field definitions)
-   - §2: Identity Model (User vs CustomerUser, roles, org scoping)
-   - §3: Workflows (end-to-end journeys with boundaries and edge cases)
-   - §7: Phasing (which commits per phase, acceptance criteria)
+1. **App Spec** — `apps/<app>/app-spec/YYYY-MM-DD-app-spec-<app>.md`
+   - §1: Business Context + Domain Model
+   - §2: Identity Model
+   - §3: Workflows
+   - §7: Phasing + acceptance criteria
 
-2. **Commit Plans** — `app-specs/<app>/piotr-notes/commits-WF*.md`
-   - One file per workflow, atomic commit breakdown
-   - Each commit has: scope, pattern, files, delivers, depends-on, phase
+2. **Commit Plans** — `apps/<app>/app-spec/piotr-notes/commits-WF*.md`
 
-3. **Upstream Flags** — `app-specs/<app>/piotr-notes/upstream-flags.md`
-   - Dependencies on OM core changes, workarounds, timelines
+3. **Upstream Flags** — `apps/<app>/app-spec/piotr-notes/upstream-flags.md`
 
 4. **App-specific overrides** — `apps/<app>/AGENTS.md`
-   - Identity model corrections, domain rules, anti-patterns specific to this app
 
-**The App Spec is the ceiling.** Do not invent features, entities, or workflows not in the App Spec. If something seems missing, check the App Spec again — it was likely decided and documented.
-
----
-
-## §2. Writing Implementation Specs
-
-For each phase, generate implementation specs from the App Spec. One spec per atomic commit (or tightly coupled group of commits from the same commit plan entry).
-
-### Process
-
-Follow these steps in order. Do NOT skip the review step.
-
-1. **Load OM context** — Read `open-mercato/.ai/skills/spec-writing/SKILL.md` for the OM spec-writing standards. Read `open-mercato/AGENTS.md` for platform conventions. Read reference module patterns from `open-mercato/packages/core/src/modules/customers/` as needed. Use Explore subagents for broad pattern research.
-2. **Read the App Spec** — Follow §1 above (App Spec → commit plans → upstream flags).
-3. **Reconcile commit plans** — Multiple workflow commit plans may overlap (e.g., both WF1 and WF2 seed roles). Merge overlapping commits and document the rationale. If the reconciliation involves design decisions not fully covered by the App Spec, invoke `superpowers:brainstorming` before deciding.
-4. **Plan (if 5+ commits)** — If the phase has 5 or more commits, invoke `superpowers:writing-plans` to coordinate the work before writing individual specs.
-5. **Write specs** — For each atomic commit, write one implementation spec using the format below. Use `superpowers:dispatching-parallel-agents` when multiple independent specs can be written simultaneously.
-6. **Review specs** — Read `open-mercato/.ai/skills/pre-implement-spec/SKILL.md` and apply its review process (adapted for app-level specs — BC audit is N/A for new apps). At minimum check: AGENTS.md compliance, spec completeness, gap analysis, risk assessment, cross-spec consistency.
-7. **Fix findings** — Address all Critical and High findings before proceeding. Update specs in place.
-8. **Commit specs** — Commit all specs for the phase together before starting implementation.
-
-### Spec Format
-
-Location: `apps/<app>/docs/specs/`
-Filename: `{date}-ph{N}-{commit-id}-{description}.md`
-
-Each spec must include:
-
-```markdown
-# {Title}
-
-## Source
-- App Spec sections: §X.Y, §Z
-- User stories: US-A.B, US-C.D
-- Commit plan: commits-WF{N}.md, Commit {M}
-
-## What This Delivers
-[One paragraph: what the user can do after this commit that they couldn't before]
-
-## Acceptance Criteria
-[Copy from App Spec §7 — both domain criteria (Vernon) and business criteria (Mat) that this commit satisfies]
-
-## Files
-| File | Action | Purpose |
-|------|--------|---------|
-| src/modules/<module>/... | Create/Modify | ... |
-
-## OM Patterns Used
-[Which auto-discovery path, UMES mechanism, or module convention applies]
-- Pattern: [name] — Reference: [where to find it in node_modules/@open-mercato/]
-
-## Implementation Notes
-[Any non-obvious decisions, edge cases from App Spec §3, ordering constraints]
-
-## Testing
-[Required for commits with custom business logic (interceptors, workers, custom API routes, validators).
- Skip for purely declarative commits (setup.ts seeds, ce.ts, seedExamples).]
-
-### Unit Tests
-[List functions/modules that need unit tests. Colocated as *.test.ts files.]
-- `functionName` — test: [what to verify]
-
-### Integration Test Scenarios
-[Each scenario becomes a Playwright test during §3. Self-contained, no demo data dependency.]
-
-| ID | Type | Scenario | Expected Result |
-|----|------|----------|-----------------|
-| T1 | API  | [action] | [result]        |
-
-## Verification
-[Exact commands to run, what to check, expected output]
-```
-
-### Rules
-
-- **One spec = one atomic commit** from the commit plans. Not bigger.
-- **Acceptance criteria come from the App Spec** — copy the relevant domain + business criteria from §7, don't invent new ones.
-- **Files section is exhaustive** — every file created or modified, with exact path under `src/modules/`.
-- **OM patterns reference source code** — point to `open-mercato/packages/core/src/modules/` for reference implementations.
-- **No spec without a commit plan entry** — if it's not in `commits-WF*.md`, it shouldn't exist.
-- **Test Scenarios required for custom logic** — if the commit introduces custom business logic (API interceptors, custom API routes, workers, validators with domain rules), the spec MUST include a Test Scenarios section. Skip for purely declarative commits (setup.ts seeds, ce.ts, seedExamples). Read `open-mercato/.ai/skills/integration-tests/SKILL.md` for the Playwright test conventions.
+**The App Spec is the ceiling.** Do not invent features, entities, or workflows not in the App Spec.
 
 ---
 
-## §3. Implementing Specs
+## §2. OM Package Strategy
 
-After a spec is written and reviewed (§2 steps 5-6), implement it. Read `open-mercato/.ai/skills/implement-spec/SKILL.md` for the OM implementation workflow, then follow the per-commit loop below.
+The OM monorepo lives at `open-mercato/` (gitignored). Build and publish to Verdaccio from whichever branch has the changes you need.
 
-### Per-Commit Loop
+1. **Check for open upstream PRs:** `gh pr list -R open-mercato/open-mercato --author matgren --state open`
+2. **If any PR has review comments** -> flag to user BEFORE starting any other work
+3. **Report to user:** "We're on [branch X / Verdaccio]. PRs: [status]."
 
-```
-1.  Read the implementation spec
-2.  If spec involves entities, validators, or workers → invoke superpowers:test-driven-development
-3.  Implement the code
-4.  yarn generate                (if module files changed)
-5.  yarn typecheck               (must pass)
-6.  yarn build                   (must pass)
-7.  Unit tests — for every new function/module with business logic:
-    - Colocate with source: src/modules/<module>/**/*.test.ts
-    - Test happy path + key edge cases + error paths
-    - Mock external dependencies (DI services, data engine)
-    - Run: yarn test
-8.  If spec has Test Scenarios → implement Playwright integration tests
-    - Read open-mercato/.ai/skills/integration-tests/SKILL.md for conventions
-    - Place tests in src/modules/<module>/__integration__/TC-*.spec.ts
-    - Tests MUST be self-contained: create fixtures in setup, clean up in teardown
-    - Tests MUST NOT rely on seeded/demo data
-    - Run: yarn test:integration:ephemeral (spins up fresh app + DB)
-9.  Check acceptance criteria from the spec
-10. Invoke superpowers:verification-before-completion before claiming done
-11. Commit
+**Verdaccio build:**
+```bash
+cd open-mercato && git checkout <branch-with-changes> && git pull
+yarn build:packages && bash scripts/registry/publish.sh
 ```
 
-Use `superpowers:systematic-debugging` if any step fails. Use `superpowers:dispatching-parallel-agents` when implementing multiple independent commits within the same phase.
-
-### Commit Message Format
-
-```
-feat(<module>): {what this commit delivers}
-
-Implements: {app-spec-ref} US-{X.Y}
-Phase: {N}, Commit: {M}
-Pattern: {OM pattern used}
+**App install (after Verdaccio publish):**
+```bash
+cd apps/<app> && rm -rf node_modules/@open-mercato && yarn install --force && yarn reinstall
 ```
 
-### Phase Completion
-
-After all commits in a phase are done:
-
-1. Run `yarn initialize` to test full bootstrap (seedDefaults + seedExamples)
-2. Run `yarn test:integration:ephemeral` — all integration tests for the phase must pass
-3. Verify ALL acceptance criteria from App Spec §7 for this phase (both domain and business)
-4. Use `code-review` skill for phase review
-5. Update `apps/<app>/docs/specs/` with any learnings
+**Never patch `node_modules` manually.** Use Verdaccio.
 
 ---
 
-## §4. OM Platform Patterns
+## §3. Conventions
 
-When implementing, reference these patterns from the OM monorepo at `open-mercato/packages/core/src/modules/`:
-
-| Pattern | Where to find reference | Used for |
-|---------|------------------------|----------|
-| **setup.ts** (roles, seeds) | `open-mercato/packages/core/src/modules/customers/setup.ts` | Seeding roles, dictionaries, pipeline stages, custom fields |
-| **API interceptors** | `open-mercato/packages/core/src/modules/*/api/interceptors.ts` | Before/after hooks on CRUD operations |
-| **Dashboard widgets** | `open-mercato/packages/core/src/modules/*/widgets/dashboard/` | Dashboard tiles and cards |
-| **Widget injection** | search `injection-table.ts` in `open-mercato/packages/core/` | Injecting UI into existing pages |
-| **Custom fields/entities** | `open-mercato/packages/core/src/modules/entities/` | Dynamic field definitions, custom entity types |
-| **Custom fields DSL** | `open-mercato/packages/shared/src/modules/dsl/` | `defineFields()`, `cf.*` helpers |
-| **Queue workers** | `open-mercato/packages/queue/` | Background job processing |
-| **Workflow JSON** | `open-mercato/packages/core/src/modules/workflows/` | Multi-step processes with activities and user tasks |
-| **CRUD routes** | `open-mercato/packages/core/src/modules/customers/api/` | Standard CRUD with openApi exports |
-| **Events** | `open-mercato/packages/core/src/modules/*/events.ts` | Typed domain events |
-| **acl.ts** | `open-mercato/packages/core/src/modules/*/acl.ts` | Feature-based permissions |
-| **ce.ts** | `open-mercato/packages/core/src/modules/*/ce.ts` | Custom entity declarations |
-| **Integration tests** | `open-mercato/.ai/skills/integration-tests/SKILL.md` | Playwright test conventions |
-
-**When you need to understand an OM pattern:** search `open-mercato/packages/core/src/modules/` for the source implementation. The `customers` module is the reference CRUD module. Use Explore subagents for broad pattern research.
-
----
-
-## §5. Module File Conventions
-
-All app code goes in `src/modules/<module>/`. Follow OM auto-discovery:
-
-```
-src/modules/<module>/
-  index.ts              # metadata
-  setup.ts              # seedDefaults, seedExamples, defaultRoleFeatures
-  acl.ts                # feature declarations
-  events.ts             # typed event declarations (createModuleEvents, as const)
-  ce.ts                 # custom entities
-  search.ts             # search config
-  data/
-    entities.ts         # MikroORM entities
-    validators.ts       # Zod schemas
-  api/
-    interceptors.ts     # API interceptors (before/after hooks)
-    get/*.ts            # GET routes (export handler + openApi)
-    post/*.ts           # POST routes
-    patch/*.ts          # PATCH routes
-    delete/*.ts         # DELETE routes
-  backend/
-    <module>/           # backend pages (auto-discovered as /backend/<module>)
-  frontend/
-    <path>/             # frontend pages (auto-discovered as /<path>)
-  widgets/
-    injection-table.ts  # widget-to-slot mappings
-    injection/          # injected UI widgets
-    dashboard/          # dashboard widget components
-  workers/              # queue workers (export default handler + metadata)
-  workflows/            # workflow JSON definitions
-  subscribers/          # event subscribers (export default handler + metadata)
-  commands/             # command implementations
-```
-
----
-
-## §6. Skills Reference
-
-Two types of skills are available. Use the right access method:
-
-### OM Platform Skills (read the file, follow the process)
-Access via Read tool at `open-mercato/.ai/skills/<skill>/SKILL.md`. Do NOT use the Skill tool.
-
-| Task | Skill file | When to use |
-|------|-----------|-------------|
-| Writing implementation specs | `spec-writing/SKILL.md` | Step 1 of §2 — read for OM spec standards before writing |
-| Pre-implementation analysis | `pre-implement-spec/SKILL.md` | Step 5 of §2 — review specs after writing, fix findings before implementing |
-| Implementing a spec | `implement-spec/SKILL.md` | Step 1 of §3 — read before coding each commit |
-| Code review | `code-review/SKILL.md` | After completing each phase — full review with CI gates |
-
-### Superpowers Skills (invoke via Skill tool)
-Access via the Skill tool. These are wired into the §2/§3 workflows at specific steps — invoke them when you reach that step.
-
-| Skill | Wired into | Trigger |
-|-------|-----------|---------|
-| `superpowers:brainstorming` | §2 step 3 | Design decisions not covered by App Spec (e.g., reconciling overlapping commit plans) |
-| `superpowers:writing-plans` | §2 step 4 | Phase has 5+ commits and needs coordination |
-| `superpowers:dispatching-parallel-agents` | §2 step 5, §3 loop | Multiple independent specs or commits can be worked on simultaneously |
-| `superpowers:test-driven-development` | §3 step 2 | Commit involves entities, validators, or workers |
-| `superpowers:verification-before-completion` | §3 step 8 | Before claiming any commit is done |
-| `superpowers:systematic-debugging` | §3 (any failure) | When typecheck, build, or tests fail |
-
----
-
-## §7. Conventions
-
-- **Module folders:** plural, snake_case (e.g., `partnerships`, `logistics`). Acronyms are acceptable as special cases (e.g., `prm`).
-- **Event IDs:** `module.entity.action` (singular entity, past tense, e.g., `catalog.product.created`)
-- **Feature IDs:** `module.action` (e.g., `catalog.manage`, `catalog.widgets.revenue`)
+- **Module folders:** plural, snake_case (e.g., `partnerships`). Acronyms OK (e.g., `prm`).
+- **Event IDs:** `module.entity.action` (singular entity, past tense: `catalog.product.created`)
+- **Feature IDs:** `module.action` (e.g., `catalog.manage`)
 - **JS identifiers:** camelCase
 - **DB columns:** snake_case
 - **PKs:** UUID, explicit FKs, junction tables for M:N
@@ -324,7 +99,7 @@ Access via the Skill tool. These are wired into the §2/§3 workflows at specifi
 
 ---
 
-## §8. Development Commands
+## §4. Development Commands
 
 ```bash
 yarn dev                              # Start dev server
@@ -335,14 +110,14 @@ yarn db:generate                      # Generate database migrations
 yarn db:migrate                       # Apply migrations
 yarn initialize                       # Full initialization (seedDefaults + seedExamples)
 yarn test                             # Run unit tests
-yarn test:integration:ephemeral       # Run Playwright integration tests (fresh app + DB)
-yarn test:integration:ephemeral:start # Start ephemeral app only (for test development)
+yarn test:integration                 # Run Playwright integration tests (fresh ephemeral app + DB)
+yarn test:integration:ephemeral       # Start ephemeral app only (QA exploration, no test run)
 yarn test:integration:report          # View HTML test report
 ```
 
 ---
 
-## §9. Anti-Patterns
+## §5. Anti-Patterns
 
 Stop and re-evaluate if you find yourself:
 
