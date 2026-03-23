@@ -1,0 +1,1 @@
+import './partner-license-deal'

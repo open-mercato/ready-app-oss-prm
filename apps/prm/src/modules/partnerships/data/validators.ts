@@ -23,3 +23,32 @@ export const wicImportRequestSchema = z.object({
 })
 
 export type WicImportRequest = z.infer<typeof wicImportRequestSchema>
+
+// ---------------------------------------------------------------------------
+// Partner License Deal
+// ---------------------------------------------------------------------------
+
+export const partnerLicenseDealCreateSchema = z.object({
+  organizationId: z.string().uuid(),
+  companyId: z.string().uuid(),
+  licenseIdentifier: z.string().min(1, 'License identifier is required'),
+  industryTag: z.string().min(1, 'Industry tag is required'),
+  type: z.string().default('enterprise'),
+  status: z.string().default('won'),
+  isRenewal: z.boolean().default(false),
+  closedAt: z.coerce.date(),
+  tenantId: z.string().uuid(),
+  createdBy: z.string().uuid(),
+})
+
+export type PartnerLicenseDealCreateInput = z.infer<typeof partnerLicenseDealCreateSchema>
+
+export const partnerLicenseDealUpdateSchema = z.object({
+  id: z.string().uuid(),
+  licenseIdentifier: z.string().min(1).optional(),
+  industryTag: z.string().min(1).optional(),
+  type: z.string().optional(),
+  status: z.string().optional(),
+  isRenewal: z.boolean().optional(),
+  closedAt: z.coerce.date().optional(),
+})

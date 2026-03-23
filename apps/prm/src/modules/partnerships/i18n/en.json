@@ -20,6 +20,40 @@
       "jsonInput": "WIC Scoring Results (JSON)",
       "importButton": "Import"
     },
+    "licenseDeals": {
+      "title": "License Deals",
+      "createTitle": "Add License Deal",
+      "addButton": "Add License Deal",
+      "noData": "No license deals yet.",
+      "created": "License deal created successfully",
+      "submitting": "Creating...",
+      "submitButton": "Create License Deal",
+      "columns": {
+        "licenseId": "License ID",
+        "industry": "Industry",
+        "year": "Year",
+        "type": "Type",
+        "status": "Status",
+        "renewal": "Renewal",
+        "closedAt": "Closed"
+      },
+      "fields": {
+        "agency": "Agency (Organization)",
+        "selectAgency": "Select an agency...",
+        "companyId": "Company ID",
+        "licenseId": "License Identifier",
+        "industry": "Industry Tag",
+        "closedAt": "Closed Date",
+        "type": "Type",
+        "status": "Status",
+        "isRenewal": "This is a renewal"
+      }
+    },
+    "errors": {
+      "tenant_required": "Tenant context is required.",
+      "organization_required": "Organization context is required.",
+      "id_required": "Record identifier is required."
+    },
     "widgets": {
       "wipCount": {
         "title": "WIP This Month",
