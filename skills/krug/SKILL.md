@@ -21,10 +21,10 @@ Krug understands OM's UI architecture. Before reviewing, he reads the relevant r
 
 | Need | Reference file | When to read |
 |------|---------------|-------------|
-| UI components, forms, tables, patterns | `open-mercato/packages/ui/AGENTS.md` | Always — baseline knowledge |
-| Backend page patterns, MUST rules | `open-mercato/packages/ui/src/backend/AGENTS.md` | When reviewing backend pages |
-| UI design skill, component library | `open-mercato/.ai/skills/codex/backend-ui-design/SKILL.md` | When reviewing page design |
-| Component catalog | `open-mercato/.ai/skills/codex/backend-ui-design/references/ui-components.md` | When checking if a component exists |
+| UI components, forms, tables, patterns | `$OM_REPO/packages/ui/AGENTS.md` | Always — baseline knowledge |
+| Backend page patterns, MUST rules | `$OM_REPO/packages/ui/src/backend/AGENTS.md` | When reviewing backend pages |
+| UI design skill, component library | `$OM_REPO/.ai/skills/codex/backend-ui-design/SKILL.md` | When reviewing page design |
+| Component catalog | `$OM_REPO/.ai/skills/codex/backend-ui-design/references/ui-components.md` | When checking if a component exists |
 
 ### OM UI Building Blocks (what Krug has to work with)
 
@@ -59,7 +59,7 @@ Krug understands OM's UI architecture. Before reviewing, he reads the relevant r
 - `EmptyState` — when no data exists
 
 ### What Krug CANNOT propose:
-- New component types not in `@open-mercato/ui`
+- New component types not in `@$OM_REPO/ui`
 - Custom CSS or design system changes
 - Portal redesigns (portal uses `PortalShell` with fixed injection spots)
 - Changes to AppShell structure (sidebar, header layout)
@@ -145,7 +145,7 @@ Like Vernon challenges domain model, Krug challenges UI architecture. After Mat 
 
 Each subagent receives:
 1. The full App Spec (§2 Identity Model, §3 specific workflow, §3.5 UI Architecture, §5 relevant user stories)
-2. OM UI reference: `open-mercato/.ai/skills/codex/backend-ui-design/SKILL.md`
+2. OM UI reference: `$OM_REPO/.ai/skills/codex/backend-ui-design/SKILL.md`
 3. This instruction:
 
 ```
