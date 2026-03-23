@@ -1,29 +1,10 @@
 import type { ModuleInjectionTable } from '@open-mercato/shared/modules/widgets/injection'
 
-const injectionTable: ModuleInjectionTable = {
-  'dashboard:widgets': [
-    {
-      widgetId: 'partnerships.dashboard.cross-org-wip',
-      priority: 5,
-    },
-    {
-      widgetId: 'partnerships.dashboard.onboarding-checklist',
-      priority: 10,
-    },
-    {
-      widgetId: 'partnerships.dashboard.wip-count',
-      priority: 20,
-    },
-    {
-      widgetId: 'partnerships.dashboard.wic-summary',
-      priority: 25,
-    },
-    {
-      widgetId: 'partnerships.dashboard.tier-status',
-      priority: 20,
-    },
-  ],
-}
+// Dashboard widgets are NOT registered here — they are controlled by
+// DashboardRoleWidgets records seeded in setup.ts. Registering them
+// here would bypass role-based filtering and show all widgets to all users.
+
+const injectionTable: ModuleInjectionTable = {}
 
 export { injectionTable }
 export default injectionTable

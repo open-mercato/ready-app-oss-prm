@@ -4,7 +4,6 @@ import React, { useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Shield, Users, Briefcase, Code, ArrowRight, Info } from 'lucide-react'
-import Link from 'next/link'
 
 interface RoleTileProps {
   icon: ReactNode
@@ -13,7 +12,6 @@ interface RoleTileProps {
   features: string[]
   email: string
   password: string
-  loginUrl: string
   variant?: 'default' | 'secondary' | 'outline'
 }
 
@@ -24,7 +22,6 @@ function RoleTile({
   features,
   email,
   password,
-  loginUrl,
   variant = 'default',
 }: RoleTileProps) {
   return (
@@ -56,12 +53,14 @@ function RoleTile({
         <div><span className="text-muted-foreground">Password:</span> <code className="font-mono">{password}</code></div>
       </div>
 
-      <Button asChild variant={variant} className="w-full">
-        <Link href={loginUrl}>
+      <form action="/api/auth/login" method="POST">
+        <input type="hidden" name="email" value={email} />
+        <input type="hidden" name="password" value={password} />
+        <Button type="submit" variant={variant} className="w-full">
           Login as {title}
           <ArrowRight className="size-4 ml-1" />
-        </Link>
-      </Button>
+        </Button>
+      </form>
     </div>
   )
 }
@@ -152,7 +151,6 @@ export function StartPageContent({ showStartPage: initialShowStartPage, agencyCo
             ]}
             email="partnership-manager@demo.local"
             password="Demo123!"
-            loginUrl="/login"
           />
 
           <RoleTile
@@ -168,7 +166,6 @@ export function StartPageContent({ showStartPage: initialShowStartPage, agencyCo
             ]}
             email="acme-admin@demo.local"
             password="Demo123!"
-            loginUrl="/login"
             variant="secondary"
           />
 
@@ -185,7 +182,6 @@ export function StartPageContent({ showStartPage: initialShowStartPage, agencyCo
             ]}
             email="acme-bd@demo.local"
             password="Demo123!"
-            loginUrl="/login"
             variant="outline"
           />
 
@@ -201,7 +197,6 @@ export function StartPageContent({ showStartPage: initialShowStartPage, agencyCo
             ]}
             email="acme-contributor@demo.local"
             password="Demo123!"
-            loginUrl="/login"
             variant="outline"
           />
         </div>

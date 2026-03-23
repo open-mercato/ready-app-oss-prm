@@ -58,25 +58,27 @@ async function GET(req: Request) {
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString()
   const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999)).toISOString()
 
+  const partnerAdminRole = await em.findOne(Role, { name: 'partner_admin', tenantId, deletedAt: null })
   const agencies: AgencyListItem[] = []
 
   for (const org of agencyOrgs) {
-    // Find admin user for this org
-    const partnerAdminRole = await em.findOne(Role, { name: 'partner_admin', tenantId, deletedAt: null })
+    // Find admin user for this specific org
     let adminEmail: string | null = null
     if (partnerAdminRole) {
-      const adminUserRole = await em.findOne(UserRole, {
-        role: partnerAdminRole,
+      const orgUsers = await em.find(User, {
+        organizationId: org.id,
+        tenantId,
         deletedAt: null,
-      }, { populate: ['user'] })
-      if (adminUserRole) {
-        const adminUser = await em.findOne(User, {
-          id: (adminUserRole as any).user?.id,
-          organizationId: org.id,
+      })
+      for (const user of orgUsers) {
+        const hasAdminRole = await em.findOne(UserRole, {
+          user: user.id as any,
+          role: partnerAdminRole.id as any,
           deletedAt: null,
         })
-        if (adminUser) {
-          adminEmail = adminUser.email
+        if (hasAdminRole) {
+          adminEmail = user.email
+          break
         }
       }
     }
