@@ -184,7 +184,7 @@ export async function buildAdminItems(ctx: CompletionContext): Promise<Onboardin
       id: 'add_case_study',
       label: 'partnerships.widgets.onboardingChecklist.addCaseStudy',
       completed: caseStudyExists,
-      link: '/backend/partnerships',
+      link: '/backend/entities/user/partnerships:case_study/records',
     },
     {
       id: 'invite_bd',
