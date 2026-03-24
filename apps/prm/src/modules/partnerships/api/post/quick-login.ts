@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   const password = String(form.get('password') ?? '')
 
   if (!email || !password) {
-    return NextResponse.redirect(new URL('/login', req.url))
+    return NextResponse.redirect(new URL('/login', req.url), 303)
   }
 
   const container = await createRequestContainer()
@@ -23,12 +23,12 @@ export async function POST(req: Request) {
   const users = await auth.findUsersByEmail(email)
   const user = users[0] ?? null
   if (!user || !user.passwordHash) {
-    return NextResponse.redirect(new URL('/login', req.url))
+    return NextResponse.redirect(new URL('/login', req.url), 303)
   }
 
   const ok = await auth.verifyPassword(user, password)
   if (!ok) {
-    return NextResponse.redirect(new URL('/login', req.url))
+    return NextResponse.redirect(new URL('/login', req.url), 303)
   }
 
   await auth.updateLastLoginAt(user)
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     roles: userRoleNames,
   })
 
-  const res = NextResponse.redirect(new URL('/backend', req.url))
+  const res = NextResponse.redirect(new URL('/backend', req.url), 303)
   res.cookies.set('auth_token', token, {
     httpOnly: true,
     path: '/',
