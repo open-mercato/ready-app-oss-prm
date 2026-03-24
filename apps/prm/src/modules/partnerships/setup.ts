@@ -436,6 +436,7 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
     'partnerships.widgets.wic-summary',
     'partnerships.widgets.tier-status',
     'auth.users.*',
+    'directory.organizations.view',
     'directory.organizations.manage',
   ],
   partner_member: [
