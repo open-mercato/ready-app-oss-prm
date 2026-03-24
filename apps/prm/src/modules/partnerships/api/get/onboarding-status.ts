@@ -6,7 +6,7 @@ import { resolveOrganizationScopeForRequest } from '@open-mercato/core/modules/d
 import { CrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import { CustomerEntity, CustomerDeal } from '@open-mercato/core/modules/customers/data/entities'
 import { CustomFieldValue, CustomEntityStorage } from '@open-mercato/core/modules/entities/data/entities'
-import { Role, UserRole } from '@open-mercato/core/modules/auth/data/entities'
+import { Role, User, UserRole } from '@open-mercato/core/modules/auth/data/entities'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { OpenApiMethodDoc, OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 
@@ -102,23 +102,28 @@ export async function checkCaseStudyExists(ctx: CompletionContext): Promise<bool
   return count > 0
 }
 
-async function countUsersWithRole(
+async function countUsersWithRoleInOrg(
   em: EntityManager,
   roleName: string,
   tenantId: string,
+  organizationId: string | null,
 ): Promise<number> {
   const role = await em.findOne(Role, { name: roleName, tenantId, deletedAt: null })
   if (!role) return 0
-  return em.count(UserRole, { role, deletedAt: null })
+  const filters: Record<string, unknown> = { role, deletedAt: null }
+  if (organizationId) {
+    filters.user = { organizationId, deletedAt: null }
+  }
+  return em.count(UserRole, filters)
 }
 
 export async function checkBdInvited(ctx: CompletionContext): Promise<boolean> {
-  const count = await countUsersWithRole(ctx.em, 'partner_member', ctx.tenantId)
+  const count = await countUsersWithRoleInOrg(ctx.em, 'partner_member', ctx.tenantId, ctx.organizationId)
   return count > 0
 }
 
 export async function checkContributorInvited(ctx: CompletionContext): Promise<boolean> {
-  const count = await countUsersWithRole(ctx.em, 'partner_contributor', ctx.tenantId)
+  const count = await countUsersWithRoleInOrg(ctx.em, 'partner_contributor', ctx.tenantId, ctx.organizationId)
   return count > 0
 }
 
