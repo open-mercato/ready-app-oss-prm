@@ -41,13 +41,18 @@ const DURATION_OPTIONS = [
 ]
 
 // ---------------------------------------------------------------------------
-// Types
+// Types — OM entities API returns flat records for custom entities
 // ---------------------------------------------------------------------------
 
-type CaseStudyRecord = {
-  id: string
-  values: Record<string, unknown>
-  createdAt: string
+type CaseStudyRecord = Record<string, unknown> & {
+  record_id: string
+  title?: string
+  industry?: string | string[]
+  technologies?: string | string[]
+  budget_bucket?: string
+  duration_bucket?: string
+  description?: string
+  created_at?: string
 }
 
 type ListResponse = {
@@ -61,8 +66,8 @@ type ListResponse = {
 
 const formFields: CrudField[] = [
   { id: 'title', label: 'Title', type: 'text', required: true, placeholder: 'e.g. E-commerce Platform Migration' },
-  { id: 'industry', label: 'Industries', type: 'tags', suggestions: INDUSTRY_SUGGESTIONS, placeholder: 'Type to add industries...' },
-  { id: 'technologies', label: 'Technologies', type: 'tags', suggestions: TECH_SUGGESTIONS, placeholder: 'Type to add technologies...' },
+  { id: 'industry', label: 'Industries', type: 'tags', suggestions: INDUSTRY_SUGGESTIONS, placeholder: 'Type or pick industries...' },
+  { id: 'technologies', label: 'Technologies', type: 'tags', suggestions: TECH_SUGGESTIONS, placeholder: 'Type or pick technologies...' },
   { id: 'budget_bucket', label: 'Budget', type: 'select', required: true, options: BUDGET_OPTIONS },
   { id: 'duration_bucket', label: 'Duration', type: 'select', required: true, options: DURATION_OPTIONS },
   { id: 'client_name', label: 'Client Name', type: 'text', placeholder: 'Optional' },
@@ -70,7 +75,7 @@ const formFields: CrudField[] = [
   { id: 'challenges', label: 'Challenges', type: 'textarea', placeholder: 'What problems were solved?' },
   { id: 'solution', label: 'Solution', type: 'textarea', placeholder: 'How was it solved?' },
   { id: 'results', label: 'Results', type: 'textarea', placeholder: 'Measurable outcomes...' },
-  { id: 'is_public', label: 'Public', type: 'checkbox' },
+  { id: 'is_public', label: 'Public', type: 'checkbox', description: 'When enabled, this case study may appear on your agency profile at openmercato.com' },
 ]
 
 const formGroups: CrudFormGroup[] = [
@@ -84,18 +89,19 @@ const formGroups: CrudFormGroup[] = [
 // Tag display helper
 // ---------------------------------------------------------------------------
 
-function TagCell({ values }: { values: unknown }) {
-  if (!values) return <span className="text-muted-foreground">—</span>
-  const tags = Array.isArray(values)
-    ? values
-    : typeof values === 'string'
-      ? values.split(',').map((s: string) => s.trim()).filter(Boolean)
-      : []
-  if (tags.length === 0) return <span className="text-muted-foreground">—</span>
+function parseTags(value: unknown): string[] {
+  if (Array.isArray(value)) return value.filter((v): v is string => typeof v === 'string')
+  if (typeof value === 'string') return value.split(',').map((s) => s.trim()).filter(Boolean)
+  return []
+}
+
+function TagCell({ values, variant }: { values: unknown; variant?: 'secondary' | 'outline' }) {
+  const tags = parseTags(values)
+  if (tags.length === 0) return null
   return (
     <div className="flex flex-wrap gap-1">
-      {tags.slice(0, 3).map((tag: string) => (
-        <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+      {tags.slice(0, 3).map((tag) => (
+        <Badge key={tag} variant={variant ?? 'secondary'} className="text-xs">{tag}</Badge>
       ))}
       {tags.length > 3 && <Badge variant="outline" className="text-xs">+{tags.length - 3}</Badge>}
     </div>
@@ -128,7 +134,7 @@ export default function CaseStudiesPage() {
   }, [loadRecords])
 
   const handleCreate = async (values: Record<string, unknown>) => {
-    const call = await apiCall<{ id: string }>('/api/entities/records', {
+    const call = await apiCall<{ ok: boolean }>('/api/entities/records', {
       method: 'POST',
       body: JSON.stringify({
         entityId: ENTITY_ID,
@@ -175,27 +181,30 @@ export default function CaseStudiesPage() {
         ) : (
           <div className="space-y-3">
             {records.map((record) => (
-              <div key={record.id} className="rounded-lg border p-4 hover:bg-muted/30 transition-colors">
+              <div key={record.record_id} className="rounded-lg border p-4 hover:bg-muted/30 transition-colors">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <h3 className="font-medium text-foreground">
-                      {(record.values?.title as string) ?? record.id}
+                      {record.title ?? '—'}
                     </h3>
-                    {typeof record.values?.description === 'string' && record.values.description && (
+                    {typeof record.description === 'string' && record.description && (
                       <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
-                        {record.values.description}
+                        {record.description}
                       </p>
                     )}
                     <div className="mt-2 flex flex-wrap items-center gap-3">
-                      <TagCell values={record.values?.industry} />
-                      <TagCell values={record.values?.technologies} />
-                      {typeof record.values?.budget_bucket === 'string' && (
-                        <span className="text-xs text-muted-foreground">{record.values.budget_bucket}</span>
+                      <TagCell values={record.industry} />
+                      <TagCell values={record.technologies} variant="outline" />
+                      {typeof record.budget_bucket === 'string' && (
+                        <span className="text-xs text-muted-foreground">{record.budget_bucket}</span>
+                      )}
+                      {typeof record.duration_bucket === 'string' && (
+                        <span className="text-xs text-muted-foreground">{record.duration_bucket}</span>
                       )}
                     </div>
                   </div>
                   <span className="shrink-0 text-xs text-muted-foreground">
-                    {new Date(record.createdAt).toLocaleDateString()}
+                    {record.created_at ? new Date(record.created_at as string).toLocaleDateString() : ''}
                   </span>
                 </div>
               </div>
