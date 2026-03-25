@@ -382,7 +382,7 @@ API contracts use standard OM entities module: `POST /api/entities/definitions.b
 
 ### WF4: Lead Distribution (RFP)
 
-**Journey:** OM receives lead -> PM creates RFP campaign (description, requirements, deadline, audience: all/selected/tier-filtered) -> system notifies agencies -> BD sees RFP and submits response (capabilities, pricing, timeline, case studies) -> PM evaluates responses -> selects agency -> handoff to sales
+**Journey:** OM receives lead -> PM creates RFP campaign (description, requirements, deadline, audience: all agencies or selected via checkbox) -> system notifies BD in target agencies (in-app bell + auto email) -> BD sees RFP and submits response (free-form text + optional attachments, editable until deadline) -> PM evaluates responses side-by-side -> selects winner (award notification to winner + rejection to other respondents using configurable templates) -> handoff to sales
 
 **ROI:** 10 RFP/month x 30% conversion = 3 MIN/month. Without RFP = PM sends emails manually.
 
@@ -767,19 +767,120 @@ Success: n8n workflow runs daily (Schedule Trigger → GitHub GraphQL → scorin
 ### WF4: Lead Distribution (RFP)
 
 **US-4.1** As PM, I create an RFP campaign with requirements, deadline, and file attachments (lead brief, specs) so that agencies can bid with full context.
-Success: Campaign created with attached files, workflow triggered, target agencies (all/selected/tier-filtered) notified.
+Success: Campaign created with attached files, workflow triggered, target agencies (all or selected via checkbox) notified.
 
 **US-4.2** As BD, I receive notification of a new RFP so that I can decide whether to respond.
 Success: BD sees in-app notification (bell icon) + receives email (OM auto-delivery). Clicks through to RFP details, attached files, and deadline.
 
 **US-4.3** As BD/Admin, I submit a free-form response to an RFP (like an email — text + optional attachments) so that PM can evaluate our fit.
-Success: Response saved via PartnerRfpResponse CRUD API (not a workflow step — BD submits while workflow waits for timer). Late submissions rejected (deadline check in route). PM sees it in campaign responses list. Agency's case studies automatically linked for PM context.
+Success: Response saved via PartnerRfpResponse CRUD API (not a workflow step — BD submits while workflow waits for timer). One response per agency per campaign, editable until deadline. Late submissions rejected (deadline check in route). PM sees it in campaign responses list. Agency's case studies automatically linked for PM context.
 
 **US-4.4** As PM, I compare agency responses side-by-side and select a winner so that the lead is assigned to the best-fit agency.
-Success: Comparison view shows all responses with agency case studies. PM reads responses, selects winner, workflow advances (RfpAwarded event), losing agencies notified of outcome.
+Success: Comparison view shows all responses with agency case studies. PM reads responses, selects winner, workflow advances (RfpAwarded event). Winner gets award notification, all other respondents get rejection notification automatically.
 
 **US-4.5** (Phase 4) As PM, I trigger AI-assisted scoring of RFP responses so that I have objective tech fit and domain fit scores before selecting a winner.
 Success: PM clicks "Score responses" on comparison page → n8n webhook triggered → n8n reads RFP + responses + case studies via Open Mercato node → LLM scores each agency (tech fit /5 + domain fit /5 with reasoning, per lead-agency-matching rubric) → scores POSTed back to OM → displayed on comparison page. PM uses scores as guidance, makes final call.
+
+**US-4.6** As PM, I configure RFP message templates (campaign notification, award, rejection) in settings so that agencies get professional, consistent communications.
+Success: Settings page with 3 editable templates. Placeholders `[first-name]`, `[last-name]`, `[agency-name]`, `[campaign-title]` resolve correctly. Templates persist across campaigns.
+
+**US-4.7** As PM, when I award a campaign, the winning agency gets the award template and all other respondents get the rejection template automatically.
+Success: Award action sends award notification to winner + rejection notifications to all other agencies that responded. Non-responding agencies get nothing. Messages use templates with resolved placeholders.
+
+#### E2E Test Plan (drives implementation)
+
+**TC-PRM-025: Campaign Creation (US-4.1)**
+
+| # | Test | Type |
+|---|------|------|
+| T1 | PM can navigate to RFP campaigns page | Positive |
+| T2 | PM creates campaign through form (title, description, deadline, audience) | Positive |
+| T3 | Created campaign is visible in the list | Positive |
+| T4 | API returns created campaign with all fields | Positive |
+| T5 | Campaign detail page shows correct data | Positive |
+
+**TC-PRM-026: Campaign Creation — Negative (US-4.1)**
+
+| # | Test | Type |
+|---|------|------|
+| T1 | Submit without title → validation error, form does not submit | Negative |
+| T2 | Submit with deadline in the past → error | Negative |
+| T3 | BD navigates to rfp-campaigns page → no access or no Create button | Negative |
+| T4 | Agency Admin tries to create campaign via API → 403 | Negative |
+
+**TC-PRM-027: BD Notification (US-4.2)**
+
+| # | Test | Type |
+|---|------|------|
+| T1 | PM publishes campaign (audience: all) → BD sees notification in bell | Positive |
+| T2 | Click notification leads to RFP detail page | Positive |
+| T3 | API returns notification of type `partnerships.rfp.campaign_published` | Positive |
+| T4 | PM publishes campaign (audience: selected, only agency A) → BD from agency B does NOT see notification | Negative |
+| T5 | Contributor does NOT see RFP notification | Negative |
+
+**TC-PRM-028: BD Submits Response (US-4.3)**
+
+| # | Test | Type |
+|---|------|------|
+| T1 | BD sees RFP detail with requirements, deadline, attachments | Positive |
+| T2 | BD submits response (text + optional attachments) | Positive |
+| T3 | Response visible in API `GET /api/partnerships/rfp-responses?campaignId=X` | Positive |
+| T4 | PM sees response on campaign page | Positive |
+| T5 | Second agency submits response to same campaign → both visible | Positive |
+| T6 | BD submits after deadline → 422 "Deadline passed" | Negative |
+| T7 | BD submits second response → overwrites previous (update, not duplicate) | Positive |
+| T7b | BD edits response after deadline → 422 "Deadline passed" | Negative |
+| T8 | Contributor (no respond feature) tries to submit → 403 | Negative |
+| T9 | BD submits empty response (no text) → validation error | Negative |
+
+**TC-PRM-029: PM Evaluates Responses (US-4.4 + US-4.7)**
+
+| # | Test | Type |
+|---|------|------|
+| T1 | PM sees comparison page with responses side-by-side | Positive |
+| T2 | Comparison page shows: response text, agency name, tier, case studies | Positive |
+| T3 | PM clicks "Award" on selected agency → campaign status changes to "awarded" | Positive |
+| T4 | After award: winner gets award notification with resolved template placeholders | Positive |
+| T4b | After award: other respondents get rejection notification with resolved template placeholders | Positive |
+| T4c | After award: agencies that did NOT respond get nothing | Positive |
+| T5 | Campaign list shows status "Awarded" + winning agency name | Positive |
+| T6 | PM tries to award campaign with no responses → warning/blocked | Negative |
+| T7 | PM tries to award already-awarded campaign → 422 "Already awarded" | Negative |
+| T8 | BD tries to access comparison page → no access | Negative |
+| T9 | BD tries to submit response after award → 422 "Campaign closed" | Negative |
+
+**TC-PRM-030: Campaign Lifecycle & Edge Cases**
+
+| # | Test | Type |
+|---|------|------|
+| T1 | Campaign full cycle: draft → open (publish) → responses → awarded | Positive |
+| T2 | Campaign list shows correct status badges (draft/open/closed/awarded) | Positive |
+| T3 | Deadline passes → campaign auto-closes, new responses rejected | Edge case |
+| T4 | PM edits campaign in draft state → changes saved | Positive |
+| T5 | PM tries to edit campaign after publish → blocked or limited fields | Negative |
+| T6 | Campaign with 0 responses after deadline → PM sees empty state on comparison page | Edge case |
+
+**TC-PRM-031: RFP Message Templates (US-4.6)**
+
+| # | Test | Type |
+|---|------|------|
+| T1 | PM sees settings page with 3 templates (campaign, award, rejection) | Positive |
+| T2 | PM edits template with placeholders `[first-name]` `[agency-name]` → saved | Positive |
+| T3 | API `GET /api/partnerships/rfp-settings` returns 3 templates | Positive |
+| T4 | BD cannot access RFP settings → no menu item or 403 | Negative |
+
+**Test summary: 7 suites, 42 tests**
+
+| Suite | Stories | Positive | Negative | Edge |
+|-------|---------|----------|----------|------|
+| TC-PRM-025 | US-4.1 | 5 | — | — |
+| TC-PRM-026 | US-4.1 neg | — | 4 | — |
+| TC-PRM-027 | US-4.2 | 3 | 2 | — |
+| TC-PRM-028 | US-4.3 | 6 | 4 | — |
+| TC-PRM-029 | US-4.4+4.7 | 7 | 4 | — |
+| TC-PRM-030 | Lifecycle | 2 | 1 | 2 |
+| TC-PRM-031 | US-4.6 | 3 | 1 | — |
+| **Total** | | **26** | **16** | **2** |
 
 ### WF5: Tier Governance
 
@@ -877,8 +978,10 @@ Success: Every file follows OM conventions (auto-discovery paths, UMES patterns,
 | US-4.1 | partnerships entity + workflows | 2 | `app` | 1: PartnerRfpCampaign entity (with file attachments) + CRUD route. 2: RFP workflow JSON definition. CampaignPublished event. |
 | US-4.2 | notifications module | 1 | `app` | `notifications.ts` + subscriber on CampaignPublished → in-app notification per BD. OM auto-delivers email. |
 | US-4.3 | partnerships CRUD API | 1 | `app` | PartnerRfpResponse entity (free-form text + attachments) + CRUD route. BD submits via API while workflow waits for timer. Deadline enforced in route. Auto-links agency case studies. |
-| US-4.4 | partnerships backend page | 1 | `app` | Comparison page (responses + case studies side-by-side) + workflow advance. RfpAwarded event. |
+| US-4.4 | partnerships backend page | 1 | `app` | Comparison page (responses + case studies side-by-side) + workflow advance. RfpAwarded event. Award sends award notification to winner + rejection to other respondents. |
 | US-4.5 | n8n webhook + LLM — Phase 4 | 1-2 | `n8n` | n8n workflow: webhook trigger → Open Mercato node (read data) → LLM node (score) → Open Mercato node (POST scores). Scoring rubric from lead-agency-matching skill. |
+| US-4.6 | partnerships settings entity | 1 | `app` | RFP message templates (campaign, award, rejection) with placeholders `[first-name]`, `[last-name]`, `[agency-name]`, `[campaign-title]`. Stored as tenant-scoped settings. |
+| US-4.7 | notifications module | 0 | — | Bundled with US-4.4 award action. Award notification uses award template, rejection uses rejection template. Placeholder resolution in notification subscriber. |
 | US-5.1 | queue worker + partnerships | 1 | `app` | Aggregation worker: reads WIC (ContributionUnits), WIP (`wip_registered_at`), MIN (PartnerLicenseDeals). Computes TierEligibility. Cron trigger shared. |
 | US-5.2a/b | partnerships + TierEvaluationState | 0 | — | Bundled with US-5.1 (grace period state machine + TierChangeProposal generation in same worker) |
 | US-5.3 | workflows USER_TASK | 1 | `app` | Tier evaluation workflow JSON definition. Publishes AgencyTierChanged on approval. |
@@ -1059,17 +1162,18 @@ Success: Every file follows OM conventions (auto-discovery paths, UMES patterns,
 
 **Goal:** PM can distribute leads via RFP.
 
-**Why third:** RFP (WF4) needs agencies with profiles and case studies (Phase 1) and tier data (Phase 2) to be useful for audience filtering.
+**Why third:** RFP (WF4) needs agencies with profiles and case studies (Phase 1) and tier data (Phase 2) for audience selection.
 
 | Story | What ships | Commits |
 |-------|-----------|---------|
-| US-4.1 | RFP campaign entity + CRUD route (CampaignPublished event) | 1 |
+| US-4.1 | RFP campaign entity + CRUD route (CampaignPublished event), audience: all or selected agencies | 1 |
 | US-4.1 | RFP workflow JSON definition + trigger | 1 |
-| US-4.2 | Notification type + subscriber (in-app + auto email) | 1 |
-| US-4.3 | PartnerRfpResponse entity + CRUD route (BD submits via API, not workflow step) | 1 |
-| US-4.4 | PM comparison page + winner selection (RfpAwarded event) | 1 |
+| US-4.2 | Notification type + subscriber (in-app bell + auto email to BD) | 1 |
+| US-4.3 | PartnerRfpResponse entity + CRUD route (one per agency, editable until deadline) | 1 |
+| US-4.4+4.7 | PM comparison page + award (sends award notification to winner + rejection to others) | 1 |
+| US-4.6 | RFP message templates settings (campaign, award, rejection with placeholders) | 1 |
 
-**Total: 5 atomic commits** (RFP entity + workflow + notifications + response entity + comparison page)
+**Total: 6 atomic commits** (RFP entity + workflow + notifications + response entity + comparison/award + templates)
 
 **Acceptance criteria:** `Vernon writes, Mat challenges`
 
