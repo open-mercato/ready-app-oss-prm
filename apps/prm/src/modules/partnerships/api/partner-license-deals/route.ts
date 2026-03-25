@@ -96,8 +96,12 @@ const crud = makeCrudRoute({
       mapInput: async ({ raw, ctx }) => {
         const { translate } = await resolveTranslations()
         const scoped = withScopedPayload(raw ?? {}, ctx, translate)
+        // Compute year from closedAt if not provided (form doesn't send year)
+        const closedAtDate = scoped.closedAt ? new Date(scoped.closedAt as string) : undefined
+        const year = scoped.year ?? (closedAtDate ? closedAtDate.getUTCFullYear() : undefined)
         const parsed = partnerLicenseDealCreateSchema.parse({
           ...scoped,
+          year,
           createdBy: ctx.auth?.userId ?? ctx.auth?.sub ?? scoped.createdBy,
         })
         return parsed
