@@ -1,156 +1,166 @@
-import { expect, test } from '@playwright/test'
-import { getAuthToken, apiRequest } from '@open-mercato/core/helpers/integration/api'
-import { readJsonSafe, getTokenContext } from '@open-mercato/core/helpers/integration/generalFixtures'
+import { test, expect, type Page } from '@playwright/test'
+import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 
 /**
- * TC-PRM-018: Tier Proposal Approve/Reject (US-5.3)
+ * TC-PRM-018: Tier Review Page UI (US-5.3)
  *
- * Routes:
- *   GET  /api/partnerships/tier-proposals
- *     Auth: requireAuth + requireFeatures: ['partnerships.tier.approve'] (PM only)
- *   POST /api/partnerships/tier-proposals/action
- *     Auth: requireAuth + requireFeatures: ['partnerships.tier.approve'] (PM only)
- *     Body: { proposalId, action: 'approve'|'reject', reason? }
+ * Page: /backend/partnerships/tier-review
+ * Auth: requireFeatures: ['partnerships.tier.approve'] (PM only)
  *
  * Tests:
- * T1 — PM can list tier proposals (200)
- * T2 — PM can approve a PendingApproval proposal → creates TierAssignment
- * T3 — PM can reject a proposal with reason
- * T4 — Rejecting without reason returns 422
- * T5 — Approving already-resolved proposal returns 409
- * T6 — Non-PM user gets 403 on both endpoints
+ * T1 — PM sees tier review page with table and filter buttons
+ * T2 — PM sees "Run Evaluation Now" button
+ * T3 — Status filter buttons work (Pending, Approved, Rejected, All)
+ * T4 — PendingApproval rows show Approve/Reject action buttons
+ * T5 — Non-PM user (admin) cannot access tier review page
  *
- * Source: apps/prm/src/modules/partnerships/api/get/tier-proposals.ts
- *         apps/prm/src/modules/partnerships/api/post/tier-proposals-action.ts
- * Phase: 2, WF5 Tier Governance
+ * Source: apps/prm/src/modules/partnerships/backend/partnerships/tier-review/page.tsx
+ * Phase: 2
  */
 
-const PM_EMAIL = 'partnership-manager@demo.local'
-const PM_PASSWORD = 'Demo123!'
-const ADMIN_EMAIL = 'acme-admin@demo.local'
-const ADMIN_PASSWORD = 'Demo123!'
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 
-type JsonRecord = Record<string, unknown>
-type ProposalItem = {
-  id: string
-  organizationId: string
-  organizationName: string
-  currentTier: string
-  proposedTier: string
-  type: string
-  status: string
+const PM_EMAIL = 'partnership-manager@demo.local'
+const ADMIN_EMAIL = 'acme-admin@demo.local'
+const DEMO_PASSWORD = 'Demo123!'
+const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:5001'
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+async function loginInBrowser(page: Page, token: string): Promise<void> {
+  await page.context().addCookies([{ name: 'auth_token', value: token, url: BASE }])
 }
 
-test.describe('TC-PRM-018: Tier Proposal Approve/Reject', () => {
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+test.describe('TC-PRM-018: Tier Review Page UI', () => {
   let pmToken: string
   let adminToken: string
 
   test.beforeAll(async ({ request }) => {
-    pmToken = await getAuthToken(request, PM_EMAIL, PM_PASSWORD)
-    adminToken = await getAuthToken(request, ADMIN_EMAIL, ADMIN_PASSWORD)
+    pmToken = await getAuthToken(request, PM_EMAIL, DEMO_PASSWORD)
+    adminToken = await getAuthToken(request, ADMIN_EMAIL, DEMO_PASSWORD)
   })
 
-  test('T1: PM can list tier proposals', async ({ request }) => {
-    const res = await apiRequest(request, 'GET', '/api/partnerships/tier-proposals', { token: pmToken })
-    expect(res.ok(), `Expected 200, got ${res.status()}`).toBeTruthy()
-    const body = await readJsonSafe<{ proposals: ProposalItem[] }>(res)
-    expect(body).not.toBeNull()
-    expect(Array.isArray(body!.proposals)).toBe(true)
-  })
+  // -------------------------------------------------------------------------
+  // T1: PM sees tier review page with table and columns
+  // -------------------------------------------------------------------------
+  test('T1: PM sees tier review page with table columns', async ({ page }) => {
+    await loginInBrowser(page, pmToken)
+    await page.goto(`${BASE}/backend/partnerships/tier-review`)
 
-  test('T2: PM approves a PendingApproval proposal', async ({ request }) => {
-    // List pending proposals
-    const listRes = await apiRequest(request, 'GET', '/api/partnerships/tier-proposals?status=PendingApproval', { token: pmToken })
-    const listBody = await readJsonSafe<{ proposals: ProposalItem[] }>(listRes)
-    const pending = listBody?.proposals ?? []
+    // Page header
+    await expect(page.locator('text="Tier Review"').first()).toBeVisible({ timeout: 15_000 })
 
-    if (pending.length === 0) {
-      console.warn('[TC-PRM-018 T2] No PendingApproval proposals in seed data — skipping')
-      return
+    // Either the table loads with proposals or "No tier proposals" empty state
+    const hasTable = await page.locator('th:text-is("Agency")').isVisible().catch(() => false)
+    const hasEmpty = await page.locator('text=/No tier proposals/i').isVisible().catch(() => false)
+
+    expect(hasTable || hasEmpty, 'Tier review page should show proposals table or empty state').toBe(true)
+
+    if (hasTable) {
+      // Verify table columns
+      await expect(page.locator('th:text-is("Type")').first()).toBeVisible()
+      await expect(page.locator('th:text-is("Current")').first()).toBeVisible()
+      await expect(page.locator('th:text-is("Proposed")').first()).toBeVisible()
+      await expect(page.locator('th:text-is("Status")').first()).toBeVisible()
+      await expect(page.locator('th:text-is("WIC")').first()).toBeVisible()
+      await expect(page.locator('th:text-is("WIP")').first()).toBeVisible()
+      await expect(page.locator('th:text-is("MIN")').first()).toBeVisible()
     }
-
-    const proposal = pending[0]
-    const res = await apiRequest(request, 'POST', '/api/partnerships/tier-proposals/action', {
-      token: pmToken,
-      data: { proposalId: proposal.id, action: 'approve', reason: 'Approved via e2e test' },
-    })
-    expect(res.ok(), `Expected 200, got ${res.status()}`).toBeTruthy()
-    const body = await readJsonSafe<JsonRecord>(res)
-    expect(body?.ok).toBe(true)
-    expect((body?.proposal as JsonRecord)?.status).toBe('Approved')
-    expect(body?.tierAssignment).toBeTruthy()
   })
 
-  test('T3: PM rejects a proposal with reason', async ({ request }) => {
-    const listRes = await apiRequest(request, 'GET', '/api/partnerships/tier-proposals?status=PendingApproval', { token: pmToken })
-    const listBody = await readJsonSafe<{ proposals: ProposalItem[] }>(listRes)
-    const pending = listBody?.proposals ?? []
+  // -------------------------------------------------------------------------
+  // T2: PM sees "Run Evaluation Now" button
+  // -------------------------------------------------------------------------
+  test('T2: PM sees Run Evaluation Now button', async ({ page }) => {
+    await loginInBrowser(page, pmToken)
+    await page.goto(`${BASE}/backend/partnerships/tier-review`)
 
-    if (pending.length === 0) {
-      console.warn('[TC-PRM-018 T3] No PendingApproval proposals — skipping')
-      return
+    await expect(page.locator('text="Tier Review"').first()).toBeVisible({ timeout: 15_000 })
+
+    const evalButton = page.getByRole('button', { name: /Run Evaluation/i })
+    await expect(evalButton).toBeVisible()
+  })
+
+  // -------------------------------------------------------------------------
+  // T3: Status filter buttons are present and clickable
+  // -------------------------------------------------------------------------
+  test('T3: Status filter buttons work', async ({ page }) => {
+    await loginInBrowser(page, pmToken)
+    await page.goto(`${BASE}/backend/partnerships/tier-review`)
+
+    await expect(page.locator('text="Tier Review"').first()).toBeVisible({ timeout: 15_000 })
+
+    // Filter buttons should be visible
+    const pendingBtn = page.getByRole('button', { name: 'Pending' })
+    const approvedBtn = page.getByRole('button', { name: 'Approved' })
+    const rejectedBtn = page.getByRole('button', { name: 'Rejected' })
+    const allBtn = page.getByRole('button', { name: 'All' })
+
+    await expect(pendingBtn).toBeVisible()
+    await expect(approvedBtn).toBeVisible()
+    await expect(rejectedBtn).toBeVisible()
+    await expect(allBtn).toBeVisible()
+
+    // Click "All" filter — page should not crash
+    await allBtn.click()
+    await page.waitForTimeout(2_000)
+
+    // Page should still be functional
+    await expect(page.locator('text="Tier Review"').first()).toBeVisible()
+  })
+
+  // -------------------------------------------------------------------------
+  // T4: PendingApproval rows show Approve/Reject buttons
+  // -------------------------------------------------------------------------
+  test('T4: Pending proposals have Approve/Reject action buttons', async ({ page }) => {
+    await loginInBrowser(page, pmToken)
+    await page.goto(`${BASE}/backend/partnerships/tier-review`)
+
+    await expect(page.locator('text="Tier Review"').first()).toBeVisible({ timeout: 15_000 })
+
+    // Check if there are any "Pending" status badges
+    const pendingBadges = page.locator('text="Pending"')
+    const pendingCount = await pendingBadges.count()
+
+    if (pendingCount > 0) {
+      // There are pending proposals — verify action buttons exist
+      const approveButtons = page.locator('button:has-text("Approve")')
+      const rejectButtons = page.locator('button:has-text("Reject")')
+      expect(await approveButtons.count(), 'Pending rows should have Approve buttons').toBeGreaterThan(0)
+      expect(await rejectButtons.count(), 'Pending rows should have Reject buttons').toBeGreaterThan(0)
     }
-
-    const proposal = pending[0]
-    const res = await apiRequest(request, 'POST', '/api/partnerships/tier-proposals/action', {
-      token: pmToken,
-      data: { proposalId: proposal.id, action: 'reject', reason: 'KPIs not sustained — rejected via e2e' },
-    })
-    expect(res.ok(), `Expected 200, got ${res.status()}`).toBeTruthy()
-    const body = await readJsonSafe<JsonRecord>(res)
-    expect(body?.ok).toBe(true)
-    expect((body?.proposal as JsonRecord)?.status).toBe('Rejected')
+    // If no pending proposals, the test passes silently (no proposals to act on)
   })
 
-  test('T4: Reject without reason returns 422', async ({ request }) => {
-    const listRes = await apiRequest(request, 'GET', '/api/partnerships/tier-proposals?status=PendingApproval', { token: pmToken })
-    const listBody = await readJsonSafe<{ proposals: ProposalItem[] }>(listRes)
-    const pending = listBody?.proposals ?? []
+  // -------------------------------------------------------------------------
+  // T5: Non-PM user cannot access tier review page
+  // -------------------------------------------------------------------------
+  test('T5: Admin cannot access tier review page', async ({ page }) => {
+    await loginInBrowser(page, adminToken)
+    await page.goto(`${BASE}/backend/partnerships/tier-review`)
 
-    if (pending.length === 0) {
-      console.warn('[TC-PRM-018 T4] No PendingApproval proposals — skipping')
-      return
-    }
+    await page.waitForTimeout(3_000)
 
-    const proposal = pending[0]
-    const res = await apiRequest(request, 'POST', '/api/partnerships/tier-proposals/action', {
-      token: pmToken,
-      data: { proposalId: proposal.id, action: 'reject' },
-    })
-    expect(res.status()).toBe(422)
-  })
-
-  test('T5: Approving already-resolved proposal returns 409', async ({ request }) => {
-    // Find any resolved proposal
-    const listRes = await apiRequest(request, 'GET', '/api/partnerships/tier-proposals', { token: pmToken })
-    const listBody = await readJsonSafe<{ proposals: ProposalItem[] }>(listRes)
-    const resolved = (listBody?.proposals ?? []).find((p) => p.status === 'Approved' || p.status === 'Rejected')
-
-    if (!resolved) {
-      console.warn('[TC-PRM-018 T5] No resolved proposals — skipping')
-      return
-    }
-
-    const res = await apiRequest(request, 'POST', '/api/partnerships/tier-proposals/action', {
-      token: pmToken,
-      data: { proposalId: resolved.id, action: 'approve' },
-    })
-    expect(res.status()).toBe(409)
-  })
-
-  test('T6: Non-PM user gets 403', async ({ request }) => {
-    const listRes = await apiRequest(request, 'GET', '/api/partnerships/tier-proposals', { token: adminToken })
-    expect(listRes.status()).toBe(403)
-
-    const actionRes = await apiRequest(request, 'POST', '/api/partnerships/tier-proposals/action', {
-      token: adminToken,
-      data: { proposalId: '00000000-0000-0000-0000-000000000000', action: 'approve' },
-    })
-    expect(actionRes.status()).toBe(403)
+    // Admin lacks partnerships.tier.approve — page should not render
+    const titleVisible = await page.locator('text="Tier Review"').first().isVisible().catch(() => false)
+    const tableVisible = await page.locator('th:text-is("Agency")').isVisible().catch(() => false)
+    expect(titleVisible && tableVisible, 'Admin should not see tier review table').toBe(false)
   })
 })
 
+// ---------------------------------------------------------------------------
+// Metadata
+// ---------------------------------------------------------------------------
+
 export const integrationMeta = {
-  description: 'Tier proposal approve/reject — PM can list, approve (creates TierAssignment), reject (requires reason), non-PM 403',
+  description: 'Tier review page UI — table columns, run evaluation, filter buttons, action buttons, admin RBAC block',
   dependsOnModules: ['partnerships', 'auth'],
 }

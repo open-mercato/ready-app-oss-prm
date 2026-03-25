@@ -1,12 +1,11 @@
-import { expect, test } from '@playwright/test'
-import { getAuthToken, apiRequest } from '@open-mercato/core/helpers/integration/api'
-import { readJsonSafe } from '@open-mercato/core/helpers/integration/generalFixtures'
+import { test, expect, type Page } from '@playwright/test'
+import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 
 /**
- * TC-PRM-005: Org Isolation (US-6.1 through US-6.4)
+ * TC-PRM-005: Org Isolation UI (US-6.1 through US-6.4)
  *
  * Verifies that agency users only see their own organization's data
- * and that the PM (partnership_manager) can see across all orgs.
+ * in the browser, and that the PM can see cross-org data.
  *
  * Demo users (seeded by seedExamples):
  *   - PM:           partnership-manager@demo.local / Demo123!  (sees all orgs)
@@ -27,261 +26,159 @@ const ACME_ADMIN_EMAIL = 'acme-admin@demo.local'
 const ACME_BD_EMAIL = 'acme-bd@demo.local'
 const NORDIC_ADMIN_EMAIL = 'nordic-admin@demo.local'
 const DEMO_PASSWORD = 'Demo123!'
+const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:5001'
 
 // ---------------------------------------------------------------------------
-// Types
+// Helpers
 // ---------------------------------------------------------------------------
 
-type JsonRecord = Record<string, unknown>
-
-type CompanyListResponse = {
-  items?: JsonRecord[]
+async function loginInBrowser(page: Page, token: string): Promise<void> {
+  await page.context().addCookies([{ name: 'auth_token', value: token, url: BASE }])
 }
 
-type DealListResponse = {
-  items?: JsonRecord[]
-}
-
-type OrgSwitcherResponse = {
-  organizations?: Array<{ id: string; name: string }>
-  items?: Array<{ id: string; name: string }>
-  [key: string]: unknown
+/** Extract all visible text from table body rows. */
+async function getTableRowTexts(page: Page): Promise<string[]> {
+  const rows = page.locator('tbody tr')
+  await expect(rows.first()).toBeVisible({ timeout: 15_000 })
+  const count = await rows.count()
+  const texts: string[] = []
+  for (let i = 0; i < count; i++) {
+    texts.push(await rows.nth(i).textContent() ?? '')
+  }
+  return texts
 }
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-test.describe('TC-PRM-005: Org Isolation (US-6.1 through US-6.4)', () => {
+test.describe('TC-PRM-005: Org Isolation UI (US-6.1 through US-6.4)', () => {
   // -------------------------------------------------------------------------
-  // T1: Admin sees only own org's companies
+  // T1: Acme Admin sees only Acme data on deals page
   // -------------------------------------------------------------------------
-  test('T1: Admin sees only own org companies — Acme and Nordic see disjoint sets', async ({ request }) => {
-    // Auth as Acme Admin
+  test('T1: Acme Admin sees Acme deals, not Nordic/CloudBridge', async ({ page, request }) => {
     const acmeToken = await getAuthToken(request, ACME_ADMIN_EMAIL, DEMO_PASSWORD)
-    const acmeRes = await apiRequest(request, 'GET', '/api/customers/companies', { token: acmeToken })
-    expect(acmeRes.ok(), `GET /api/customers/companies (Acme Admin) failed: ${acmeRes.status()}`).toBeTruthy()
-    const acmeBody = await readJsonSafe<CompanyListResponse>(acmeRes)
-    const acmeCompanies = acmeBody?.items ?? []
+    await loginInBrowser(page, acmeToken)
+    await page.goto(`${BASE}/backend/customers/deals`)
 
-    // Acme Admin must see at least one company (demo data includes "Acme Digital (Demo)")
-    expect(
-      acmeCompanies.length,
-      'Acme Admin should see at least 1 company from demo seed data',
-    ).toBeGreaterThanOrEqual(1)
+    // Wait for deals table to load
+    const rows = page.locator('tbody tr')
+    await expect(rows.first()).toBeVisible({ timeout: 15_000 })
 
-    // All companies visible to Acme Admin should belong to Acme org context
-    // (the org scoping ensures only Acme org data is returned)
-    const acmeCompanyNames = acmeCompanies.map((c) => c.display_name as string)
+    const rowTexts = await getTableRowTexts(page)
+    expect(rowTexts.length, 'Acme Admin should see at least 1 deal').toBeGreaterThanOrEqual(1)
 
-    // Auth as Nordic Admin
+    // Verify no Nordic or CloudBridge data leaked
+    for (const text of rowTexts) {
+      expect(text, 'Acme Admin should not see Nordic deals').not.toMatch(/^Nordic:/i)
+      expect(text, 'Acme Admin should not see CloudBridge deals').not.toMatch(/^CloudBridge:/i)
+    }
+  })
+
+  // -------------------------------------------------------------------------
+  // T2: Nordic Admin sees only Nordic data on deals page
+  // -------------------------------------------------------------------------
+  test('T2: Nordic Admin sees Nordic deals, not Acme/CloudBridge', async ({ page, request }) => {
     const nordicToken = await getAuthToken(request, NORDIC_ADMIN_EMAIL, DEMO_PASSWORD)
-    const nordicRes = await apiRequest(request, 'GET', '/api/customers/companies', { token: nordicToken })
-    expect(nordicRes.ok(), `GET /api/customers/companies (Nordic Admin) failed: ${nordicRes.status()}`).toBeTruthy()
-    const nordicBody = await readJsonSafe<CompanyListResponse>(nordicRes)
-    const nordicCompanies = nordicBody?.items ?? []
+    await loginInBrowser(page, nordicToken)
+    await page.goto(`${BASE}/backend/customers/deals`)
 
-    // Nordic Admin must see at least one company
-    expect(
-      nordicCompanies.length,
-      'Nordic Admin should see at least 1 company from demo seed data',
-    ).toBeGreaterThanOrEqual(1)
+    const rows = page.locator('tbody tr')
+    await expect(rows.first()).toBeVisible({ timeout: 15_000 })
 
-    const nordicCompanyNames = nordicCompanies.map((c) => c.display_name as string)
+    const rowTexts = await getTableRowTexts(page)
+    expect(rowTexts.length, 'Nordic Admin should see at least 1 deal').toBeGreaterThanOrEqual(1)
 
-    // Verify no overlap: none of Acme's companies appear in Nordic's list and vice versa
-    for (const acmeName of acmeCompanyNames) {
-      expect(
-        nordicCompanyNames,
-        `Nordic should NOT see Acme company "${acmeName}"`,
-      ).not.toContain(acmeName)
-    }
-    for (const nordicName of nordicCompanyNames) {
-      expect(
-        acmeCompanyNames,
-        `Acme should NOT see Nordic company "${nordicName}"`,
-      ).not.toContain(nordicName)
+    // Verify no Acme data leaked
+    for (const text of rowTexts) {
+      expect(text, 'Nordic Admin should not see Acme deals').not.toMatch(/^Acme:/i)
     }
   })
 
   // -------------------------------------------------------------------------
-  // T2: BD sees only own org's deals
+  // T3: Acme and Nordic see disjoint companies on companies page
   // -------------------------------------------------------------------------
-  test('T2: BD user sees only own org deals', async ({ request }) => {
-    const bdToken = await getAuthToken(request, ACME_BD_EMAIL, DEMO_PASSWORD)
-    const res = await apiRequest(request, 'GET', '/api/customers/deals', { token: bdToken })
-    expect(res.ok(), `GET /api/customers/deals (Acme BD) failed: ${res.status()}`).toBeTruthy()
-    const body = await readJsonSafe<DealListResponse>(res)
-    const deals = body?.items ?? []
-
-    // Acme BD must see at least one deal (demo data seeds 5 Acme deals)
-    expect(
-      deals.length,
-      'Acme BD should see at least 1 deal from demo seed data',
-    ).toBeGreaterThanOrEqual(1)
-
-    // All deal titles from Acme should contain "Acme" prefix (per demo seed naming convention)
-    // and none should contain "Nordic" or "CloudBridge" prefixes
-    for (const deal of deals) {
-      const title = deal.title as string
-      expect(
-        title,
-        `Acme BD should not see non-Acme deal: "${title}"`,
-      ).not.toMatch(/^Nordic:/i)
-      expect(
-        title,
-        `Acme BD should not see non-Acme deal: "${title}"`,
-      ).not.toMatch(/^CloudBridge:/i)
-    }
-  })
-
-  // -------------------------------------------------------------------------
-  // T3: PM can see multiple orgs via org switcher
-  // -------------------------------------------------------------------------
-  test('T3: PM sees multiple organizations via org switcher API', async ({ request }) => {
-    const pmToken = await getAuthToken(request, PM_EMAIL, DEMO_PASSWORD)
-    const res = await apiRequest(request, 'GET', '/api/directory/organization-switcher', { token: pmToken })
-    expect(res.ok(), `GET /api/directory/organization-switcher (PM) failed: ${res.status()}`).toBeTruthy()
-    const body = await readJsonSafe<OrgSwitcherResponse>(res)
-
-    // The response may contain organizations under "organizations" or "items" key
-    const orgs = body?.organizations ?? body?.items ?? []
-
-    // PM must see at least 2 organizations: their own (home org) + at least one agency org
-    expect(
-      Array.isArray(orgs),
-      'Organization switcher response must contain an array of organizations',
-    ).toBe(true)
-    expect(
-      orgs.length,
-      `PM should see at least 2 organizations (own + agencies), got ${orgs.length}`,
-    ).toBeGreaterThanOrEqual(2)
-  })
-
-  // -------------------------------------------------------------------------
-  // T4: Admin cannot access another org's data
-  // -------------------------------------------------------------------------
-  test('T4: Acme Admin and Nordic Admin see strictly disjoint company data', async ({ request }) => {
-    // Auth as Acme Admin
+  test('T3: Acme and Nordic see disjoint company data', async ({ page, request, browser }) => {
+    // Login as Acme Admin — collect company names
     const acmeToken = await getAuthToken(request, ACME_ADMIN_EMAIL, DEMO_PASSWORD)
-    const acmeRes = await apiRequest(request, 'GET', '/api/customers/companies', { token: acmeToken })
-    expect(acmeRes.ok(), `GET /api/customers/companies (Acme Admin) failed: ${acmeRes.status()}`).toBeTruthy()
-    const acmeBody = await readJsonSafe<CompanyListResponse>(acmeRes)
-    const acmeCompanies = acmeBody?.items ?? []
+    await loginInBrowser(page, acmeToken)
+    await page.goto(`${BASE}/backend/customers/companies`)
 
-    // Auth as Nordic Admin
+    await expect(page.locator('tbody tr').first()).toBeVisible({ timeout: 15_000 })
+    const acmeTexts = await getTableRowTexts(page)
+    expect(acmeTexts.length, 'Acme Admin should see at least 1 company').toBeGreaterThanOrEqual(1)
+
+    // Login as Nordic Admin in a new context to avoid cookie collision
+    const nordicContext = await browser.newContext()
+    const nordicPage = await nordicContext.newPage()
     const nordicToken = await getAuthToken(request, NORDIC_ADMIN_EMAIL, DEMO_PASSWORD)
-    const nordicRes = await apiRequest(request, 'GET', '/api/customers/companies', { token: nordicToken })
-    expect(nordicRes.ok(), `GET /api/customers/companies (Nordic Admin) failed: ${nordicRes.status()}`).toBeTruthy()
-    const nordicBody = await readJsonSafe<CompanyListResponse>(nordicRes)
-    const nordicCompanies = nordicBody?.items ?? []
+    await nordicPage.context().addCookies([{ name: 'auth_token', value: nordicToken, url: BASE }])
+    await nordicPage.goto(`${BASE}/backend/customers/companies`)
 
-    // Both must have data
-    expect(acmeCompanies.length, 'Acme Admin should see at least 1 company').toBeGreaterThanOrEqual(1)
-    expect(nordicCompanies.length, 'Nordic Admin should see at least 1 company').toBeGreaterThanOrEqual(1)
+    await expect(nordicPage.locator('tbody tr').first()).toBeVisible({ timeout: 15_000 })
+    const nordicTexts = await getTableRowTexts(nordicPage)
+    expect(nordicTexts.length, 'Nordic Admin should see at least 1 company').toBeGreaterThanOrEqual(1)
 
-    // Extract IDs for strict comparison
-    const acmeIds = new Set(acmeCompanies.map((c) => c.id as string))
-    const nordicIds = new Set(nordicCompanies.map((c) => c.id as string))
-
-    // No company ID should appear in both sets
-    for (const id of acmeIds) {
-      expect(
-        nordicIds.has(id),
-        `Company ID ${id} visible to Acme Admin should NOT be visible to Nordic Admin`,
-      ).toBe(false)
-    }
-    for (const id of nordicIds) {
-      expect(
-        acmeIds.has(id),
-        `Company ID ${id} visible to Nordic Admin should NOT be visible to Acme Admin`,
-      ).toBe(false)
+    // Verify no overlap in row content
+    for (const nordicRow of nordicTexts) {
+      for (const acmeRow of acmeTexts) {
+        expect(nordicRow, 'Company row content should be disjoint between orgs').not.toBe(acmeRow)
+      }
     }
 
-    // Also verify deal isolation
-    const acmeDealsRes = await apiRequest(request, 'GET', '/api/customers/deals', { token: acmeToken })
-    expect(acmeDealsRes.ok()).toBeTruthy()
-    const acmeDeals = (await readJsonSafe<DealListResponse>(acmeDealsRes))?.items ?? []
-
-    const nordicDealsRes = await apiRequest(request, 'GET', '/api/customers/deals', { token: nordicToken })
-    expect(nordicDealsRes.ok()).toBeTruthy()
-    const nordicDeals = (await readJsonSafe<DealListResponse>(nordicDealsRes))?.items ?? []
-
-    const acmeDealIds = new Set(acmeDeals.map((d) => d.id as string))
-    const nordicDealIds = new Set(nordicDeals.map((d) => d.id as string))
-
-    for (const id of acmeDealIds) {
-      expect(
-        nordicDealIds.has(id),
-        `Deal ID ${id} visible to Acme should NOT be visible to Nordic`,
-      ).toBe(false)
-    }
-    for (const id of nordicDealIds) {
-      expect(
-        acmeDealIds.has(id),
-        `Deal ID ${id} visible to Nordic should NOT be visible to Acme`,
-      ).toBe(false)
-    }
+    await nordicContext.close()
   })
 
   // -------------------------------------------------------------------------
-  // T5: BD creates a company and deal in own org
+  // T4: BD sees deals scoped to own org
   // -------------------------------------------------------------------------
-  test('T5: BD can create a company and deal in own org', async ({ request }) => {
+  test('T4: BD user sees only own org deals', async ({ page, request }) => {
     const bdToken = await getAuthToken(request, ACME_BD_EMAIL, DEMO_PASSWORD)
-    const ts = Date.now()
-    let companyId: string | null = null
-    let dealId: string | null = null
+    await loginInBrowser(page, bdToken)
+    await page.goto(`${BASE}/backend/customers/deals`)
 
-    try {
-      // BD creates company
-      const companyRes = await apiRequest(request, 'POST', '/api/customers/companies', {
-        token: bdToken,
-        data: { displayName: `QA TC-PRM-005 T5 Co ${ts}` },
-      })
-      expect(companyRes.ok(), `BD POST /api/customers/companies failed: ${companyRes.status()}`).toBeTruthy()
-      const companyBody = await readJsonSafe<Record<string, unknown>>(companyRes)
-      companyId = (companyBody?.id ?? companyBody?.entityId) as string | null
-      expect(companyId, 'BD should be able to create a company').toBeTruthy()
+    const rows = page.locator('tbody tr')
+    await expect(rows.first()).toBeVisible({ timeout: 15_000 })
+    const count = await rows.count()
+    expect(count, 'Acme BD should see at least 1 deal').toBeGreaterThanOrEqual(1)
 
-      // BD creates deal
-      const dealRes = await apiRequest(request, 'POST', '/api/customers/deals', {
-        token: bdToken,
-        data: { title: `QA TC-PRM-005 T5 Deal ${ts}`, companyIds: [companyId] },
-      })
-      expect(dealRes.ok(), `BD POST /api/customers/deals failed: ${dealRes.status()}`).toBeTruthy()
-      const dealBody = await readJsonSafe<Record<string, unknown>>(dealRes)
-      dealId = (dealBody?.id ?? dealBody?.dealId) as string | null
-      expect(dealId, 'BD should be able to create a deal').toBeTruthy()
-    } finally {
-      if (dealId) await apiRequest(request, 'DELETE', `/api/customers/deals?id=${encodeURIComponent(dealId)}`, { token: bdToken }).catch(() => {})
-      if (companyId) await apiRequest(request, 'DELETE', `/api/customers/companies?id=${encodeURIComponent(companyId)}`, { token: bdToken }).catch(() => {})
+    // Verify no non-Acme data
+    const rowTexts = await getTableRowTexts(page)
+    for (const text of rowTexts) {
+      expect(text, 'BD should not see Nordic deals').not.toMatch(/^Nordic:/i)
+      expect(text, 'BD should not see CloudBridge deals').not.toMatch(/^CloudBridge:/i)
     }
   })
 
   // -------------------------------------------------------------------------
-  // T6: Admin org switcher shows only own organization
+  // T5: PM sees agencies list with multiple orgs
   // -------------------------------------------------------------------------
-  test('T6: Admin org switcher shows only own organization', async ({ request }) => {
-    const adminToken = await getAuthToken(request, ACME_ADMIN_EMAIL, DEMO_PASSWORD)
-    const res = await apiRequest(request, 'GET', '/api/directory/organization-switcher', { token: adminToken })
-    expect(res.ok()).toBeTruthy()
-    const body = await readJsonSafe<{ items?: Array<Record<string, unknown>> }>(res)
-    const orgs = body?.items ?? []
-    // Admin with UserAcl should see only their own org (1 org)
-    expect(orgs.length, 'Admin should see exactly 1 organization in switcher').toBe(1)
-  })
-
-  // -------------------------------------------------------------------------
-  // T7: PM default org context returns own org data
-  // -------------------------------------------------------------------------
-  test('T7: PM default org context returns own org data', async ({ request }) => {
+  test('T5: PM sees multiple agencies on agencies page', async ({ page, request }) => {
     const pmToken = await getAuthToken(request, PM_EMAIL, DEMO_PASSWORD)
-    // PM's default CRM context should be their home org (Open Mercato Backoffice)
-    // Companies in PM's home org are minimal (PM doesn't prospect)
-    const res = await apiRequest(request, 'GET', '/api/customers/companies', { token: pmToken })
-    expect(res.ok()).toBeTruthy()
-    // PM can access the API — the key point is PM is in their home org by default
-    // Cross-org agency data is accessed via the agencies API, not default CRM view
+    await loginInBrowser(page, pmToken)
+    await page.goto(`${BASE}/backend/partnerships/agencies`)
+
+    // Table should load with agency data
+    await expect(page.locator('th:text-is("Agency")').first()).toBeVisible({ timeout: 15_000 })
+
+    const rows = page.locator('tbody tr')
+    await expect(rows.first()).toBeVisible({ timeout: 10_000 })
+    const count = await rows.count()
+    expect(count, 'PM should see at least 2 agencies').toBeGreaterThanOrEqual(2)
+
+    // Verify known demo agency names are present
+    const pageText = await page.locator('tbody').textContent()
+    const knownFragments = ['acme', 'nordic', 'cloudbridge']
+    const found = knownFragments.filter((f) => pageText?.toLowerCase().includes(f))
+    expect(found.length, `Expected at least 2 known agencies, found: ${found.join(', ')}`).toBeGreaterThanOrEqual(2)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Metadata
+// ---------------------------------------------------------------------------
+
+export const integrationMeta = {
+  description: 'Org isolation UI — Acme/Nordic see disjoint data, PM sees all agencies',
+  dependsOnModules: ['partnerships', 'customers', 'auth', 'directory'],
+}

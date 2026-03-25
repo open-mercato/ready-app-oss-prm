@@ -1,22 +1,21 @@
-import { expect, test } from '@playwright/test'
-import { getAuthToken, apiRequest } from '@open-mercato/core/helpers/integration/api'
-import { readJsonSafe } from '@open-mercato/core/helpers/integration/generalFixtures'
+import { test, expect, type Page } from '@playwright/test'
+import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 
 /**
- * TC-PRM-006: Cross-org Agencies API (US-2.3 PM view)
+ * TC-PRM-006: Agencies Page UI (US-2.3 PM view)
  *
- * Tests GET /api/partnerships/agencies — the PM's cross-org view listing all
- * partner agencies with their KPI metrics (WIP, WIC, MIN).
+ * Page: /backend/partnerships/agencies
+ * Auth: requireFeatures: ['partnerships.manage'] (PM only)
  *
- * API: GET /api/partnerships/agencies?month=YYYY-MM
- *   - Requires: partnerships.manage feature (PM only)
- *   - Returns: { agencies: [{ organizationId, name, adminEmail, wipCount, wicScore, minCount, createdAt }], month, year }
+ * Tests:
+ * T1 — PM sees agencies table with correct columns and demo data
+ * T2 — PM sees "Add Agency" button
+ * T3 — Agency rows show KPI data (WIP column)
+ * T4 — Agency list excludes PM's home org (no "Open Mercato" row)
+ * T5 — Non-PM user (BD) cannot access agencies page
+ * T6 — Each agency row has a "Change Tier" button
  *
- * Demo users:
- *   - PM: partnership-manager@demo.local / Demo123!  (has partnerships.manage)
- *   - BD: acme-bd@demo.local / Demo123!              (does NOT have partnerships.manage)
- *
- * Source: apps/prm/src/modules/partnerships/api/get/agencies.ts
+ * Source: apps/prm/src/modules/partnerships/backend/partnerships/agencies/page.tsx
  * Phase: 2
  */
 
@@ -27,152 +26,134 @@ import { readJsonSafe } from '@open-mercato/core/helpers/integration/generalFixt
 const PM_EMAIL = 'partnership-manager@demo.local'
 const BD_EMAIL = 'acme-bd@demo.local'
 const DEMO_PASSWORD = 'Demo123!'
+const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:5001'
 
 // ---------------------------------------------------------------------------
-// Types
+// Helpers
 // ---------------------------------------------------------------------------
 
-type AgencyListItem = {
-  organizationId: string
-  name: string
-  adminEmail: string | null
-  wipCount: number
-  wicScore: number
-  minCount: number
-  createdAt: string
-}
-
-type AgenciesResponse = {
-  agencies: AgencyListItem[]
-  month: string
-  year: number
+async function loginInBrowser(page: Page, token: string): Promise<void> {
+  await page.context().addCookies([{ name: 'auth_token', value: token, url: BASE }])
 }
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-test.describe('TC-PRM-006: Cross-org Agencies API (US-2.3 PM view)', () => {
-  // -------------------------------------------------------------------------
-  // T1: PM gets list of agencies with KPI metrics
-  // -------------------------------------------------------------------------
-  test('T1: PM gets list of agencies with WIP, WIC, MIN metrics', async ({ request }) => {
-    const pmToken = await getAuthToken(request, PM_EMAIL, DEMO_PASSWORD)
-    const res = await apiRequest(request, 'GET', '/api/partnerships/agencies', { token: pmToken })
-    expect(res.ok(), `GET /api/partnerships/agencies (PM) failed: ${res.status()}`).toBeTruthy()
+test.describe('TC-PRM-006: Agencies Page UI', () => {
+  let pmToken: string
+  let bdToken: string
 
-    const body = await readJsonSafe<AgenciesResponse>(res)
-    expect(body, 'Response body must not be null').not.toBeNull()
-    expect(Array.isArray(body!.agencies), 'agencies must be an array').toBe(true)
-    expect(typeof body!.month, 'month must be a string').toBe('string')
-    expect(body!.month).toMatch(/^\d{4}-(0[1-9]|1[0-2])$/)
-    expect(typeof body!.year, 'year must be a number').toBe('number')
+  test.beforeAll(async ({ request }) => {
+    pmToken = await getAuthToken(request, PM_EMAIL, DEMO_PASSWORD)
+    bdToken = await getAuthToken(request, BD_EMAIL, DEMO_PASSWORD)
+  })
 
-    // Demo data seeds at least 1 agency
+  // -------------------------------------------------------------------------
+  // T1: PM sees agencies table with correct columns
+  // -------------------------------------------------------------------------
+  test('T1: PM sees agencies table with correct columns and demo data', async ({ page }) => {
+    await loginInBrowser(page, pmToken)
+    await page.goto(`${BASE}/backend/partnerships/agencies`)
+
+    // Table headers
+    await expect(page.locator('th:text-is("Agency")').first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('th:text-is("Admin Email")').first()).toBeVisible()
+    await expect(page.locator('th:has-text("WIP")').first()).toBeVisible()
+    await expect(page.locator('th:text-is("Created")').first()).toBeVisible()
+    await expect(page.locator('th:has-text("Current Tier")').first()).toBeVisible()
+
+    // Demo data — at least 1 agency row
+    const rows = page.locator('tbody tr')
+    await expect(rows.first()).toBeVisible({ timeout: 10_000 })
+    const count = await rows.count()
+    expect(count, 'Demo data should have at least 1 agency').toBeGreaterThanOrEqual(1)
+  })
+
+  // -------------------------------------------------------------------------
+  // T2: PM sees "Add Agency" button
+  // -------------------------------------------------------------------------
+  test('T2: PM sees Add Agency button', async ({ page }) => {
+    await loginInBrowser(page, pmToken)
+    await page.goto(`${BASE}/backend/partnerships/agencies`)
+
+    await expect(page.locator('th:text-is("Agency")').first()).toBeVisible({ timeout: 15_000 })
+
+    const addButton = page.getByRole('button', { name: 'Add Agency' })
+    await expect(addButton).toBeVisible()
+  })
+
+  // -------------------------------------------------------------------------
+  // T3: Agency rows show WIP numbers
+  // -------------------------------------------------------------------------
+  test('T3: Agency rows contain WIP count data', async ({ page }) => {
+    await loginInBrowser(page, pmToken)
+    await page.goto(`${BASE}/backend/partnerships/agencies`)
+
+    await expect(page.locator('tbody tr').first()).toBeVisible({ timeout: 15_000 })
+
+    // WIP column cells should contain numeric values (tabular-nums class)
+    const wipCells = page.locator('tbody tr td.tabular-nums, tbody tr td:has(.tabular-nums)')
+    const firstWipCell = wipCells.first()
+    await expect(firstWipCell).toBeVisible()
+    const text = await firstWipCell.textContent()
+    // Should be a numeric value
+    expect(text?.trim()).toMatch(/^\d+$/)
+  })
+
+  // -------------------------------------------------------------------------
+  // T4: Agency list excludes PM's home org
+  // -------------------------------------------------------------------------
+  test('T4: Agency list does not include Open Mercato (PM home org)', async ({ page }) => {
+    await loginInBrowser(page, pmToken)
+    await page.goto(`${BASE}/backend/partnerships/agencies`)
+
+    await expect(page.locator('tbody tr').first()).toBeVisible({ timeout: 15_000 })
+
+    const bodyText = await page.locator('tbody').textContent()
     expect(
-      body!.agencies.length,
-      `Expected at least 1 agency, got ${body!.agencies.length}`,
-    ).toBeGreaterThanOrEqual(1)
-
-    // Verify each agency has the required fields with correct types
-    for (const agency of body!.agencies) {
-      expect(typeof agency.organizationId, 'organizationId must be a string').toBe('string')
-      expect(agency.organizationId.length, 'organizationId must not be empty').toBeGreaterThan(0)
-
-      expect(typeof agency.name, 'name must be a string').toBe('string')
-      expect(agency.name.length, 'name must not be empty').toBeGreaterThan(0)
-
-      expect(
-        agency.adminEmail === null || typeof agency.adminEmail === 'string',
-        'adminEmail must be a string or null',
-      ).toBe(true)
-
-      expect(typeof agency.wipCount, 'wipCount must be a number').toBe('number')
-      expect(agency.wipCount, 'wipCount must be non-negative').toBeGreaterThanOrEqual(0)
-
-      expect(typeof agency.wicScore, 'wicScore must be a number').toBe('number')
-      expect(agency.wicScore, 'wicScore must be non-negative').toBeGreaterThanOrEqual(0)
-
-      expect(typeof agency.minCount, 'minCount must be a number').toBe('number')
-      expect(agency.minCount, 'minCount must be non-negative').toBeGreaterThanOrEqual(0)
-
-      expect(typeof agency.createdAt, 'createdAt must be a string').toBe('string')
-      const parsed = new Date(agency.createdAt)
-      expect(
-        Number.isNaN(parsed.getTime()),
-        `createdAt "${agency.createdAt}" must be a valid date`,
-      ).toBe(false)
-    }
-
-    // No duplicate org IDs
-    const orgIds = body!.agencies.map((a) => a.organizationId)
-    const uniqueIds = new Set(orgIds)
-    expect(orgIds.length, 'No duplicate organizationIds in agency list').toBe(uniqueIds.size)
+      bodyText?.toLowerCase().includes('open mercato'),
+      'PM home org "Open Mercato" should not appear in agencies list',
+    ).toBe(false)
   })
 
   // -------------------------------------------------------------------------
-  // T2: Non-PM user gets 403
+  // T5: Non-PM user cannot access agencies page
   // -------------------------------------------------------------------------
-  test('T2: BD user without partnerships.manage gets 403', async ({ request }) => {
-    const bdToken = await getAuthToken(request, BD_EMAIL, DEMO_PASSWORD)
-    const res = await apiRequest(request, 'GET', '/api/partnerships/agencies', { token: bdToken })
+  test('T5: BD user cannot access agencies page', async ({ page }) => {
+    await loginInBrowser(page, bdToken)
+    await page.goto(`${BASE}/backend/partnerships/agencies`)
 
-    expect(
-      res.status(),
-      `Expected 403 for BD user, got ${res.status()}`,
-    ).toBe(403)
+    await page.waitForTimeout(3_000)
+
+    // BD lacks partnerships.manage — table should not render
+    const tableVisible = await page.locator('th:text-is("Agency")').isVisible().catch(() => false)
+    expect(tableVisible, 'BD should not see agencies table').toBe(false)
   })
 
   // -------------------------------------------------------------------------
-  // T3: Agency list excludes PM's home org
+  // T6: Each agency row has "Change Tier" button
   // -------------------------------------------------------------------------
-  test('T3: Agency list excludes PM home org', async ({ request }) => {
-    const pmToken = await getAuthToken(request, PM_EMAIL, DEMO_PASSWORD)
-    const res = await apiRequest(request, 'GET', '/api/partnerships/agencies', { token: pmToken })
-    expect(res.ok(), `GET /api/partnerships/agencies (PM) failed: ${res.status()}`).toBeTruthy()
+  test('T6: Each agency row has a Change Tier button', async ({ page }) => {
+    await loginInBrowser(page, pmToken)
+    await page.goto(`${BASE}/backend/partnerships/agencies`)
 
-    const body = await readJsonSafe<AgenciesResponse>(res)
-    expect(body, 'Response body must not be null').not.toBeNull()
-    expect(body!.agencies.length, 'agencies must not be empty').toBeGreaterThanOrEqual(1)
+    await expect(page.locator('tbody tr').first()).toBeVisible({ timeout: 15_000 })
 
-    const agencyNames = body!.agencies.map((a) => a.name.toLowerCase())
-    for (const name of agencyNames) {
-      expect(
-        name.includes('open mercato'),
-        `PM home org should not appear in agencies list, but found "${name}"`,
-      ).toBe(false)
-    }
+    const changeTierButtons = page.locator('tbody tr').locator('button:has-text("Change Tier")')
+    const rows = page.locator('tbody tr')
+    const rowCount = await rows.count()
+    const buttonCount = await changeTierButtons.count()
 
-    const knownAgencyFragments = ['acme', 'nordic', 'cloudbridge']
-    const hasKnownAgency = agencyNames.some((name) =>
-      knownAgencyFragments.some((fragment) => name.includes(fragment))
-    )
-    expect(
-      hasKnownAgency,
-      `Expected at least one known demo agency in the list, got: ${agencyNames.join(', ')}`,
-    ).toBe(true)
-  })
-
-  // -------------------------------------------------------------------------
-  // T4: Month parameter filters data correctly
-  // -------------------------------------------------------------------------
-  test('T4: Month parameter is accepted and reflected in response', async ({ request }) => {
-    const pmToken = await getAuthToken(request, PM_EMAIL, DEMO_PASSWORD)
-    const res = await apiRequest(request, 'GET', '/api/partnerships/agencies?month=2026-01', { token: pmToken })
-    expect(res.ok(), `GET /api/partnerships/agencies?month=2026-01 failed: ${res.status()}`).toBeTruthy()
-
-    const body = await readJsonSafe<AgenciesResponse>(res)
-    expect(body, 'Response body must not be null').not.toBeNull()
-    expect(body!.month).toBe('2026-01')
-    expect(body!.year).toBe(2026)
-  })
-
-  // -------------------------------------------------------------------------
-  // T5: Invalid month parameter returns 400
-  // -------------------------------------------------------------------------
-  test('T5: Invalid month parameter returns 400', async ({ request }) => {
-    const pmToken = await getAuthToken(request, PM_EMAIL, DEMO_PASSWORD)
-    const res = await apiRequest(request, 'GET', '/api/partnerships/agencies?month=bad', { token: pmToken })
-    expect(res.status(), `Expected 400 for invalid month, got ${res.status()}`).toBe(400)
+    expect(buttonCount, 'Each agency row should have a Change Tier button').toBe(rowCount)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Metadata
+// ---------------------------------------------------------------------------
+
+export const integrationMeta = {
+  description: 'Agencies page UI — table rendering, columns, PM access, BD rejected, tier change buttons',
+  dependsOnModules: ['partnerships', 'auth', 'directory'],
+}

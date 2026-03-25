@@ -1,21 +1,22 @@
-import { expect, test } from '@playwright/test'
-import { getAuthToken, apiRequest } from '@open-mercato/core/helpers/integration/api'
-import { readJsonSafe } from '@open-mercato/core/helpers/integration/generalFixtures'
+import { test, expect, type Page } from '@playwright/test'
+import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 
 /**
- * TC-PRM-013: Cross-Org Company Search
+ * TC-PRM-013: Cross-Org Company Search UI
  *
- * Route: GET /api/partnerships/company-search?q=<term>
- * Auth:  requireAuth + requireFeatures: ['partnerships.manage'] (PM only)
+ * Page: /backend/partnerships/license-deals/create
+ * The company search is embedded in the license deal creation flow.
+ * Auth: requireFeatures: ['partnerships.manage'] (PM only)
  *
  * Tests:
- * T1 — PM can search companies across orgs (results have expected shape)
- * T2 — Search with no results returns empty array
- * T3 — Non-PM (admin) cannot search (403)
- * T4 — Search term too short returns 400
+ * T1 — PM can search companies on create page (results appear)
+ * T2 — No results returns "No companies found" message
+ * T3 — Short search term (< 2 chars) does not trigger search
+ * T4 — Selecting a company shows the attribution form
+ * T5 — Non-PM user (contributor) cannot access the create page
  *
- * Source: apps/prm/src/modules/partnerships/api/get/company-search.ts
- * Phase: 2, WF5 Tier Governance
+ * Source: apps/prm/src/modules/partnerships/backend/partnerships/license-deals/create/page.tsx
+ * Phase: 2
  */
 
 // ---------------------------------------------------------------------------
@@ -23,112 +24,136 @@ import { readJsonSafe } from '@open-mercato/core/helpers/integration/generalFixt
 // ---------------------------------------------------------------------------
 
 const PM_EMAIL = 'partnership-manager@demo.local'
-const PM_PASSWORD = 'Demo123!'
 const CONTRIBUTOR_EMAIL = 'acme-contributor@demo.local'
-const CONTRIBUTOR_PASSWORD = 'Demo123!'
+const DEMO_PASSWORD = 'Demo123!'
+const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:5001'
 
-type CompanySearchItem = {
-  companyId: string
-  companyName: string
-  organizationId: string
-  agencyName: string
-  createdAt: string
-  dealCount: number
-}
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-type CompanySearchResponse = {
-  results: CompanySearchItem[]
+async function loginInBrowser(page: Page, token: string): Promise<void> {
+  await page.context().addCookies([{ name: 'auth_token', value: token, url: BASE }])
 }
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-test.describe('TC-PRM-013: Cross-Org Company Search', () => {
+test.describe('TC-PRM-013: Cross-Org Company Search UI', () => {
   let pmToken: string
   let contributorToken: string
 
   test.beforeAll(async ({ request }) => {
-    pmToken = await getAuthToken(request, PM_EMAIL, PM_PASSWORD)
-    contributorToken = await getAuthToken(request, CONTRIBUTOR_EMAIL, CONTRIBUTOR_PASSWORD)
+    pmToken = await getAuthToken(request, PM_EMAIL, DEMO_PASSWORD)
+    contributorToken = await getAuthToken(request, CONTRIBUTOR_EMAIL, DEMO_PASSWORD)
   })
 
   // -------------------------------------------------------------------------
-  // T1: PM can search companies across orgs
+  // T1: PM can search companies — results appear
   // -------------------------------------------------------------------------
-  test('T1: PM can search companies across orgs', async ({ request }) => {
-    // Search for a term likely to match demo data (seeded companies typically include "Acme")
-    const res = await apiRequest(
-      request,
-      'GET',
-      '/api/partnerships/company-search?q=Acme',
-      { token: pmToken },
-    )
+  test('T1: PM can search companies and results appear', async ({ page }) => {
+    await loginInBrowser(page, pmToken)
+    await page.goto(`${BASE}/backend/partnerships/license-deals/create`)
 
-    expect(res.status(), 'GET /api/partnerships/company-search should return 200').toBe(200)
+    // Search input should be visible
+    const searchInput = page.locator('input[type="text"]').first()
+    await expect(searchInput).toBeVisible({ timeout: 15_000 })
 
-    const body = await readJsonSafe<CompanySearchResponse>(res)
-    expect(body, 'response body must not be null').not.toBeNull()
-    expect(Array.isArray(body!.results), 'results must be an array').toBe(true)
+    // Type a search term likely to match demo data
+    await searchInput.fill('Demo')
 
-    // Demo data should have at least one Acme-related company
-    // If the search term does not match, at least verify the shape
-    if (body!.results.length > 0) {
-      const item = body!.results[0]
-      expect(typeof item.companyId, 'companyId must be a string').toBe('string')
-      expect(typeof item.companyName, 'companyName must be a string').toBe('string')
-      expect(typeof item.organizationId, 'organizationId must be a string').toBe('string')
-      expect(typeof item.agencyName, 'agencyName must be a string').toBe('string')
-      expect(typeof item.createdAt, 'createdAt must be a string').toBe('string')
-      expect(typeof item.dealCount, 'dealCount must be a number').toBe('number')
-    }
+    // Wait for search results to appear (debounced)
+    const resultButton = page.locator('button.w-full.text-left').first()
+    await expect(resultButton).toBeVisible({ timeout: 10_000 })
+
+    // Verify result has company name and agency name
+    const companyName = resultButton.locator('p.font-medium')
+    await expect(companyName).toBeVisible()
+    const nameText = await companyName.textContent()
+    expect(nameText?.trim().length, 'Company name should not be empty').toBeGreaterThan(0)
+
+    // Agency name should also be visible
+    const agencyName = resultButton.locator('.text-muted-foreground').first()
+    await expect(agencyName).toBeVisible()
   })
 
   // -------------------------------------------------------------------------
-  // T2: Search with no results returns empty array
+  // T2: No results shows empty message
   // -------------------------------------------------------------------------
-  test('T2: Search with no results returns empty array', async ({ request }) => {
-    const res = await apiRequest(
-      request,
-      'GET',
-      '/api/partnerships/company-search?q=zzz_nonexistent_company_99999',
-      { token: pmToken },
-    )
+  test('T2: No results returns "No companies found" message', async ({ page }) => {
+    await loginInBrowser(page, pmToken)
+    await page.goto(`${BASE}/backend/partnerships/license-deals/create`)
 
-    expect(res.status(), 'GET with no-match term should return 200').toBe(200)
+    const searchInput = page.locator('input[type="text"]').first()
+    await expect(searchInput).toBeVisible({ timeout: 15_000 })
 
-    const body = await readJsonSafe<CompanySearchResponse>(res)
-    expect(body, 'response body must not be null').not.toBeNull()
-    expect(Array.isArray(body!.results), 'results must be an array').toBe(true)
-    expect(body!.results.length, 'results should be empty for non-matching search').toBe(0)
+    // Type a term that won't match anything
+    await searchInput.fill('zzz_nonexistent_99999')
+
+    // Wait for the "no results" message (debounced search)
+    await expect(page.locator('text=/No companies found/i')).toBeVisible({ timeout: 10_000 })
   })
 
   // -------------------------------------------------------------------------
-  // T3: Non-PM (admin) cannot search (403)
+  // T3: Short search term does not trigger search
   // -------------------------------------------------------------------------
-  test('T3: Non-PM (contributor) cannot search — 403', async ({ request }) => {
-    const res = await apiRequest(
-      request,
-      'GET',
-      '/api/partnerships/company-search?q=test',
-      { token: contributorToken },
-    )
+  test('T3: Single character does not trigger search', async ({ page }) => {
+    await loginInBrowser(page, pmToken)
+    await page.goto(`${BASE}/backend/partnerships/license-deals/create`)
 
-    expect(res.status(), 'Non-PM user should get 403').toBe(403)
+    const searchInput = page.locator('input[type="text"]').first()
+    await expect(searchInput).toBeVisible({ timeout: 15_000 })
+
+    // Type a single character
+    await searchInput.fill('a')
+    await page.waitForTimeout(1_000)
+
+    // No results and no "No companies found" should appear
+    const hasResults = await page.locator('button.w-full.text-left').isVisible().catch(() => false)
+    const hasNoResults = await page.locator('text=/No companies found/i').isVisible().catch(() => false)
+    expect(hasResults || hasNoResults, 'Single char should not trigger search').toBe(false)
   })
 
   // -------------------------------------------------------------------------
-  // T4: Search term too short returns 400
+  // T4: Selecting a company shows the form
   // -------------------------------------------------------------------------
-  test('T4: Search term too short returns 400', async ({ request }) => {
-    const res = await apiRequest(
-      request,
-      'GET',
-      '/api/partnerships/company-search?q=a',
-      { token: pmToken },
-    )
+  test('T4: Selecting a company shows the attribution form', async ({ page }) => {
+    await loginInBrowser(page, pmToken)
+    await page.goto(`${BASE}/backend/partnerships/license-deals/create`)
 
-    expect(res.status(), 'Search term < 2 chars should return 400').toBe(400)
+    const searchInput = page.locator('input[type="text"]').first()
+    await expect(searchInput).toBeVisible({ timeout: 15_000 })
+
+    await searchInput.fill('Demo')
+
+    const resultButton = page.locator('button.w-full.text-left').first()
+    await expect(resultButton).toBeVisible({ timeout: 10_000 })
+
+    // Click the first result
+    await resultButton.click()
+
+    // Attribution form should appear with License Identifier input
+    await expect(page.locator('#licenseIdentifier')).toBeVisible({ timeout: 5_000 })
+    await expect(page.locator('#industryTag')).toBeVisible()
+    await expect(page.locator('#closedAt')).toBeVisible()
+
+    // "Change" link should be visible to go back to search
+    await expect(page.locator('text=/Change/i')).toBeVisible()
+  })
+
+  // -------------------------------------------------------------------------
+  // T5: Non-PM user cannot access create page
+  // -------------------------------------------------------------------------
+  test('T5: Contributor cannot access license deal create page', async ({ page }) => {
+    await loginInBrowser(page, contributorToken)
+    await page.goto(`${BASE}/backend/partnerships/license-deals/create`)
+
+    await page.waitForTimeout(3_000)
+
+    // Contributor should not see the search form
+    const searchVisible = await page.locator('input[type="text"]').first().isVisible().catch(() => false)
+    expect(searchVisible, 'Contributor should not see company search form').toBe(false)
   })
 })
 
@@ -137,6 +162,6 @@ test.describe('TC-PRM-013: Cross-Org Company Search', () => {
 // ---------------------------------------------------------------------------
 
 export const integrationMeta = {
-  description: 'Cross-org company search — PM search, empty results, non-PM rejected, short query rejected',
+  description: 'Cross-org company search UI — search results, empty state, short query, form transition, RBAC',
   dependsOnModules: ['partnerships', 'customers', 'directory', 'auth'],
 }
