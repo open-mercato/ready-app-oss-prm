@@ -179,6 +179,21 @@
         "selected": "Selected Agencies"
       }
     },
+    "rfpSettings": {
+      "title": "RFP Message Templates",
+      "campaignTemplate": "Campaign Published Template",
+      "campaignPlaceholder": "Template sent to BD users when a campaign is published...",
+      "awardTemplate": "Award Template",
+      "awardPlaceholder": "Template sent to the winning agency...",
+      "rejectionTemplate": "Rejection Template",
+      "rejectionPlaceholder": "Template sent to non-winning agencies...",
+      "placeholderHint": "Available placeholders: [first-name], [last-name], [agency-name], [campaign-title]",
+      "saveButton": "Save Templates",
+      "saving": "Saving...",
+      "saved": "Templates saved successfully",
+      "saveError": "Failed to save templates",
+      "loadError": "Failed to load templates"
+    },
     "widgets": {
       "wipCount": {
         "title": "WIP This Month",

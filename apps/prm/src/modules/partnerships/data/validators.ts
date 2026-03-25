@@ -88,3 +88,15 @@ export const rfpCampaignUpdateSchema = z.object({
   audience: z.enum(['all', 'selected']).optional(),
   selectedAgencyIds: z.array(z.string().uuid()).optional(),
 })
+
+// ---------------------------------------------------------------------------
+// RFP Settings (message templates)
+// ---------------------------------------------------------------------------
+
+export const rfpSettingsUpdateSchema = z.object({
+  campaignTemplate: z.string().min(1, 'Campaign template is required'),
+  awardTemplate: z.string().min(1, 'Award template is required'),
+  rejectionTemplate: z.string().min(1, 'Rejection template is required'),
+})
+
+export type RfpSettingsUpdateInput = z.infer<typeof rfpSettingsUpdateSchema>

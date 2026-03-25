@@ -39,9 +39,15 @@ test.describe('TC-PRM-031: RFP Message Templates', () => {
     await loginInBrowser(page, pmToken)
     await page.goto(`${BASE}/backend/partnerships/rfp-settings`, { waitUntil: 'domcontentloaded' })
 
-    // Page should not be 404
-    const bodyText = await page.locator('body').textContent().catch(() => '')
-    const is404 = bodyText?.includes('404') && bodyText?.includes('Not Found')
+    // Wait for page content to load (RSC payload in body contains "404"/"Not Found" strings)
+    await page.waitForFunction(
+      () => !document.querySelector('main')?.textContent?.includes('Loading'),
+      { timeout: 30_000 },
+    ).catch(() => {})
+
+    // Check main content area (not full body, which includes RSC payload with 404 text)
+    const mainText = await page.locator('main').textContent().catch(() => '')
+    const is404 = mainText?.includes('404') && mainText?.includes('Not Found')
     expect(is404, 'RFP settings page should exist').toBeFalsy()
 
     // Should see 3 template sections

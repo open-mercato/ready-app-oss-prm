@@ -74,12 +74,13 @@ test.describe.serial('TC-PRM-025: RFP Campaign Creation (US-4.1)', () => {
       { timeout: 30_000 },
     ).catch(() => {})
 
-    // Page should load without error
-    const bodyText = await page.locator('body').textContent().catch(() => '')
-    const is404 = bodyText?.includes('404') && bodyText?.includes('Not Found')
+    // Check main content (not full body, which includes RSC payload with 404 text)
+    const mainText = await page.locator('main').textContent().catch(() => '')
+    const is404 = mainText?.includes('404') && mainText?.includes('Not Found')
     expect(is404, 'RFP campaigns page should not be 404').toBeFalsy()
 
     // Should see page content loaded (header in breadcrumb or page body, or empty state)
+    const bodyText = await page.locator('body').textContent().catch(() => '')
     const hasContent = bodyText?.includes('RFP Campaigns') || bodyText?.includes('No campaigns') || bodyText?.includes('Create')
     expect(hasContent, 'Page should show RFP campaigns content').toBe(true)
   })

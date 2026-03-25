@@ -16,7 +16,7 @@ import { hashForLookup } from '@open-mercato/shared/lib/encryption/aes'
 import { seedDashboardDefaultsForTenant } from '@open-mercato/core/modules/dashboards/cli'
 import { hash } from 'bcryptjs'
 import { DefaultDataEngine } from '@open-mercato/shared/lib/data/engine'
-import { PartnerLicenseDeal, PartnerRfpCampaign, TierAssignment, TierEvaluationState, TierChangeProposal } from './data/entities'
+import { PartnerLicenseDeal, PartnerRfpCampaign, RfpSettings, TierAssignment, TierEvaluationState, TierChangeProposal } from './data/entities'
 import { E } from '#generated/entities.ids.generated'
 import {
   PRM_PIPELINE_NAME,
@@ -404,6 +404,35 @@ const DEMO_AGENCIES: DemoAgency[] = [
     ],
   },
 ]
+
+// ---------------------------------------------------------------------------
+// RFP default templates
+// ---------------------------------------------------------------------------
+
+const DEFAULT_CAMPAIGN_TEMPLATE =
+  'New RFP: [campaign-title]\n\nHi [first-name],\n\nWe have a new opportunity that may match your agency\'s capabilities. Please review the requirements and submit your response before the deadline.\n\nBest regards,\nOpen Mercato Partner Program'
+
+const DEFAULT_AWARD_TEMPLATE =
+  'Congratulations [first-name]!\n\nYour agency [agency-name] has been selected for "[campaign-title]". We will be in touch with next steps.\n\nBest regards,\nOpen Mercato Partner Program'
+
+const DEFAULT_REJECTION_TEMPLATE =
+  'Hi [first-name],\n\nThank you for your response to "[campaign-title]". After careful evaluation, we have selected another agency for this opportunity. We appreciate your interest and look forward to future collaborations.\n\nBest regards,\nOpen Mercato Partner Program'
+
+async function seedRfpSettings(
+  em: import('@mikro-orm/postgresql').EntityManager,
+  scope: SeedScope
+): Promise<void> {
+  const existing = await em.findOne(RfpSettings, { tenantId: scope.tenantId })
+  if (existing) return
+
+  em.persist(em.create(RfpSettings, {
+    campaignTemplate: DEFAULT_CAMPAIGN_TEMPLATE,
+    awardTemplate: DEFAULT_AWARD_TEMPLATE,
+    rejectionTemplate: DEFAULT_REJECTION_TEMPLATE,
+    tenantId: scope.tenantId,
+  }))
+  await em.flush()
+}
 
 // ---------------------------------------------------------------------------
 // PRM roles
@@ -952,6 +981,7 @@ export const setup: ModuleSetupConfig = {
     await seedCustomFields(ctx.em, scope)
     await seedDictionaries(ctx.em, scope)
     await seedPrmRoles(ctx.em, scope)
+    await seedRfpSettings(ctx.em, scope)
 
     // Replace default OM dashboard widgets with PRM-only widgets.
     // PM gets cross-org management widgets (visible on home org dashboard).

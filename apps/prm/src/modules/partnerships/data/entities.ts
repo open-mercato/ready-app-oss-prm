@@ -214,3 +214,31 @@ export class PartnerRfpCampaign {
   @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
   createdAt: Date = new Date()
 }
+
+// ---------------------------------------------------------------------------
+// RfpSettings — per-tenant message templates for RFP notifications
+// ---------------------------------------------------------------------------
+
+@Entity({ tableName: 'rfp_settings' })
+@Unique({ name: 'rfp_settings_tenant_idx', properties: ['tenantId'] })
+export class RfpSettings {
+  [OptionalProps]?: 'updatedAt'
+
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'campaign_template', type: 'text' })
+  campaignTemplate!: string
+
+  @Property({ name: 'award_template', type: 'text' })
+  awardTemplate!: string
+
+  @Property({ name: 'rejection_template', type: 'text' })
+  rejectionTemplate!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date(), onCreate: () => new Date() })
+  updatedAt: Date = new Date()
+}
