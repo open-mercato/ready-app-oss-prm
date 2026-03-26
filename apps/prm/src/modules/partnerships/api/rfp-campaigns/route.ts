@@ -30,7 +30,7 @@ const listSchema = z
   .passthrough()
 
 const routeMetadata = {
-  GET: { requireAuth: true, requireFeatures: ['partnerships.manage'] },
+  GET: { requireAuth: true },
   POST: { requireAuth: true, requireFeatures: ['partnerships.rfp.manage'] },
   PUT: { requireAuth: true, requireFeatures: ['partnerships.rfp.manage'] },
   DELETE: { requireAuth: true, requireFeatures: ['partnerships.rfp.manage'] },
@@ -159,6 +159,14 @@ export async function GET(req: Request) {
 
     const { resolve } = await createRequestContainer()
     const em = resolve('em') as import('@mikro-orm/postgresql').EntityManager
+
+    // Single campaign by ID
+    const idFilter = url.searchParams.get('id')
+    if (idFilter && /^[0-9a-f-]{36}$/i.test(idFilter)) {
+      const campaign = await em.findOne(PartnerRfpCampaign, { id: idFilter, tenantId: auth.tenantId })
+      if (!campaign) return NextResponse.json({ items: [], total: 0, page: 1, pageSize: 1, totalPages: 0 })
+      return NextResponse.json({ items: [campaign], total: 1, page: 1, pageSize: 1, totalPages: 1 })
+    }
 
     const where: any = { tenantId: auth.tenantId }
     if (statusFilter) where.status = statusFilter

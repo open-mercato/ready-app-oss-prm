@@ -179,6 +179,14 @@
         "selected": "Selected Agencies"
       }
     },
+    "rfpResponses": {
+      "yourResponse": "Your Response",
+      "placeholder": "Describe your proposal...",
+      "submitting": "Submitting...",
+      "submitButton": "Submit Response",
+      "submitted": "Response submitted successfully",
+      "submitError": "Failed to submit response"
+    },
     "rfpSettings": {
       "title": "RFP Message Templates",
       "campaignTemplate": "Campaign Published Template",

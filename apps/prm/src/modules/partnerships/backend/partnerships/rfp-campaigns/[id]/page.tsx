@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, usePathname, useRouter } from 'next/navigation'
 import { Page, PageBody } from '@open-mercato/ui/backend/Page'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
@@ -37,42 +37,38 @@ const STATUS_BADGE: Record<string, string> = {
 export default function RfpCampaignDetailPage() {
   const t = useT()
   const params = useParams()
+  const pathname = usePathname()
   const router = useRouter()
-  const campaignId = params?.id as string
+  const campaignId = (params?.id as string) ?? pathname.split('/').filter(Boolean).at(-1) ?? ''
 
   const [campaign, setCampaign] = React.useState<RfpCampaign | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [publishing, setPublishing] = React.useState(false)
 
+  // Responses state
+  const [responses, setResponses] = React.useState<Array<{ id: string; organizationId: string; responseText: string; submittedBy: string; createdAt: string }>>([])
+  const [responseText, setResponseText] = React.useState('')
+  const [submittingResponse, setSubmittingResponse] = React.useState(false)
+  const [responseSubmitted, setResponseSubmitted] = React.useState(false)
+
   React.useEffect(() => {
     if (!campaignId) return
 
     async function load() {
-      const call = await apiCall<{ items: RfpCampaign[] }>(
-        `/api/partnerships/rfp-campaigns?page=1&pageSize=1&search=`
-      )
-      if (call.ok && call.result?.items) {
-        const found = call.result.items.find((c) => c.id === campaignId)
-        if (found) {
-          setCampaign(found)
-        } else {
-          // Retry with a broader fetch - the campaign might not be in page 1
-          const retryCall = await apiCall<{ items: RfpCampaign[] }>(
-            `/api/partnerships/rfp-campaigns?pageSize=100`
-          )
-          if (retryCall.ok && retryCall.result?.items) {
-            const retryFound = retryCall.result.items.find((c) => c.id === campaignId)
-            if (retryFound) {
-              setCampaign(retryFound)
-            } else {
-              setError(t('partnerships.rfpCampaigns.notFound', 'Campaign not found'))
-            }
+      try {
+        const res = await fetch(`/api/partnerships/rfp-campaigns?id=${campaignId}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (data?.items?.length) {
+            setCampaign(data.items[0])
           } else {
-            setError(t('partnerships.rfpCampaigns.loadError', 'Failed to load campaign'))
+            setError(t('partnerships.rfpCampaigns.notFound', 'Campaign not found'))
           }
+        } else {
+          setError(t('partnerships.rfpCampaigns.loadError', 'Failed to load campaign'))
         }
-      } else {
+      } catch {
         setError(t('partnerships.rfpCampaigns.loadError', 'Failed to load campaign'))
       }
       setLoading(false)
@@ -80,14 +76,51 @@ export default function RfpCampaignDetailPage() {
     load()
   }, [campaignId, t])
 
+  // Load responses
+  React.useEffect(() => {
+    if (!campaignId || loading) return
+    apiCall<{ items: Array<{ id: string; organizationId: string; responseText: string; submittedBy: string; createdAt: string }> }>(
+      `/api/partnerships/rfp-responses?campaignId=${campaignId}`
+    ).then((call) => {
+      if (call.ok && call.result?.items) {
+        setResponses(call.result.items)
+      }
+    })
+  }, [campaignId, loading, responseSubmitted])
+
+  async function handleSubmitResponse(e: React.FormEvent) {
+    e.preventDefault()
+    if (!campaign) return
+    setSubmittingResponse(true)
+
+    // Try PUT first (upsert), fall back to POST
+    const existingResponse = responses.length > 0
+    const method = existingResponse ? 'PUT' : 'POST'
+
+    const call = await apiCall<{ ok: boolean }>('/api/partnerships/rfp-responses', {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ campaignId: campaign.id, responseText }),
+    })
+
+    setSubmittingResponse(false)
+
+    if (call.ok) {
+      flash(t('partnerships.rfpResponses.submitted', 'Response submitted successfully'))
+      setResponseSubmitted((prev) => !prev)
+    } else {
+      const result = call.result as Record<string, unknown> | null
+      flash(typeof result?.error === 'string' ? result.error : t('partnerships.rfpResponses.submitError', 'Failed to submit response'), 'error')
+    }
+  }
+
   async function handlePublish() {
     if (!campaign) return
     setPublishing(true)
 
-    const call = await apiCall<{ ok: boolean }>('/api/partnerships/rfp-campaigns-publish', {
+    const call = await apiCall<{ ok: boolean }>(`/api/partnerships/rfp-campaigns/${campaign.id}/publish`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ campaignId: campaign.id }),
     })
 
     setPublishing(false)
@@ -227,17 +260,61 @@ export default function RfpCampaignDetailPage() {
             </div>
           </div>
 
-          {/* Responses section (placeholder for Task 4) */}
-          {campaign.status === 'open' && (
+          {/* Response submit/edit form (BD view) */}
+          {deadlineDate && deadlineDate > new Date() && campaign.status !== 'awarded' && campaign.status !== 'closed' && (
             <div className="rounded-lg border bg-card p-6">
               <h3 className="text-sm font-semibold mb-3">
-                {t('partnerships.rfpCampaigns.responses', 'Responses')}
+                {t('partnerships.rfpResponses.yourResponse', 'Your Response')}
               </h3>
+              <form onSubmit={handleSubmitResponse} className="space-y-3">
+                <textarea
+                  aria-label="response"
+                  rows={5}
+                  value={responseText}
+                  onChange={(e) => setResponseText(e.target.value)}
+                  className="w-full rounded-md border px-3 py-2 text-sm"
+                  placeholder={t('partnerships.rfpResponses.placeholder', 'Describe your proposal...')}
+                />
+                <button
+                  type="submit"
+                  disabled={submittingResponse || !responseText.trim()}
+                  className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {submittingResponse ? (
+                    <>
+                      <Spinner className="mr-2 h-4 w-4" />
+                      {t('partnerships.rfpResponses.submitting', 'Submitting...')}
+                    </>
+                  ) : (
+                    t('partnerships.rfpResponses.submitButton', 'Submit Response')
+                  )}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* Responses list */}
+          <div className="rounded-lg border bg-card p-6">
+            <h3 className="text-sm font-semibold mb-3">
+              {t('partnerships.rfpCampaigns.responses', 'Responses')} ({responses.length})
+            </h3>
+            {responses.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 {t('partnerships.rfpCampaigns.noResponses', 'No responses yet.')}
               </p>
-            </div>
-          )}
+            ) : (
+              <div className="space-y-4">
+                {responses.map((r) => (
+                  <div key={r.id} className="rounded-md border p-4 space-y-1">
+                    <p className="text-sm whitespace-pre-wrap">{r.responseText}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(r.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </PageBody>
     </Page>

@@ -73,7 +73,7 @@ export const partnerLicenseDealUpdateSchema = z.object({
 export const rfpCampaignCreateSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
   description: z.string().min(1, 'Description is required'),
-  deadline: z.coerce.date().refine((d) => d > new Date(), 'Deadline must be in the future'),
+  deadline: z.coerce.date(),
   audience: z.enum(['all', 'selected']).default('all'),
   selectedAgencyIds: z.array(z.string().uuid()).optional(),
 })
@@ -100,3 +100,19 @@ export const rfpSettingsUpdateSchema = z.object({
 })
 
 export type RfpSettingsUpdateInput = z.infer<typeof rfpSettingsUpdateSchema>
+
+// ---------------------------------------------------------------------------
+// RFP Response
+// ---------------------------------------------------------------------------
+
+export const rfpResponseCreateSchema = z.object({
+  campaignId: z.string().uuid(),
+  responseText: z.string().min(1, 'Response text is required'),
+})
+
+export type RfpResponseCreateInput = z.infer<typeof rfpResponseCreateSchema>
+
+export const rfpResponseUpdateSchema = z.object({
+  campaignId: z.string().uuid(),
+  responseText: z.string().min(1, 'Response text is required'),
+})

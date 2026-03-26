@@ -74,6 +74,12 @@ test.describe.serial('TC-PRM-028: BD Submits RFP Response', () => {
       waitUntil: 'domcontentloaded',
     })
 
+    // Wait for page content to load
+    await page.waitForFunction(
+      () => !document.querySelector('main')?.textContent?.includes('Loading'),
+      { timeout: 15_000 },
+    ).catch(() => {})
+
     await expect(page.getByText(`QA Response Campaign ${stamp}`)).toBeVisible({ timeout: 10_000 })
     await expect(page.getByText(/FinTech|PCI/)).toBeVisible({ timeout: 5_000 })
   })
@@ -85,8 +91,11 @@ test.describe.serial('TC-PRM-028: BD Submits RFP Response', () => {
       waitUntil: 'domcontentloaded',
     })
 
-    // Find and fill response form/textarea
-    const responseField = page.getByLabel(/response|proposal|message/i).or(page.locator('textarea').first())
+    // Wait for campaign data to load (title visible = page loaded)
+    await expect(page.getByText(`QA Response Campaign ${stamp}`)).toBeVisible({ timeout: 15_000 })
+
+    // Find and fill response form/textarea (use locator('textarea') directly)
+    const responseField = page.locator('textarea').first()
     await expect(responseField).toBeVisible({ timeout: 10_000 })
     await responseField.fill('We have 5 years of PCI compliance experience and delivered 3 FinTech projects. Timeline: 10 weeks. Budget: $180k.')
 
@@ -124,6 +133,12 @@ test.describe.serial('TC-PRM-028: BD Submits RFP Response', () => {
     await page.goto(`${BASE}/backend/partnerships/rfp-campaigns/${campaignId}`, {
       waitUntil: 'domcontentloaded',
     })
+
+    // Wait for page content to load
+    await page.waitForFunction(
+      () => !document.querySelector('main')?.textContent?.includes('Loading'),
+      { timeout: 15_000 },
+    ).catch(() => {})
 
     await expect(page.getByText(/PCI compliance/)).toBeVisible({ timeout: 10_000 })
   })

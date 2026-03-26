@@ -242,3 +242,38 @@ export class RfpSettings {
   @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date(), onCreate: () => new Date() })
   updatedAt: Date = new Date()
 }
+
+// ---------------------------------------------------------------------------
+// PartnerRfpResponse — agency response to an RFP campaign
+// ---------------------------------------------------------------------------
+
+@Entity({ tableName: 'partner_rfp_responses' })
+@Unique({ name: 'rfp_resp_camp_org_idx', properties: ['campaignId', 'organizationId'] })
+@Index({ name: 'rfp_resp_tenant_idx', properties: ['tenantId'] })
+export class PartnerRfpResponse {
+  [OptionalProps]?: 'createdAt' | 'updatedAt'
+
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'campaign_id', type: 'uuid' })
+  campaignId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ name: 'response_text', type: 'text' })
+  responseText!: string
+
+  @Property({ name: 'submitted_by', type: 'uuid' })
+  submittedBy!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+
+  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date(), onCreate: () => new Date() })
+  updatedAt: Date = new Date()
+}
