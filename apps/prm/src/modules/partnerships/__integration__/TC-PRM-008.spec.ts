@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken, apiRequest } from '@open-mercato/core/helpers/integration/api'
 
 /**
  * TC-PRM-008: Seed Data Verification UI (US-1.2, US-1.3, US-7.2, US-7.3)
@@ -10,9 +10,14 @@ import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
  *   T2 — Case studies page shows seeded case study records
  *   T3 — Agencies page (PM) shows demo organizations
  *   T4 — Demo users can log in and reach the dashboard
+ *   T5 — PM sees tier assignments on agencies page (Phase 2 seed)
+ *   T6 — PM sees license deals (Phase 2 seed)
+ *   T7 — PM sees RFP campaigns with correct statuses (Phase 3 seed)
+ *   T8 — Awarded campaign has responses (Phase 3 seed)
+ *   T9 — Nordic users can log in (multi-agency seed)
  *
  * Source: apps/prm/src/modules/partnerships/setup.ts (seedDefaults + seedExamples)
- * Phase: 1
+ * Phase: 1, 2, 3
  */
 
 // ---------------------------------------------------------------------------
@@ -23,6 +28,8 @@ const PM_EMAIL = 'partnership-manager@demo.local'
 const ADMIN_EMAIL = 'acme-admin@demo.local'
 const BD_EMAIL = 'acme-bd@demo.local'
 const CONTRIBUTOR_EMAIL = 'acme-contributor@demo.local'
+const NORDIC_ADMIN_EMAIL = 'nordic-admin@demo.local'
+const NORDIC_BD_EMAIL = 'nordic-bd@demo.local'
 const DEMO_PASSWORD = 'Demo123!'
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:5001'
 
@@ -136,6 +143,101 @@ test.describe('TC-PRM-008: Seed Data Verification UI', () => {
         `${user.label} should reach dashboard, not 404`,
       ).toBe(true)
     }
+  })
+
+  // -------------------------------------------------------------------------
+  // T5: Tier assignments visible on agencies page (Phase 2 seed)
+  // -------------------------------------------------------------------------
+  test('T5: PM sees tier assignments on agencies page', async ({ page }) => {
+    await loginInBrowser(page, pmToken)
+    await page.goto(`${BASE}/backend/partnerships/agencies`)
+    await expect(page.locator('th:text-is("Agency")').first()).toBeVisible({ timeout: 15_000 })
+
+    const bodyText = (await page.locator('tbody').textContent())?.toLowerCase() ?? ''
+    // Acme should have "OM Agency", Nordic should have "OM AI-native Agency"
+    expect(bodyText, 'Should show tier names on agencies page').toMatch(/om agency/i)
+  })
+
+  // -------------------------------------------------------------------------
+  // T6: License deals exist (Phase 2 seed)
+  // -------------------------------------------------------------------------
+  test('T6: PM sees seeded license deals', async ({ page }) => {
+    await loginInBrowser(page, pmToken)
+    await page.goto(`${BASE}/backend/partnerships/license-deals`)
+
+    const rows = page.locator('tbody tr')
+    await expect(rows.first()).toBeVisible({ timeout: 15_000 })
+    const count = await rows.count()
+    expect(count, 'PM should see at least 5 seeded license deals').toBeGreaterThanOrEqual(5)
+
+    // Verify table shows enterprise type and won status from seed
+    const bodyText = (await page.locator('tbody').textContent())?.toLowerCase() ?? ''
+    expect(bodyText, 'Should contain enterprise type deals').toContain('enterprise')
+    expect(bodyText, 'Should contain won status deals').toContain('won')
+  })
+
+  // -------------------------------------------------------------------------
+  // T7: RFP campaigns with correct statuses (Phase 3 seed)
+  // -------------------------------------------------------------------------
+  test('T7: PM sees RFP campaigns with correct statuses', async ({ page }) => {
+    await loginInBrowser(page, pmToken)
+    await page.goto(`${BASE}/backend/partnerships/rfp-campaigns`)
+
+    await expect(page.locator('tbody tr').first()).toBeVisible({ timeout: 15_000 })
+
+    const bodyText = (await page.locator('tbody').textContent()) ?? ''
+    // 3 campaigns seeded: 1 awarded, 1 published, 1 draft
+    expect(bodyText, 'Should show awarded FinTech campaign').toContain('FinTech Migration Platform')
+    expect(bodyText, 'Should show published Healthcare campaign').toContain('Healthcare Data Platform')
+    expect(bodyText, 'Should show draft E-commerce campaign').toContain('E-commerce Replatform')
+
+    // Status badges
+    const bodyLower = bodyText.toLowerCase()
+    expect(bodyLower, 'Should show Awarded status').toContain('awarded')
+    expect(bodyLower, 'Should show Published status').toContain('published')
+    expect(bodyLower, 'Should show Draft status').toContain('draft')
+  })
+
+  // -------------------------------------------------------------------------
+  // T8: Awarded campaign has responses (Phase 3 seed)
+  // -------------------------------------------------------------------------
+  test('T8: Seeded FinTech campaign has responses from Acme and Nordic', async ({ request }) => {
+    // Get campaigns list
+    const campaignsRes = await apiRequest(request, 'GET', '/api/partnerships/rfp-campaigns', { token: pmToken })
+    expect(campaignsRes.ok()).toBe(true)
+    const campaignsBody = await campaignsRes.json()
+    const campaigns = campaignsBody.results ?? campaignsBody.items ?? []
+
+    // Find the seeded FinTech campaign by title (not by status — other tests create awarded campaigns too)
+    const fintech = campaigns.find((c: any) => c.title?.includes('FinTech Migration Platform'))
+    expect(fintech, 'Should have seeded FinTech Migration Platform campaign').toBeTruthy()
+    expect(fintech.status, 'FinTech campaign should be awarded').toBe('awarded')
+
+    // Get responses for this campaign
+    const responsesRes = await apiRequest(request, 'GET', `/api/partnerships/rfp-responses?campaignId=${fintech.id}`, { token: pmToken })
+    expect(responsesRes.ok()).toBe(true)
+    const responsesBody = await responsesRes.json()
+    const responses = responsesBody.results ?? responsesBody.items ?? []
+
+    expect(responses.length, 'FinTech campaign should have 2 responses (Acme + Nordic)').toBe(2)
+  })
+
+  // -------------------------------------------------------------------------
+  // T9: Nordic users can log in (multi-agency seed)
+  // -------------------------------------------------------------------------
+  test('T9: Nordic admin and BD can log in and reach dashboard', async ({ page, request }) => {
+    const nordicAdminToken = await getAuthToken(request, NORDIC_ADMIN_EMAIL, DEMO_PASSWORD)
+    const nordicBdToken = await getAuthToken(request, NORDIC_BD_EMAIL, DEMO_PASSWORD)
+
+    expect(nordicAdminToken, 'Nordic Admin should have a valid token').toBeTruthy()
+    expect(nordicBdToken, 'Nordic BD should have a valid token').toBeTruthy()
+
+    // Nordic Admin reaches dashboard
+    await loginInBrowser(page, nordicAdminToken)
+    await page.goto(`${BASE}/backend`)
+    await page.waitForLoadState('domcontentloaded')
+    const title = await page.title()
+    expect(title !== '404: This page could not be found.', 'Nordic Admin should reach dashboard').toBe(true)
   })
 })
 
