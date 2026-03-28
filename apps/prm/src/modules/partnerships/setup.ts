@@ -497,9 +497,6 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
     'auth.*',
     'directory.organizations.manage',
     'directory.organizations.view',
-    // NOTE: PM gets full customers.*, auth.*, directory.organizations.* because
-    // PM is the platform operator. Creates agency orgs + admin accounts.
-    // Cross-org read-only is procedural, not enforced (by design).
   ],
 }
 

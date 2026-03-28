@@ -192,7 +192,7 @@ MIN(org, year) = COUNT(DISTINCT license_deals)
 - `seedExamples` (developer persona, US-7.3) MAY include WIP stamps for demonstrating the WIP workflow — but only in a clearly labeled development context, not in production "Add Agency" flow.
 
 **Cross-org visibility:**
-- PM has Program Scope — sees CRM data of ALL agencies via org switcher. Technically full write (`customers.*`) per OM RBAC design (tenant-wide features, orgs = data partition). Cross-org read-only is a procedural convention, not enforced.
+- PM has Program Scope (all orgs) with full CRM features (`customers.*`). CRM is used in PM's own org (OM Backoffice) for internal pipeline management. In agency orgs, CRM nav is hidden by the partnership module — PM interacts with agency data through dedicated partnership pages (KPI dashboards, tier review, RFP, MIN attribution). Direct URL access to agency CRM is permitted — PM is the platform operator.
 - Agency users see ONLY their own organization's data
 - KPI data (WIC/WIP/MIN) visible to agency users for their own org only
 - PM sees KPI dashboard across all agencies
@@ -262,7 +262,7 @@ API contracts use standard OM entities module: `POST /api/entities/definitions.b
 
 | Persona | Role key | Identity | Org scope | Sees | Does |
 |---------|----------|----------|-----------|------|------|
-| Partnership Manager | `partnership_manager` | User | Program Scope (all orgs) | CRM full write all orgs (procedural read-only on agencies per OM RBAC design), all KPIs, all tiers, RFP campaigns, cross-org company search, full user management (`auth.*`), organization management (`directory.organizations.*`) | Creates agency organizations, creates agency admin accounts, creates RFP, evaluates responses, approves tiers, attributes MIN via cross-org company search |
+| Partnership Manager | `partnership_manager` | User | Program Scope (all orgs) | Full CRM in own org (OM Backoffice), CRM nav hidden in agency orgs (partnership pages only), all KPIs, all tiers, RFP campaigns, cross-org company search, user management (`auth.*`), organization management (`directory.organizations.*`) | Creates agency organizations, creates agency admin accounts, creates RFP, evaluates responses, approves tiers, attributes MIN via cross-org company search, manages OM Backoffice CRM |
 | Agency Admin | `partner_admin` | User | own org only | CRM full write (own org), KPI (WIC/WIP/MIN), tier, case studies, RFP responses, user management for own org (`auth.users.*`), own org profile edit (`directory.organizations.manage`) | Fills organization profile, manages case studies, creates BD/Contributor accounts, creates deals, responds to RFP |
 | Business Developer | `partner_member` | User | own org only | CRM full write (own org — OM has no per-record ownership scoping), KPI (WIC/WIP/MIN), tier, RFP responses, dashboard, messages | Creates deals, edits profile + case studies, responds to RFP. NO user management. |
 | Contributor | `partner_contributor` | User | own org only | Dashboard + backend baseline (dashboards, messages, attachments), onboarding checklist widget | Views onboarding checklist, configures own profile (e.g. GH username). CRM not visible (no `customers.*` feature). WIC/tier visibility added in Phase 2. |
@@ -280,7 +280,7 @@ API contracts use standard OM entities module: `POST /api/entities/definitions.b
 - _Why not portal for Contributor?_ — Contributor is minimal, but still a User with restricted role. One identity system, not two. Simplicity > convenience.
 - _Could CustomerUser enable self-registration?_ — Yes, but at the cost of dual accounts or a promotion flow. Not worth the complexity for the example app.
 - _Why Developer is not in the role table?_ — Developer doesn't use the running app. They bootstrap and read code. Their "user stories" are about distribution (SPEC-068), not about app workflows.
-- _PM cross-org access model_ — PM has full CRM write in own org (Open Mercato Backoffice) and procedural read-only on agency orgs. OM RBAC is by design tenant-wide: `RoleAcl.featuresJson` applies to all visible orgs equally, `organizationsJson` controls data visibility only. This is standard CRM/ERP architecture (orgs = data partition, not permission partition). PM gets `customers.*` everywhere — cross-org read-only is a procedural convention, not a technical enforcement. Acceptable for trust-based partner program.
+- _PM cross-org access model_ — PM has `customers.*` tenant-wide (OM RBAC: features and orgs are independent dimensions, no per-org feature scoping). CRM nav is hidden in agency orgs by the partnership module — PM uses dedicated partnership pages for agency interaction. CRM nav visible only in PM's own org (OM Backoffice). Direct URL access to agency CRM permitted — PM is the platform operator. This is standard ERP architecture (admin sees all divisions).
 
 #### Checklist
 - [x] Every persona has ONE identity type — all User, zero CustomerUser `Mat`
