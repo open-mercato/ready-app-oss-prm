@@ -85,10 +85,11 @@ test.describe('TC-PRM-010: My WIC Page UI', () => {
     expect(hasTable || hasNoData, 'My WIC page should show table or no-data message').toBe(true)
 
     if (hasTable) {
-      await expect(page.locator('th:text-is("Level")').first()).toBeVisible()
+      await expect(page.locator('th:text-is("Script Version")').first()).toBeVisible()
       await expect(page.locator('th:text-is("Score")').first()).toBeVisible()
-      await expect(page.locator('th:text-is("Impact Bonus")').first()).toBeVisible()
-      await expect(page.locator('th:text-is("Bounty Bonus")').first()).toBeVisible()
+      await expect(page.locator('th:text-is("Level")').first()).toBeVisible()
+      await expect(page.locator('th:text-is("What was included")').first()).toBeVisible()
+      await expect(page.locator('th:text-is("What was excluded")').first()).toBeVisible()
     }
   })
 
