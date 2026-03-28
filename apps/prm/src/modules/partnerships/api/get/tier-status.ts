@@ -190,12 +190,15 @@ async function GET(req: Request) {
     // Determine view mode based on user features
     // partnerships.manage = PM/admin → full KPI view
     // otherwise (contributor) → badge only
+    type RbacService = {
+      userHasAllFeatures(userId: string, required: string[], scope: { tenantId: string | null; organizationId: string | null }): Promise<boolean>
+    }
     let viewMode: 'full' | 'badge' = 'badge'
     try {
-      const rbac = container.resolve('rbacService') as { getGrantedFeatures?: (userId: string, opts: { tenantId: string; organizationId?: string }) => Promise<string[]> } | undefined
-      if (rbac?.getGrantedFeatures) {
-        const features = await rbac.getGrantedFeatures(auth.sub, { tenantId, organizationId })
-        if (features.includes('partnerships.manage')) {
+      const rbac = container.resolve('rbacService') as RbacService | undefined
+      if (rbac?.userHasAllFeatures) {
+        const hasPmFeature = await rbac.userHasAllFeatures(auth.sub, ['partnerships.manage'], { tenantId, organizationId })
+        if (hasPmFeature) {
           viewMode = 'full'
         }
       }

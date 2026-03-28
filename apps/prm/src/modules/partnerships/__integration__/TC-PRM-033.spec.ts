@@ -59,29 +59,26 @@ test.describe('TC-PRM-033: Cross-org company_id uniqueness guard', () => {
     })
     expect(res1.status(), `First deal should succeed, got ${res1.status()}`).toBe(201)
 
-    // Find a different org
+    // Find a different org — test requires at least 2 agencies in seed data
     const otherOrg = searchData!.results.find((r) => r.organizationId !== firstOrgId)
-    const differentOrgId = otherOrg?.organizationId ?? 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+    expect(otherOrg, 'Seed data must have companies in at least 2 different agencies for cross-org test').toBeDefined()
 
-    // Only test cross-org rejection if we have a different org
-    if (otherOrg) {
-      const res2 = await apiRequest(request, 'POST', '/api/partnerships/partner-license-deals', {
-        token: pmToken,
-        data: {
-          organizationId: differentOrgId,
-          companyId,
-          licenseIdentifier: `LIC-GUARD2-${Date.now()}`,
-          industryTag: 'FinTech',
-          type: 'enterprise',
-          status: 'won',
-          isRenewal: false,
-          closedAt: '2026-03-15',
-        },
-      })
-      expect(res2.status()).toBe(422)
-      const body = await readJsonSafe<{ error: string }>(res2)
-      expect(body?.error).toContain('already attributed')
-    }
+    const res2 = await apiRequest(request, 'POST', '/api/partnerships/partner-license-deals', {
+      token: pmToken,
+      data: {
+        organizationId: otherOrg!.organizationId,
+        companyId,
+        licenseIdentifier: `LIC-GUARD2-${Date.now()}`,
+        industryTag: 'FinTech',
+        type: 'enterprise',
+        status: 'won',
+        isRenewal: false,
+        closedAt: '2026-03-15',
+      },
+    })
+    expect(res2.status()).toBe(422)
+    const body = await readJsonSafe<{ error: string }>(res2)
+    expect(body?.error).toContain('already attributed')
 
     // Same org, different license — should succeed
     const res3 = await apiRequest(request, 'POST', '/api/partnerships/partner-license-deals', {

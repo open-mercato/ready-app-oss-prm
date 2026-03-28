@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { z } from 'zod'
 import { makeCrudRoute } from '@open-mercato/shared/lib/crud/factory'
 import { CrudHttpError } from '@open-mercato/shared/lib/crud/errors'
@@ -69,8 +68,8 @@ const crud = makeCrudRoute({
       licenseIdentifier: 'license_identifier',
       industryTag: 'industry_tag',
     },
-    buildFilters: async (query: any) => {
-      const filters: Record<string, any> = {}
+    buildFilters: async (query: z.infer<typeof listSchema>) => {
+      const filters: Record<string, unknown> = {}
       if (query.organizationId) {
         filters.organization_id = { $eq: query.organizationId }
       }
@@ -171,7 +170,7 @@ export async function GET(req: Request) {
     const { resolve } = await createRequestContainer()
     const em = resolve('em') as import('@mikro-orm/postgresql').EntityManager
 
-    const where: any = { tenantId: auth.tenantId }
+    const where: Record<string, unknown> = { tenantId: auth.tenantId }
     if (orgFilter) where.organizationId = orgFilter
     if (yearFilter) where.year = yearFilter
     if (statusFilter) where.status = statusFilter
@@ -193,7 +192,7 @@ export async function GET(req: Request) {
       pageSize,
       totalPages: Math.ceil(total / pageSize),
     })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[partnerships/partner-license-deals.GET]', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

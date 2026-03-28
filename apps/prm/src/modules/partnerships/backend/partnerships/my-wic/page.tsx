@@ -44,7 +44,7 @@ function formatMonthLabel(month: string): string {
   return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
 }
 
-function sourceBadge(source: string) {
+function SourceBadge({ source, t }: { source: string; t: (key: string, fallback?: string) => string }) {
   const isAutomated = source === 'automated_pipeline'
   return (
     <span
@@ -54,7 +54,7 @@ function sourceBadge(source: string) {
           : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
       }`}
     >
-      {isAutomated ? 'Automated' : 'Manual'}
+      {isAutomated ? t('partnerships.myWic.sourceAutomated') : t('partnerships.myWic.sourceManual')}
     </span>
   )
 }
@@ -124,19 +124,19 @@ export default function MyWicPage() {
         ) : (
           <>
             <div className="mb-4 text-sm text-muted-foreground">
-              Total WIC Score: <span className="font-semibold text-foreground tabular-nums">{totalWicScore.toFixed(2)}</span>
+              {t('partnerships.myWic.totalScore')} <span className="font-semibold text-foreground tabular-nums">{totalWicScore.toFixed(2)}</span>
             </div>
             <div className="rounded-lg border">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="px-4 py-3 text-left font-medium">Contributor</th>
-                    <th className="px-4 py-3 text-left font-medium">PR</th>
-                    <th className="px-4 py-3 text-left font-medium">Feature</th>
-                    <th className="px-4 py-3 text-left font-medium">Level</th>
-                    <th className="px-4 py-3 text-right font-medium">Score</th>
-                    <th className="px-4 py-3 text-center font-medium">Bounty</th>
-                    <th className="px-4 py-3 text-left font-medium">Source</th>
+                    <th className="px-4 py-3 text-left font-medium">{t('partnerships.myWic.colContributor')}</th>
+                    <th className="px-4 py-3 text-left font-medium">{t('partnerships.myWic.colPr')}</th>
+                    <th className="px-4 py-3 text-left font-medium">{t('partnerships.myWic.colFeature')}</th>
+                    <th className="px-4 py-3 text-left font-medium">{t('partnerships.myWic.colLevel')}</th>
+                    <th className="px-4 py-3 text-right font-medium">{t('partnerships.myWic.colScore')}</th>
+                    <th className="px-4 py-3 text-center font-medium">{t('partnerships.myWic.colBounty')}</th>
+                    <th className="px-4 py-3 text-left font-medium">{t('partnerships.myWic.colSource')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -147,8 +147,8 @@ export default function MyWicPage() {
                       <td className="px-4 py-3 text-muted-foreground">{record.featureKey}</td>
                       <td className="px-4 py-3">{record.level}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{record.wicScore.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-center">{record.bountyApplied ? 'Yes' : 'No'}</td>
-                      <td className="px-4 py-3">{sourceBadge(record.assessmentSource)}</td>
+                      <td className="px-4 py-3 text-center">{record.bountyApplied ? t('partnerships.myWic.bountyYes') : t('partnerships.myWic.bountyNo')}</td>
+                      <td className="px-4 py-3"><SourceBadge source={record.assessmentSource} t={t} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -159,7 +159,7 @@ export default function MyWicPage() {
             {data && data.totalPages > 1 && (
               <div className="mt-4 flex items-center justify-between text-sm">
                 <p className="text-muted-foreground">
-                  Page {data.page} of {data.totalPages} ({data.total} records)
+                  {t('partnerships.myWic.paginationInfo', `Page ${data.page} of ${data.totalPages} (${data.total} records)`)}
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -169,7 +169,7 @@ export default function MyWicPage() {
                     className="rounded-md border px-3 py-1 text-sm hover:bg-muted/50 disabled:opacity-50"
                     data-testid="pagination-prev"
                   >
-                    Previous
+                    {t('partnerships.myWic.paginationPrev')}
                   </button>
                   <button
                     type="button"
@@ -178,7 +178,7 @@ export default function MyWicPage() {
                     className="rounded-md border px-3 py-1 text-sm hover:bg-muted/50 disabled:opacity-50"
                     data-testid="pagination-next"
                   >
-                    Next
+                    {t('partnerships.myWic.paginationNext')}
                   </button>
                 </div>
               </div>

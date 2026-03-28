@@ -25,7 +25,22 @@
     },
     "myWic": {
       "title": "WIC Scores",
-      "noData": "No WIC scores for this month."
+      "noData": "No WIC scores for this month.",
+      "totalScore": "Total WIC Score:",
+      "colContributor": "Contributor",
+      "colPr": "PR",
+      "colFeature": "Feature",
+      "colLevel": "Level",
+      "colScore": "Score",
+      "colBounty": "Bounty",
+      "colSource": "Source",
+      "bountyYes": "Yes",
+      "bountyNo": "No",
+      "sourceAutomated": "Automated",
+      "sourceManual": "Manual",
+      "paginationInfo": "Page {{page}} of {{totalPages}} ({{total}} records)",
+      "paginationPrev": "Previous",
+      "paginationNext": "Next"
     },
     "wicImport": {
       "title": "Import WIC Scores",
