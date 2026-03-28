@@ -492,7 +492,6 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
     'partnerships.rfp.manage',
     'partnerships.widgets.wip-count',
     'partnerships.widgets.cross-org-wip',
-    'partnerships.wic.import',
     'partnerships.license-deals.manage',
     'partnerships.tier.approve',
     'auth.*',

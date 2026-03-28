@@ -1,6 +1,6 @@
 export const metadata = {
   requireAuth: true,
-  requireFeatures: ['partnerships.wic.import'],
+  requireFeatures: ['partnerships.manage'],
   pageTitle: 'Import WIC Scores',
   pageTitleKey: 'partnerships.wicImport.title',
   pageGroup: 'Partnerships',

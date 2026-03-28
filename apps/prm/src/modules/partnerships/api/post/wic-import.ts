@@ -7,11 +7,12 @@ import { CustomFieldValue } from '@open-mercato/core/modules/entities/data/entit
 import { User } from '@open-mercato/core/modules/auth/data/entities'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { OpenApiMethodDoc, OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
+import { validateCrudMutationGuard, runCrudMutationGuardAfterSuccess } from '@open-mercato/shared/lib/crud/mutation-guard'
 import { wicImportRequestSchema } from '../../data/validators'
 
 export const metadata = {
   path: '/partnerships/wic/import',
-  POST: { requireAuth: true, requireFeatures: ['partnerships.wic.import'] },
+  POST: { requireAuth: true, requireFeatures: ['partnerships.manage'] },
 }
 
 // ---------------------------------------------------------------------------
@@ -224,7 +225,38 @@ async function POST(req: Request) {
       }
     }
 
+    // Mutation guard: validate before flush
+    const guardResult = await validateCrudMutationGuard(container, {
+      tenantId,
+      organizationId,
+      userId: auth.sub,
+      resourceKind: 'partnerships:contribution_unit',
+      resourceId: assessmentId,
+      operation: 'create',
+      requestMethod: 'POST',
+      requestHeaders: req.headers,
+      mutationPayload: { organizationId, month, recordCount: records.length },
+    })
+    if (guardResult && !guardResult.ok) {
+      return NextResponse.json(guardResult.body, { status: guardResult.status })
+    }
+
     await em.flush()
+
+    // Mutation guard: after-success hook
+    if (guardResult?.shouldRunAfterSuccess) {
+      await runCrudMutationGuardAfterSuccess(container, {
+        tenantId,
+        organizationId,
+        userId: auth.sub,
+        resourceKind: 'partnerships:contribution_unit',
+        resourceId: assessmentId,
+        operation: 'create',
+        requestMethod: 'POST',
+        requestHeaders: req.headers,
+        metadata: guardResult.metadata ?? null,
+      })
+    }
 
     return NextResponse.json({
       imported: records.length,
