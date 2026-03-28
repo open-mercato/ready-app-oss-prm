@@ -58,11 +58,11 @@ async function POST(req: Request) {
       )
     }
 
-    // 2. Check within-batch duplicates: (contributorGithubUsername, month, featureKey)
+    // 2. Check within-batch duplicates: (contributorGithubUsername, month)
     const seen = new Set<string>()
     const duplicates: string[] = []
     for (const rec of records) {
-      const key = JSON.stringify([rec.contributorGithubUsername, rec.month, rec.featureKey])
+      const key = `${rec.contributorGithubUsername}|${rec.month}`
       if (seen.has(key)) {
         duplicates.push(key)
       }
@@ -73,8 +73,8 @@ async function POST(req: Request) {
         {
           error: 'Duplicate records in batch',
           duplicates: duplicates.map((d) => {
-            const [username, m, featureKey] = JSON.parse(d) as [string, string, string]
-            return { contributorGithubUsername: username, month: m, featureKey }
+            const [username, m] = d.split('|')
+            return { contributorGithubUsername: username, month: m }
           }),
         },
         { status: 422 },
@@ -161,7 +161,8 @@ async function POST(req: Request) {
       )
     }
 
-    // 5. Soft-archive existing ContributionUnits for same org+month
+    // 5. Archive existing ContributionUnits for same org+month
+    //    (set archived_at instead of deletedAt — keeps records queryable for archive UI)
     const existingMonthCfvs = await em.find(CustomFieldValue, {
       entityId: CU_ENTITY_ID,
       fieldKey: 'month',
@@ -173,20 +174,32 @@ async function POST(req: Request) {
 
     let archivedCount = 0
     if (existingMonthCfvs.length > 0) {
-      const recordIdsToArchive = [...new Set(existingMonthCfvs.map((cfv) => cfv.recordId))]
+      // Find distinct recordIds, then filter to only those NOT already archived
+      const candidateRecordIds = [...new Set(existingMonthCfvs.map((cfv) => cfv.recordId))]
+
+      // Check which recordIds already have archived_at set (skip them)
+      const archiveCfvs = await em.find(CustomFieldValue, {
+        entityId: CU_ENTITY_ID,
+        fieldKey: 'archived_at',
+        recordId: { $in: candidateRecordIds },
+        tenantId,
+        deletedAt: null,
+      })
+      const alreadyArchived = new Set(archiveCfvs.filter((cfv) => cfv.valueText).map((cfv) => cfv.recordId))
+      const recordIdsToArchive = candidateRecordIds.filter((id) => !alreadyArchived.has(id))
       archivedCount = recordIdsToArchive.length
 
-      // Soft-archive ALL CustomFieldValue rows for those recordIds
+      const now = new Date()
       for (const recordId of recordIdsToArchive) {
-        const allFieldsForRecord = await em.find(CustomFieldValue, {
+        em.persist(em.create(CustomFieldValue, {
           entityId: CU_ENTITY_ID,
           recordId,
+          fieldKey: 'archived_at',
+          valueText: now.toISOString(),
+          organizationId,
           tenantId,
-          deletedAt: null,
-        })
-        for (const cfv of allFieldsForRecord) {
-          cfv.deletedAt = new Date()
-        }
+          createdAt: now,
+        }))
       }
     }
 
@@ -200,13 +213,15 @@ async function POST(req: Request) {
 
       const fieldValues: Array<{ fieldKey: string; valueText: string }> = [
         { fieldKey: 'contributor_github_username', valueText: record.contributorGithubUsername },
-        { fieldKey: 'pr_id', valueText: record.prId },
         { fieldKey: 'month', valueText: record.month },
-        { fieldKey: 'feature_key', valueText: record.featureKey },
+        { fieldKey: 'wic_score', valueText: String(record.wicScore) },
         { fieldKey: 'level', valueText: record.level },
         { fieldKey: 'impact_bonus', valueText: String(record.impactBonus) },
-        { fieldKey: 'bounty_applied', valueText: String(record.bountyApplied) },
-        { fieldKey: 'wic_score', valueText: String(wicScore) },
+        { fieldKey: 'bounty_bonus', valueText: String(record.bountyBonus) },
+        { fieldKey: 'why_bonus', valueText: record.whyBonus },
+        { fieldKey: 'included', valueText: record.included },
+        { fieldKey: 'excluded', valueText: record.excluded },
+        { fieldKey: 'script_version', valueText: record.scriptVersion },
         { fieldKey: 'organization_id', valueText: organizationId },
         { fieldKey: 'assessment_id', valueText: assessmentId },
         { fieldKey: 'assessment_source', valueText: source },
