@@ -656,6 +656,52 @@ async function seedPrmExamples(
   })
   await em.flush()
 
+  // Step 1b: Seed OM core contributors in OM Backoffice (for WIC testing)
+  const OM_CORE_CONTRIBUTORS: Array<{ email: string; name: string; ghUsername: string }> = [
+    { email: 'pkarw@demo.local', name: 'Piotr Karwatka', ghUsername: 'pkarw' },
+    { email: 'matgren@demo.local', name: 'Maciej Greń', ghUsername: 'matgren' },
+    { email: 'haxiorz@demo.local', name: 'Haxiorz', ghUsername: 'haxiorz' },
+    { email: 'mstaniaszek@demo.local', name: 'Marcin Staniaszek', ghUsername: 'mstaniaszek1998' },
+    { email: 'pat-lewczuk@demo.local', name: 'Pat Lewczuk', ghUsername: 'pat-lewczuk' },
+    { email: 'fto-aubergine@demo.local', name: 'FTO Aubergine', ghUsername: 'fto-aubergine' },
+    { email: 'dpalatynski@demo.local', name: 'Dominik Palatyński', ghUsername: 'dominikpalatynski' },
+    { email: 'andrzejewsky@demo.local', name: 'Andrzejewsky', ghUsername: 'andrzejewsky' },
+  ]
+
+  for (const contrib of OM_CORE_CONTRIBUTORS) {
+    await seedUser(em, {
+      email: contrib.email,
+      name: contrib.name,
+      roleName: 'partner_contributor',
+      organizationId: scope.organizationId,
+      tenantId: scope.tenantId,
+      passwordHash,
+      restrictToOrg: true,
+    })
+  }
+  await em.flush()
+
+  // Set GH usernames on OM core contributors
+  for (const contrib of OM_CORE_CONTRIBUTORS) {
+    const emailHash = hashForLookup(contrib.email)
+    const user = await em.findOne(User, { emailHash, deletedAt: null })
+    if (user) {
+      try {
+        await dataEngine.setCustomFields({
+          entityId: E.auth.user,
+          recordId: user.id,
+          organizationId: scope.organizationId,
+          tenantId: scope.tenantId,
+          values: { [GH_USERNAME_FIELD.key]: contrib.ghUsername },
+          notify: false,
+        })
+      } catch (err) {
+        console.warn(`[partnerships.seedExamples] Failed to set GH username on ${contrib.email}`, err)
+      }
+    }
+  }
+  console.log(`[partnerships.seedExamples] OM core contributors seeded: ${OM_CORE_CONTRIBUTORS.length} users in OM Backoffice`)
+
   // Step 2: Create each agency as its own Organization + CRM company + users
   for (const agency of DEMO_AGENCIES) {
     // 2a: Create Organization in directory module
@@ -1033,6 +1079,10 @@ async function seedPrmExamples(
 
   console.log(`[partnerships.seedExamples] All demo data seeded (password: ${DEMO_PASSWORD})`)
   console.log(`[partnerships.seedExamples] PM: partnership-manager@demo.local (all orgs)`)
+  console.log(`[partnerships.seedExamples] OM Backoffice contributors:`)
+  for (const c of OM_CORE_CONTRIBUTORS) {
+    console.log(`[partnerships.seedExamples]   ${c.email} (GH: ${c.ghUsername})`)
+  }
   for (const agency of DEMO_AGENCIES) {
     for (const u of agency.users) {
       console.log(`[partnerships.seedExamples] ${agency.name}: ${u.email} (${u.roleName})`)
