@@ -12,7 +12,7 @@ import { PartnerLicenseDeal, TierAssignment } from '../../data/entities'
 
 export const metadata = {
   path: '/partnerships/agencies',
-  GET: { requireAuth: true, requireFeatures: ['partnerships.manage'] },
+  GET: { requireAuth: true, requireFeatures: ['partnerships.agencies.manage'] },
 }
 
 // ---------------------------------------------------------------------------
@@ -90,10 +90,22 @@ async function sumWicForOrg(
   const recordIds = [...new Set(monthCfvs.map((c) => c.recordId))]
   if (recordIds.length === 0) return 0
 
+  // Exclude archived records
+  const archivedCfvs = await em.find(CustomFieldValue, {
+    entityId: CU_ENTITY_ID,
+    fieldKey: 'archived_at',
+    recordId: { $in: recordIds },
+    tenantId,
+    deletedAt: null,
+  })
+  const archivedIds = new Set(archivedCfvs.filter((c) => c.valueText).map((c) => c.recordId))
+  const activeRecordIds = recordIds.filter((id) => !archivedIds.has(id))
+  if (activeRecordIds.length === 0) return 0
+
   const scoreCfvs = await em.find(CustomFieldValue, {
     entityId: CU_ENTITY_ID,
     fieldKey: 'wic_score',
-    recordId: { $in: recordIds },
+    recordId: { $in: activeRecordIds },
     tenantId,
     deletedAt: null,
   })
