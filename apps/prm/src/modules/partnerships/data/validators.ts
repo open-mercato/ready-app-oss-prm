@@ -14,6 +14,7 @@ export const wicScoringResultSchema = z.object({
   level: z.enum(WIC_LEVEL_OPTIONS),
   impactBonus: z.boolean(),
   bountyApplied: z.boolean(),
+  wicScore: z.number().nonnegative('WIC score must be non-negative'),
 })
 
 export type WicScoringResult = z.infer<typeof wicScoringResultSchema>

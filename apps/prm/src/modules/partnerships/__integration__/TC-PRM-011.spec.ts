@@ -87,6 +87,7 @@ async function importWicForUser(
           level: 'L1',
           impactBonus: false,
           bountyApplied: false,
+          wicScore: 0.5,
         },
       ],
     },

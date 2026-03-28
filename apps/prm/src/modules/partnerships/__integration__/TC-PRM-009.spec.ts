@@ -75,6 +75,7 @@ test.describe('TC-PRM-009: WIC Import Page UI', () => {
       level: 'L2',
       impactBonus: false,
       bountyApplied: false,
+      wicScore: 1.0,
     }])
 
     await page.locator('#wic-json').fill(json)
@@ -112,6 +113,7 @@ test.describe('TC-PRM-009: WIC Import Page UI', () => {
       level: 'L1',
       impactBonus: false,
       bountyApplied: false,
+      wicScore: 0.5,
     }])
 
     await page.locator('#wic-json').fill(json)

@@ -8,7 +8,6 @@ import { User } from '@open-mercato/core/modules/auth/data/entities'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { OpenApiMethodDoc, OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { wicImportRequestSchema } from '../../data/validators'
-import type { WicScoringResult } from '../../data/validators'
 
 export const metadata = {
   path: '/partnerships/wic/import',
@@ -22,25 +21,6 @@ export const metadata = {
 const CU_ENTITY_ID = 'partnerships:contribution_unit'
 const USER_ENTITY_ID = 'auth:user'
 const GH_USERNAME_FIELD_KEY = 'github_username'
-
-// ---------------------------------------------------------------------------
-// WIC score computation
-// ---------------------------------------------------------------------------
-
-const BASE_SCORES: Record<string, number> = {
-  L4: 1.0,
-  L3: 0.5,
-  L2: 1.0,
-  L1: 0.5,
-  routine: 0.0,
-}
-
-function computeWicScore(record: WicScoringResult): number {
-  const base = BASE_SCORES[record.level] ?? 0
-  const impact = record.impactBonus ? 0.5 : 0
-  const multiplier = record.bountyApplied ? 1.5 : 1.0
-  return (base + impact) * multiplier
-}
 
 // ---------------------------------------------------------------------------
 // Handler
@@ -209,13 +189,13 @@ async function POST(req: Request) {
       }
     }
 
-    // 6 & 7. Compute wic_score and insert new ContributionUnits
+    // 6 & 7. Insert new ContributionUnits with wic_score from payload
     const assessmentId = crypto.randomUUID()
     const now = new Date()
 
     for (const record of records) {
       const recordId = crypto.randomUUID()
-      const wicScore = computeWicScore(record)
+      const wicScore = record.wicScore
 
       const fieldValues: Array<{ fieldKey: string; valueText: string }> = [
         { fieldKey: 'contributor_github_username', valueText: record.contributorGithubUsername },

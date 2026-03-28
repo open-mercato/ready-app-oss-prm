@@ -165,7 +165,7 @@ export default function WicImportPage() {
                 onChange={(e) => setJsonInput(e.target.value)}
                 rows={12}
                 className="w-full rounded-md border px-3 py-2 font-mono text-sm"
-                placeholder={`[\n  {\n    "contributorGithubUsername": "octocat",\n    "prId": "OM-1234",\n    "month": "${selectedMonth}",\n    "featureKey": "feat/my-feature",\n    "level": "L3",\n    "impactBonus": false,\n    "bountyApplied": false\n  }\n]`}
+                placeholder={`[\n  {\n    "contributorGithubUsername": "octocat",\n    "prId": "OM-1234",\n    "month": "${selectedMonth}",\n    "featureKey": "feat/my-feature",\n    "level": "L3",\n    "impactBonus": false,\n    "bountyApplied": false,\n    "wicScore": 0.5\n  }\n]`}
               />
             </div>
 

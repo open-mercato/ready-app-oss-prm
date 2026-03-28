@@ -64,6 +64,7 @@ test.describe('TC-PRM-010: My WIC Page UI', () => {
           level: 'L3',
           impactBonus: false,
           bountyApplied: false,
+          wicScore: 0.5,
         }],
       },
     })
