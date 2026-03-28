@@ -13,7 +13,7 @@ jest.mock('@open-mercato/core/modules/entities/data/entities', () => ({
   CustomFieldValue: class CustomFieldValue {},
 }))
 
-import { interceptors } from './interceptors'
+import { interceptors } from '../interceptors'
 
 const DEAL_ENTITY_ID = 'customers:customer_deal'
 const WIP_FIELD_KEY = 'wip_registered_at'

@@ -45,6 +45,6 @@ module.exports = {
   },
   // In standalone mode, transform @open-mercato ESM packages for Jest (CJS)
   ...(useMonorepo ? {} : { transformIgnorePatterns: ['node_modules/(?!@open-mercato/)'] }),
-  testMatch: ['<rootDir>/src/**/*.test.(ts|tsx)'],
+  testMatch: ['<rootDir>/src/**/__tests__/**/*.test.(ts|tsx)'],
   passWithNoTests: true,
 }

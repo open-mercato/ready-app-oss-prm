@@ -4,7 +4,7 @@ import {
   buildBdItems,
   type RbacService,
   type CompletionContext,
-} from './onboarding-status'
+} from '../onboarding-status'
 
 // ---------------------------------------------------------------------------
 // Helpers

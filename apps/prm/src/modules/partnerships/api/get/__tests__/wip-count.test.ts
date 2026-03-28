@@ -4,7 +4,7 @@ import {
   countWipDeals,
   querySchema,
   type WipCountContext,
-} from './wip-count'
+} from '../wip-count'
 import { CustomFieldValue } from '@open-mercato/core/modules/entities/data/entities'
 
 // ---------------------------------------------------------------------------
