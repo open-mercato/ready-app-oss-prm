@@ -36,6 +36,10 @@ export const querySchema = z.object({
     .string()
     .uuid('organizationId must be a valid UUID')
     .optional(),
+  includeArchived: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(50),
 })
@@ -83,14 +87,18 @@ async function isPm(
 export type WicScoreRecord = {
   recordId: string
   contributorGithubUsername: string
-  prId: string
   month: string
-  featureKey: string
-  level: string
-  impactBonus: boolean
-  bountyApplied: boolean
   wicScore: number
+  level: string
+  impactBonus: number
+  bountyBonus: number
+  whyBonus: string
+  included: string
+  excluded: string
+  scriptVersion: string
   assessmentSource: string
+  assessmentId: string
+  archivedAt: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -102,10 +110,11 @@ async function GET(req: Request) {
     const url = new URL(req.url)
     const rawMonth = url.searchParams.get('month') ?? undefined
     const rawOrgId = url.searchParams.get('organizationId') ?? undefined
+    const rawIncludeArchived = url.searchParams.get('includeArchived') ?? undefined
     const rawPage = url.searchParams.get('page') ?? undefined
     const rawPageSize = url.searchParams.get('pageSize') ?? undefined
 
-    const parseResult = querySchema.safeParse({ month: rawMonth, organizationId: rawOrgId, page: rawPage, pageSize: rawPageSize })
+    const parseResult = querySchema.safeParse({ month: rawMonth, organizationId: rawOrgId, includeArchived: rawIncludeArchived, page: rawPage, pageSize: rawPageSize })
     if (!parseResult.success) {
       return NextResponse.json(
         { error: parseResult.error.issues[0]?.message ?? 'Invalid query parameters' },
@@ -207,23 +216,33 @@ async function GET(req: Request) {
     const records: WicScoreRecord[] = []
     for (const [recordId, fields] of grouped) {
       const ghUsername = fields.get('contributor_github_username') ?? ''
+      const archivedAt = fields.get('archived_at') || null
 
       // Contributor filter: skip records not belonging to this contributor
       if (contributorUsername !== null && ghUsername !== contributorUsername) {
         continue
       }
 
+      // Archive filter: skip archived records unless includeArchived
+      if (!parseResult.data.includeArchived && archivedAt !== null) {
+        continue
+      }
+
       records.push({
         recordId,
         contributorGithubUsername: ghUsername,
-        prId: fields.get('pr_id') ?? '',
         month: fields.get('month') ?? month,
-        featureKey: fields.get('feature_key') ?? '',
-        level: fields.get('level') ?? '',
-        impactBonus: fields.get('impact_bonus') === 'true',
-        bountyApplied: fields.get('bounty_applied') === 'true',
         wicScore: parseFloat(fields.get('wic_score') ?? '0'),
+        level: fields.get('level') ?? '',
+        impactBonus: parseFloat(fields.get('impact_bonus') ?? '0'),
+        bountyBonus: parseFloat(fields.get('bounty_bonus') ?? '0'),
+        whyBonus: fields.get('why_bonus') ?? '',
+        included: fields.get('included') ?? '',
+        excluded: fields.get('excluded') ?? '',
+        scriptVersion: fields.get('script_version') ?? '',
         assessmentSource: fields.get('assessment_source') ?? '',
+        assessmentId: fields.get('assessment_id') ?? '',
+        archivedAt,
       })
     }
 
@@ -263,14 +282,18 @@ async function GET(req: Request) {
 const wicScoreRecordSchema = z.object({
   recordId: z.string().uuid(),
   contributorGithubUsername: z.string(),
-  prId: z.string(),
   month: z.string(),
-  featureKey: z.string(),
-  level: z.string(),
-  impactBonus: z.boolean(),
-  bountyApplied: z.boolean(),
   wicScore: z.number(),
+  level: z.string(),
+  impactBonus: z.number(),
+  bountyBonus: z.number(),
+  whyBonus: z.string(),
+  included: z.string(),
+  excluded: z.string(),
+  scriptVersion: z.string(),
   assessmentSource: z.string(),
+  assessmentId: z.string(),
+  archivedAt: z.string().nullable(),
 })
 
 const responseSchema = z.object({
