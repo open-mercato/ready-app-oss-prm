@@ -15,9 +15,19 @@ type CompanySearchItem = {
   agencyName: string
 }
 
+type OrgOption = {
+  id: string
+  name: string
+}
+
 export default function CreateLicenseDealPage() {
   const t = useT()
   const router = useRouter()
+
+  // Organization selector
+  const [organizations, setOrganizations] = React.useState<OrgOption[]>([])
+  const [selectedOrgId, setSelectedOrgId] = React.useState('')
+  const [orgsLoading, setOrgsLoading] = React.useState(true)
 
   // Company search
   const [companyQuery, setCompanyQuery] = React.useState('')
@@ -38,12 +48,47 @@ export default function CreateLicenseDealPage() {
   const [submitting, setSubmitting] = React.useState(false)
   const [submitError, setSubmitError] = React.useState<string | null>(null)
 
+  // Load organizations for PM selector
+  React.useEffect(() => {
+    type OrgNode = { id: string; name: string; selectable?: boolean; children?: OrgNode[] }
+    function flattenOrgs(nodes: OrgNode[], depth = 0): OrgOption[] {
+      const result: OrgOption[] = []
+      for (const node of nodes) {
+        if (node.selectable !== false) {
+          result.push({ id: node.id, name: depth > 0 ? '\u2003'.repeat(depth) + node.name : node.name })
+        }
+        if (node.children?.length) {
+          result.push(...flattenOrgs(node.children, depth + 1))
+        }
+      }
+      return result
+    }
+    async function loadOrgs() {
+      const call = await apiCall<{ items: OrgNode[] }>(
+        '/api/directory/organization-switcher',
+      )
+      if (call.ok && call.result?.items) {
+        setOrganizations(flattenOrgs(call.result.items))
+      }
+      setOrgsLoading(false)
+    }
+    loadOrgs()
+  }, [])
+
+  function handleOrgChange(orgId: string) {
+    setSelectedOrgId(orgId)
+    setSelectedCompany(null)
+    setCompanyQuery('')
+    setCompanyResults([])
+    setShowDropdown(false)
+  }
+
   function handleCompanyQueryChange(value: string) {
     setCompanyQuery(value)
     setSelectedCompany(null)
     setShowDropdown(false)
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
-    if (value.trim().length < 2) { setCompanyResults([]); return }
+    if (!selectedOrgId || value.trim().length < 2) { setCompanyResults([]); return }
     searchTimeoutRef.current = setTimeout(async () => {
       setSearching(true)
       const call = await apiCall<{ results: CompanySearchItem[] }>(
@@ -51,7 +96,7 @@ export default function CreateLicenseDealPage() {
       )
       setSearching(false)
       if (call.ok && call.result?.results) {
-        setCompanyResults(call.result.results)
+        setCompanyResults(call.result.results.filter((c) => c.organizationId === selectedOrgId))
         setShowDropdown(true)
       }
     }, 400)
@@ -66,6 +111,7 @@ export default function CreateLicenseDealPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!selectedCompany) { setSubmitError('Please select a company.'); return }
+    if (!selectedOrgId) { setSubmitError('Please select an organization.'); return }
     setSubmitting(true)
     setSubmitError(null)
 
@@ -73,7 +119,7 @@ export default function CreateLicenseDealPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        organizationId: selectedCompany.organizationId,
+        organizationId: selectedOrgId,
         companyId: selectedCompany.companyId,
         licenseIdentifier,
         industryTag,
@@ -101,6 +147,32 @@ export default function CreateLicenseDealPage() {
         <form onSubmit={handleSubmit} className="mx-auto max-w-2xl space-y-5 rounded-lg border bg-card p-6">
           <h2 className="text-lg font-semibold">{t('partnerships.licenseDeals.createTitle', 'Add License Deal')}</h2>
 
+          {/* Organization selector */}
+          <div>
+            <label htmlFor="organizationId" className="block text-sm font-medium mb-1">
+              {t('partnerships.licenseDeals.fields.organization', 'Agency / Organization')}
+            </label>
+            {orgsLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Spinner className="h-4 w-4" />
+                {t('partnerships.licenseDeals.loadingOrgs', 'Loading organizations...')}
+              </div>
+            ) : (
+              <select
+                id="organizationId"
+                required
+                value={selectedOrgId}
+                onChange={(e) => handleOrgChange(e.target.value)}
+                className="w-full rounded-md border px-3 py-2 text-sm"
+              >
+                <option value="">{t('partnerships.licenseDeals.selectOrg', '— Select organization —')}</option>
+                {organizations.map((org) => (
+                  <option key={org.id} value={org.id}>{org.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+
           {/* Company search (typeahead) */}
           <div className="relative">
             <label htmlFor="companySearch" className="block text-sm font-medium mb-1">
@@ -111,10 +183,11 @@ export default function CreateLicenseDealPage() {
                 id="companySearch"
                 type="text"
                 required
+                disabled={!selectedOrgId}
                 value={companyQuery}
                 onChange={(e) => handleCompanyQueryChange(e.target.value)}
-                placeholder={t('partnerships.companySearch.placeholder', 'Search by company name...')}
-                className="w-full rounded-md border px-3 py-2 text-sm"
+                placeholder={selectedOrgId ? t('partnerships.companySearch.placeholder', 'Search by company name...') : t('partnerships.companySearch.selectOrgFirst', 'Select an organization first')}
+                className="w-full rounded-md border px-3 py-2 text-sm disabled:bg-muted/30 disabled:cursor-not-allowed"
                 autoComplete="off"
               />
               {searching && (

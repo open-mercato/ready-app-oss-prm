@@ -1,15 +1,19 @@
 "use client"
 
 import * as React from 'react'
+import Link from 'next/link'
 import { Page, PageBody } from '@open-mercato/ui/backend/Page'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
+import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { Button } from '@open-mercato/ui/primitives/button'
 import { Spinner } from '@open-mercato/ui/primitives/spinner'
 
 type LicenseDealRow = {
   id: string
   organizationId: string
+  organizationName: string | null
   companyId: string
   licenseIdentifier: string
   industryTag: string
@@ -30,12 +34,33 @@ type LicenseDealsResponse = {
   totalPages: number
 }
 
+type FeatureCheckResponse = {
+  ok?: boolean
+  granted?: string[]
+}
+
 export default function LicenseDealsPage() {
   const t = useT()
   const scopeVersion = useOrganizationScopeVersion()
   const [items, setItems] = React.useState<LicenseDealRow[]>([])
   const [loading, setLoading] = React.useState(true)
   const [canManage, setCanManage] = React.useState(false)
+  const [deleting, setDeleting] = React.useState<string | null>(null)
+
+  async function handleDelete(dealId: string) {
+    if (!confirm(t('partnerships.licenseDeals.confirmDelete', 'Are you sure you want to delete this license deal?'))) return
+    setDeleting(dealId)
+    const call = await apiCall<{ ok: boolean }>('/api/partnerships/partner-license-deals', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: dealId }),
+    })
+    if (call.ok) {
+      setItems((prev) => prev.filter((d) => d.id !== dealId))
+      flash(t('partnerships.licenseDeals.deleted', 'License deal deleted'))
+    }
+    setDeleting(null)
+  }
 
   React.useEffect(() => {
     async function load() {
@@ -51,16 +76,26 @@ export default function LicenseDealsPage() {
     load()
   }, [scopeVersion])
 
-  // Probe POST permission — 403 = no manage, anything else = has manage
   React.useEffect(() => {
-    fetch('/api/partnerships/partner-license-deals', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: '{}',
-    }).then((res) => {
-      // 403 = forbidden (no feature), 422 = validation error (has feature but bad input)
-      setCanManage(res.status !== 403)
-    }).catch(() => {})
+    let cancelled = false
+    async function loadManageAccess() {
+      try {
+        const call = await apiCall<FeatureCheckResponse>('/api/auth/feature-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ features: ['partnerships.license-deals.manage'] }),
+        })
+        if (cancelled) return
+        const granted = Array.isArray(call.result?.granted) ? call.result.granted : []
+        setCanManage(call.result?.ok === true || granted.includes('partnerships.license-deals.manage'))
+      } catch {
+        if (!cancelled) setCanManage(false)
+      }
+    }
+    loadManageAccess()
+    return () => {
+      cancelled = true
+    }
   }, [scopeVersion])
 
   if (loading) {
@@ -83,12 +118,11 @@ export default function LicenseDealsPage() {
             {t('partnerships.licenseDeals.title', 'License Deals')} ({items.length})
           </h2>
           {canManage && (
-            <a
-              href="/backend/partnerships/license-deals/create"
-              className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              {t('partnerships.licenseDeals.addButton', 'Add License Deal')}
-            </a>
+            <Button asChild>
+              <Link href="/backend/partnerships/license-deals/create">
+                {t('partnerships.licenseDeals.addButton', 'Add License Deal')}
+              </Link>
+            </Button>
           )}
         </div>
 
@@ -98,12 +132,11 @@ export default function LicenseDealsPage() {
               {t('partnerships.licenseDeals.noData', 'No license deals yet.')}
             </p>
             {canManage && (
-              <a
-                href="/backend/partnerships/license-deals/create"
-                className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                {t('partnerships.licenseDeals.addButton', 'Add License Deal')}
-              </a>
+              <Button asChild>
+                <Link href="/backend/partnerships/license-deals/create">
+                  {t('partnerships.licenseDeals.addButton', 'Add License Deal')}
+                </Link>
+              </Button>
             )}
           </div>
         ) : (
@@ -111,6 +144,9 @@ export default function LicenseDealsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
+                  <th className="px-4 py-3 text-left font-medium">
+                    {t('partnerships.licenseDeals.columns.organization', 'Organization')}
+                  </th>
                   <th className="px-4 py-3 text-left font-medium">
                     {t('partnerships.licenseDeals.columns.licenseId', 'License ID')}
                   </th>
@@ -143,6 +179,7 @@ export default function LicenseDealsPage() {
               <tbody>
                 {items.map((deal) => (
                   <tr key={deal.id} className="border-b last:border-0 hover:bg-muted/30">
+                    <td className="px-4 py-3 text-muted-foreground">{deal.organizationName ?? deal.organizationId}</td>
                     <td className="px-4 py-3 font-medium">{deal.licenseIdentifier}</td>
                     <td className="px-4 py-3 text-muted-foreground">{deal.industryTag}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{deal.year}</td>
@@ -165,12 +202,23 @@ export default function LicenseDealsPage() {
                     </td>
                     {canManage && (
                       <td className="px-4 py-3 text-right">
-                        <a
-                          href={`/backend/partnerships/license-deals/${deal.id}`}
-                          className="text-xs text-primary hover:underline"
-                        >
-                          {t('partnerships.licenseDeals.editLink', 'Edit')}
-                        </a>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button asChild variant="link" size="sm" className="h-auto px-0 text-xs">
+                            <Link href={`/backend/partnerships/license-deals/${deal.id}`}>
+                              {t('partnerships.licenseDeals.editLink', 'Edit')}
+                            </Link>
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="link"
+                            size="sm"
+                            disabled={deleting === deal.id}
+                            onClick={() => handleDelete(deal.id)}
+                            className="h-auto px-0 text-xs text-destructive disabled:opacity-50"
+                          >
+                            {deleting === deal.id ? '...' : t('partnerships.licenseDeals.deleteLink', 'Delete')}
+                          </Button>
+                        </div>
                       </td>
                     )}
                   </tr>

@@ -29,13 +29,14 @@ async function loginInBrowser(page: Page, token: string): Promise<void> {
   await page.context().addCookies([{ name: 'auth_token', value: token, url: BASE }])
 }
 
-/** Navigate to create page and wait for search input. */
+/** Navigate to create page, select an agency, and wait for enabled search input. */
 async function gotoCreatePage(page: Page, token: string): Promise<void> {
   await loginInBrowser(page, token)
   await page.goto(CREATE_URL)
 
+  await page.getByLabel('Agency / Organization').selectOption({ label: 'Acme Digital' })
   const searchInput = page.locator('input[type="text"]').first()
-  await expect(searchInput).toBeVisible({ timeout: 15_000 })
+  await expect(searchInput).toBeEnabled({ timeout: 15_000 })
 }
 
 test.describe('TC-PRM-013: Cross-Org Company Search UI', () => {
@@ -56,7 +57,7 @@ test.describe('TC-PRM-013: Cross-Org Company Search UI', () => {
     const resultButton = page.locator('button.w-full.text-left').first()
     await expect(resultButton).toBeVisible({ timeout: 10_000 })
 
-    const companyName = resultButton.locator('p.font-medium')
+    const companyName = resultButton.locator('span.font-medium')
     await expect(companyName).toBeVisible()
     const nameText = await companyName.textContent()
     expect(nameText?.trim().length, 'Company name should not be empty').toBeGreaterThan(0)
@@ -95,8 +96,8 @@ test.describe('TC-PRM-013: Cross-Org Company Search UI', () => {
 
     await expect(page.locator('#licenseIdentifier')).toBeVisible({ timeout: 5_000 })
     await expect(page.locator('#industryTag')).toBeVisible()
-    await expect(page.locator('#closedAt')).toBeVisible()
-    await expect(page.locator('text=/Change/i')).toBeVisible()
+    await expect(page.locator('#startDate')).toBeVisible()
+    await expect(page.locator('#endDate')).toBeVisible()
   })
 
   test('T5: Contributor cannot access license deal create page', async ({ page }) => {
