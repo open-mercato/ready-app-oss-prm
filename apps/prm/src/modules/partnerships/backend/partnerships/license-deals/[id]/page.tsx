@@ -49,6 +49,7 @@ export default function EditLicenseDealPage() {
   const [submitError, setSubmitError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
+    if (!id) return
     async function load() {
       const call = await apiCall<LicenseDeal>(`/api/partnerships/partner-license-deals/${id}`)
       if (call.ok && call.result) {
