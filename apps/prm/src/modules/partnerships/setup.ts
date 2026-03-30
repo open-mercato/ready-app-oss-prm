@@ -70,6 +70,7 @@ function mapFieldDefinitions(
     const opts: Record<string, unknown> = { label: field.label }
     if (field.required) opts.required = true
     if (field.hidden === true) opts.listVisible = false
+    if (field.editor) opts.editor = field.editor
 
     switch (field.type) {
       case 'text':
@@ -88,6 +89,8 @@ function mapFieldDefinitions(
         return cf.select(field.key, field.options ?? [], opts)
       case 'multi_select':
         return cf.select(field.key, field.options ?? [], { ...opts, multi: true })
+      case 'dictionary':
+        return cf.dictionary(field.key, field.dictionaryId ?? field.key, { ...opts, multi: true })
       default:
         return cf.text(field.key, opts)
     }

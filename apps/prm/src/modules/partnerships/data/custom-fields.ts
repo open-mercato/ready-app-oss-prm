@@ -80,33 +80,35 @@ export type FieldDefinition = {
   required?: boolean;
   hidden?: boolean;
   options?: string[];
+  dictionaryId?: string;
+  editor?: 'markdown' | 'simpleMarkdown' | 'htmlRichText';
 };
 
 // Agency profile custom fields (entity: directory:organization)
 export const AGENCY_PROFILE_FIELDS: FieldDefinition[] = [
   {
     key: 'services',
-    type: 'multi_select',
+    type: 'dictionary',
     label: 'Services',
-    options: [...SERVICES_OPTIONS],
+    dictionaryId: 'prm_services',
   },
   {
     key: 'industries',
-    type: 'multi_select',
+    type: 'dictionary',
     label: 'Industries',
-    options: [...INDUSTRIES_OPTIONS],
+    dictionaryId: 'prm_industries',
   },
   {
     key: 'technologies',
-    type: 'multi_select',
+    type: 'dictionary',
     label: 'Technologies',
-    options: [...TECHNOLOGIES_OPTIONS],
+    dictionaryId: 'prm_technologies',
   },
   {
     key: 'verticals',
-    type: 'multi_select',
+    type: 'dictionary',
     label: 'Verticals',
-    options: [...VERTICALS_OPTIONS],
+    dictionaryId: 'prm_verticals',
   },
   {
     key: 'team_size',
@@ -153,6 +155,7 @@ export const AGENCY_PROFILE_FIELDS: FieldDefinition[] = [
     key: 'description',
     type: 'long_text',
     label: 'Description',
+    editor: 'simpleMarkdown',
   },
 ];
 
