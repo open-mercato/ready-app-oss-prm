@@ -66,13 +66,20 @@ Before writing any spec or code, read these files in order:
 
 ## §2. OM Package Strategy
 
-The OM monorepo is at `$OM_REPO` (see resolution order in §OM Monorepo Reference above). Build and publish to Verdaccio from whichever branch has the changes you need.
+The OM monorepo is at `$OM_REPO` (see resolution order in §OM Monorepo Reference above).
 
-1. **Check for open upstream PRs:** `gh pr list -R open-mercato/open-mercato --author matgren --state open`
+Default to official `@open-mercato/*` npm releases for app development. Use Verdaccio only when you explicitly need unpublished OM changes from a branch or open PR.
+
+1. **If your task depends on unpublished upstream changes, check for open PRs:** `gh pr list -R open-mercato/open-mercato --author matgren --state open`
 2. **If any PR has review comments** -> flag to user BEFORE starting any other work
-3. **Report to user:** "We're on [branch X / Verdaccio]. PRs: [status]."
+3. **Report to user:** "We're on [official npm release / branch X via Verdaccio]. PRs: [status]."
 
-**Verdaccio build:**
+**Default app install (official npm releases):**
+```bash
+cd apps/<app> && yarn install && yarn reinstall
+```
+
+**Verdaccio exception (local OM build):**
 ```bash
 cd "$OM_REPO" && git checkout <branch-with-changes> && git pull
 yarn build:packages && bash scripts/registry/publish.sh
@@ -83,7 +90,7 @@ yarn build:packages && bash scripts/registry/publish.sh
 cd apps/<app> && rm -rf node_modules/@open-mercato && yarn install --force && yarn reinstall
 ```
 
-**Never patch `node_modules` manually.** Use Verdaccio.
+**Never patch `node_modules` manually.** If you need unpublished platform changes, publish them to Verdaccio. Otherwise stay on official releases.
 
 ---
 

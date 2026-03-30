@@ -10,7 +10,7 @@ npx mercato test integration
 ## Prerequisites
 
 1. **Docker running** — verify with `docker info`, start with `open -a Docker`
-2. **Verdaccio running** (if using local OM build) — `docker compose up -d verdaccio` from the OM monorepo
+2. **Official OM packages installed** — this is the default. If you are testing unpublished OM changes, start Verdaccio with `docker compose up -d verdaccio` from the OM monorepo and point the app at that registry before reinstalling dependencies.
 3. **Playwright Chromium installed** — `npx playwright install chromium`
 4. **`test:integration` script** in `package.json` must point directly to Playwright:
    ```json
@@ -41,8 +41,9 @@ Key log lines to look for in a healthy init:
 - `[partnerships.seedExamples] Agency "Acme Digital (Demo)" seeded` — demo users created
 - `Module defaults seeded` — all module seedDefaults completed
 
-If `Seeded custom role ACLs` is missing, the `@$OM_REPO/cli` build doesn't include
-PR #1049. Rebuild Verdaccio with the `temp-integration` branch.
+If `Seeded custom role ACLs` is missing, your installed `@open-mercato/cli` build may not include
+the needed fix yet. If the fix is not in the current official release, switch the app to a local
+OM build via Verdaccio and reinstall dependencies.
 
 ## RBAC gotcha: UserAcl overrides RoleAcl
 
@@ -63,7 +64,7 @@ is completely skipped. This means:
 | Stale ephemeral env on port 5001 | `lsof -ti:5001 \| xargs kill -9` then remove the json/lock files |
 | Stale build cache (old DB init) | `rm -f .ai/qa/ephemeral-build-cache.json` |
 | Docker daemon not running | `open -a Docker`, wait, verify with `docker info` |
-| Verdaccio not running | `cd open-mercato && docker compose up -d verdaccio` |
+| Using local OM build but Verdaccio not running | `cd open-mercato && docker compose up -d verdaccio` |
 | All tests return 403 | Check RBAC gotcha above — UserAcl may have empty featuresJson |
 | Unexpected 500s on API calls | Run with `--verbose` and check server logs for stack traces |
 
@@ -82,6 +83,8 @@ npx mercato test integration
 To confirm you're running against the correct `@$OM_REPO/*` build:
 
 ```bash
-cat node_modules/@$OM_REPO/cli/package.json | grep '"version"'
-cat .npmrc   # Should show @open-mercato:registry=http://localhost:4873 for Verdaccio
+cat node_modules/@open-mercato/cli/package.json | grep '"version"'
+cat .npmrc   # Only when using Verdaccio; should show @open-mercato:registry=http://localhost:4873
 ```
+
+If there is no project `.npmrc` override, you are most likely using the official npm releases.

@@ -10,13 +10,15 @@ set -euo pipefail
 #   → app starts with all services, seeds data, responds on HTTP
 #
 # Prerequisites:
-#   - Verdaccio running with @open-mercato/* packages published
+#   - npm registry reachable (official releases by default)
+#   - If testing unpublished OM packages: set NPM_REGISTRY=http://localhost:4873 and ensure Verdaccio is running
 #   - Docker running
 #   - Current branch pushed to GitHub (--app fetches from GH)
 #
 # Usage:
 #   ./scripts/test-create-app-example.sh [--keep]
 #     --keep    Don't clean up the test directory on success
+#   NPM_REGISTRY=http://localhost:4873 ./scripts/test-create-app-example.sh
 # ---------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -29,11 +31,18 @@ PASSED=0
 FAILED=0
 TOTAL=0
 APP_PORT=3333  # Avoid conflicts with local dev on 3000
+NPM_REGISTRY="${NPM_REGISTRY:-https://registry.npmjs.org}"
 
 # Resolve GitHub owner/repo and branch from git remote
 GITHUB_REPO_URL="$(cd "$REPO_ROOT" && git remote get-url origin 2>/dev/null || echo "")"
 GITHUB_OWNER_REPO="$(echo "$GITHUB_REPO_URL" | sed -E 's|https://github.com/||;s|\.git$||')"
 APP_BRANCH="$(cd "$REPO_ROOT" && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")"
+
+if [[ "$NPM_REGISTRY" == "http://localhost:4873" || "$NPM_REGISTRY" == "http://127.0.0.1:4873" ]]; then
+  REGISTRY_LABEL="Verdaccio"
+else
+  REGISTRY_LABEL="$NPM_REGISTRY"
+fi
 
 # Parse args
 for arg in "$@"; do
@@ -129,21 +138,25 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo "Phase 0: Pre-flight"
 
-checkpoint "Verdaccio is running" \
-  curl -sf http://localhost:4873/-/ping
+echo "  Registry: $REGISTRY_LABEL"
+
+if [ "$REGISTRY_LABEL" = "Verdaccio" ]; then
+  checkpoint "Verdaccio is running" \
+    curl -sf http://localhost:4873/-/ping
+fi
 
 checkpoint "Docker is running" \
   docker info
 
-checkpoint "@open-mercato/core available in Verdaccio" \
-  npm view @open-mercato/core --registry http://localhost:4873 version
+checkpoint "@open-mercato/core available in $REGISTRY_LABEL" \
+  npm view @open-mercato/core --registry "$NPM_REGISTRY" version
 
-checkpoint "create-mercato-app available in Verdaccio" \
-  npm view create-mercato-app --registry http://localhost:4873 version
+checkpoint "create-mercato-app available in $REGISTRY_LABEL" \
+  npm view create-mercato-app --registry "$NPM_REGISTRY" version
 
 if [ "$FAILED" -gt 0 ]; then
   echo ""
-  echo -e "${RED}Pre-flight failed. Ensure Verdaccio is running with published packages.${NC}"
+  echo -e "${RED}Pre-flight failed. Ensure the selected registry is reachable and contains published packages.${NC}"
   exit 1
 fi
 
@@ -158,8 +171,14 @@ mkdir -p "$TEST_PARENT"
 
 APP_URL="https://github.com/${GITHUB_OWNER_REPO}/tree/${APP_BRANCH}/apps/prm"
 echo "  Using: $APP_URL (branch: $APP_BRANCH)"
+
+# Install create-mercato-app locally to avoid npx arg-parsing issues
+CLI_DIR="$TEST_PARENT/.cli"
+npm install --prefix "$CLI_DIR" create-mercato-app@latest --registry "$NPM_REGISTRY" --silent 2>/dev/null
+CLI_BIN="$CLI_DIR/node_modules/.bin/create-mercato-app"
+
 checkpoint_output "create-mercato-app --app (from GitHub)" \
-  bash -c "cd '$TEST_PARENT' && echo 5 | npx --registry http://localhost:4873 create-mercato-app@latest prm --app '$APP_URL' --app-branch '$APP_BRANCH' --registry http://localhost:4873"
+  bash -c "cd '$TEST_PARENT' && echo 5 | '$CLI_BIN' prm --app '$APP_URL' --app-branch '$APP_BRANCH' --registry '$NPM_REGISTRY'"
 
 checkpoint "Test directory exists" \
   test -d "$TEST_DIR"
@@ -190,7 +209,7 @@ if [ -f ".env.example" ] && [ ! -f ".env" ]; then
   cp .env.example .env
 fi
 
-# Override port to avoid conflicts + set Verdaccio registry for yarn install inside container
+# Override port to avoid conflicts. Package registry is chosen during scaffold via --registry.
 echo "APP_PORT=$APP_PORT" >> .env
 
 # Start full stack
