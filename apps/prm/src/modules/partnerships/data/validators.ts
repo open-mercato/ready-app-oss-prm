@@ -51,6 +51,8 @@ export const partnerLicenseDealCreateSchema = z.object({
   type: z.string().default('enterprise'),
   status: z.string().default('won'),
   isRenewal: z.boolean().default(false),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date().nullable().optional(),
   closedAt: z.coerce.date(),
   year: z.number().int(),
   tenantId: z.string().uuid(),
@@ -66,6 +68,8 @@ export const partnerLicenseDealUpdateSchema = z.object({
   type: z.string().optional(),
   status: z.string().optional(),
   isRenewal: z.boolean().optional(),
+  startDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().nullable().optional(),
   closedAt: z.coerce.date().optional(),
 })
 

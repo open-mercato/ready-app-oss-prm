@@ -31,6 +31,8 @@ export default function CreateLicenseDealPage() {
   const [selected, setSelected] = React.useState<CompanySearchItem | null>(null)
   const [licenseIdentifier, setLicenseIdentifier] = React.useState('')
   const [industryTag, setIndustryTag] = React.useState('')
+  const [startDate, setStartDate] = React.useState('')
+  const [endDate, setEndDate] = React.useState('')
   const [closedAt, setClosedAt] = React.useState('')
   const [type, setType] = React.useState('enterprise')
   const [status, setStatus] = React.useState('won')
@@ -87,6 +89,8 @@ export default function CreateLicenseDealPage() {
     setSubmitError(null)
     setLicenseIdentifier('')
     setIndustryTag('')
+    setStartDate('')
+    setEndDate('')
     setClosedAt('')
     setType('enterprise')
     setStatus('won')
@@ -113,6 +117,8 @@ export default function CreateLicenseDealPage() {
         companyId: selected.companyId,
         licenseIdentifier,
         industryTag,
+        startDate,
+        endDate: endDate || null,
         closedAt,
         type,
         status,
@@ -247,6 +253,37 @@ export default function CreateLicenseDealPage() {
                   className="w-full rounded-md border px-3 py-2 text-sm"
                   placeholder="e.g. FinTech"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="startDate" className="block text-sm font-medium mb-1">
+                    {t('partnerships.licenseDeals.fields.startDate', 'Start Date')}
+                  </label>
+                  <input
+                    id="startDate"
+                    type="date"
+                    required
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full rounded-md border px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="endDate" className="block text-sm font-medium mb-1">
+                    {t('partnerships.licenseDeals.fields.endDate', 'End Date')}
+                    <span className="text-muted-foreground font-normal ml-1">
+                      {t('partnerships.licenseDeals.fields.endDateHint', '(blank = perpetual)')}
+                    </span>
+                  </label>
+                  <input
+                    id="endDate"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full rounded-md border px-3 py-2 text-sm"
+                  />
+                </div>
               </div>
 
               <div>

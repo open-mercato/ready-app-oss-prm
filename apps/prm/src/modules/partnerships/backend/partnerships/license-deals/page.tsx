@@ -17,6 +17,8 @@ type LicenseDealRow = {
   status: string
   isRenewal: boolean
   year: number
+  startDate: string | null
+  endDate: string | null
   closedAt: string | null
   createdAt: string | null
 }
@@ -129,6 +131,12 @@ export default function LicenseDealsPage() {
                     {t('partnerships.licenseDeals.columns.renewal', 'Renewal')}
                   </th>
                   <th className="px-4 py-3 text-left font-medium">
+                    {t('partnerships.licenseDeals.columns.startDate', 'Start')}
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium">
+                    {t('partnerships.licenseDeals.columns.endDate', 'End')}
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium">
                     {t('partnerships.licenseDeals.columns.closedAt', 'Closed')}
                   </th>
                 </tr>
@@ -150,6 +158,12 @@ export default function LicenseDealsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center">{deal.isRenewal ? 'Yes' : 'No'}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {deal.startDate ? new Date(deal.startDate).toLocaleDateString() : '\u2014'}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {deal.endDate ? new Date(deal.endDate).toLocaleDateString() : t('partnerships.licenseDeals.perpetual', 'Perpetual')}
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {deal.closedAt ? new Date(deal.closedAt).toLocaleDateString() : '\u2014'}
                     </td>

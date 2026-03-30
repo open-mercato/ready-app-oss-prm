@@ -127,7 +127,7 @@ export class TierAssignment {
 @Unique({ name: 'pld_license_year_unique', properties: ['licenseIdentifier', 'year'] })
 @Index({ name: 'pld_org_tenant_idx', properties: ['organizationId', 'tenantId'] })
 export class PartnerLicenseDeal {
-  [OptionalProps]?: 'createdAt' | 'type' | 'status' | 'isRenewal'
+  [OptionalProps]?: 'createdAt' | 'type' | 'status' | 'isRenewal' | 'endDate'
 
   @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
   id!: string
@@ -152,6 +152,12 @@ export class PartnerLicenseDeal {
 
   @Property({ name: 'is_renewal', type: 'boolean', default: false })
   isRenewal: boolean = false
+
+  @Property({ name: 'start_date', type: Date })
+  startDate!: Date
+
+  @Property({ name: 'end_date', type: Date, nullable: true })
+  endDate?: Date | null
 
   @Property({ name: 'closed_at', type: Date })
   closedAt!: Date

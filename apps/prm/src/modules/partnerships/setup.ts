@@ -1007,11 +1007,11 @@ async function seedPrmExamples(
 
   // --- PartnerLicenseDeals ---
   const licenseDeals = [
-    { organizationId: acmeOrgId, companyId: acmeCompanyId, licenseIdentifier: 'LIC-ACME-001', industryTag: 'Finance', type: 'enterprise', status: 'won', isRenewal: false, closedAt: new Date('2026-02-15'), year: 2026, createdBy: pmUserId, tenantId },
-    { organizationId: acmeOrgId, companyId: acmeCompanyId, licenseIdentifier: 'LIC-ACME-002', industryTag: 'Technology', type: 'enterprise', status: 'won', isRenewal: false, closedAt: new Date('2026-03-01'), year: 2026, createdBy: pmUserId, tenantId },
-    { organizationId: nordicOrgId, companyId: nordicCompanyId, licenseIdentifier: 'LIC-NORDIC-001', industryTag: 'Healthcare', type: 'enterprise', status: 'won', isRenewal: false, closedAt: new Date('2025-11-20'), year: 2025, createdBy: pmUserId, tenantId },
-    { organizationId: nordicOrgId, companyId: nordicCompanyId, licenseIdentifier: 'LIC-NORDIC-002', industryTag: 'Healthcare', type: 'enterprise', status: 'won', isRenewal: false, closedAt: new Date('2026-01-10'), year: 2026, createdBy: pmUserId, tenantId },
-    { organizationId: nordicOrgId, companyId: nordicCompanyId, licenseIdentifier: 'LIC-NORDIC-003', industryTag: 'Technology', type: 'enterprise', status: 'won', isRenewal: false, closedAt: new Date('2026-02-28'), year: 2026, createdBy: pmUserId, tenantId },
+    { organizationId: acmeOrgId, companyId: acmeCompanyId, licenseIdentifier: 'LIC-ACME-001', industryTag: 'Finance', type: 'enterprise', status: 'won', isRenewal: false, startDate: new Date('2026-02-15'), endDate: new Date('2027-02-14'), closedAt: new Date('2026-02-15'), year: 2026, createdBy: pmUserId, tenantId },
+    { organizationId: acmeOrgId, companyId: acmeCompanyId, licenseIdentifier: 'LIC-ACME-002', industryTag: 'Technology', type: 'enterprise', status: 'won', isRenewal: false, startDate: new Date('2026-03-01'), endDate: null, closedAt: new Date('2026-03-01'), year: 2026, createdBy: pmUserId, tenantId },
+    { organizationId: nordicOrgId, companyId: nordicCompanyId, licenseIdentifier: 'LIC-NORDIC-001', industryTag: 'Healthcare', type: 'enterprise', status: 'won', isRenewal: false, startDate: new Date('2025-11-20'), endDate: new Date('2026-11-19'), closedAt: new Date('2025-11-20'), year: 2025, createdBy: pmUserId, tenantId },
+    { organizationId: nordicOrgId, companyId: nordicCompanyId, licenseIdentifier: 'LIC-NORDIC-002', industryTag: 'Healthcare', type: 'enterprise', status: 'won', isRenewal: false, startDate: new Date('2026-01-10'), endDate: new Date('2027-01-09'), closedAt: new Date('2026-01-10'), year: 2026, createdBy: pmUserId, tenantId },
+    { organizationId: nordicOrgId, companyId: nordicCompanyId, licenseIdentifier: 'LIC-NORDIC-003', industryTag: 'Technology', type: 'enterprise', status: 'won', isRenewal: false, startDate: new Date('2026-02-28'), endDate: null, closedAt: new Date('2026-02-28'), year: 2026, createdBy: pmUserId, tenantId },
   ]
   for (const ld of licenseDeals) {
     em.persist(em.create(PartnerLicenseDeal, ld))

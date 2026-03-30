@@ -56,6 +56,8 @@ const crud = makeCrudRoute({
       'type',
       'status',
       'is_renewal',
+      'start_date',
+      'end_date',
       'closed_at',
       'year',
       'created_by',
