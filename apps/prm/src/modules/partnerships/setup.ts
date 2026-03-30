@@ -463,6 +463,7 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
     'partnerships.rfp.respond',
     'partnerships.rfp.view',
     'partnerships.license-deals.view',
+    'partnerships.wic.view',
     'partnerships.widgets.onboarding-checklist',
     'partnerships.widgets.wip-count',
     'partnerships.widgets.wic-summary',
@@ -478,6 +479,7 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
     'partnerships.rfp.respond',
     'partnerships.rfp.view',
     'partnerships.license-deals.view',
+    'partnerships.wic.view',
     'partnerships.widgets.onboarding-checklist',
     'partnerships.widgets.wip-count',
     'partnerships.widgets.wic-summary',
@@ -485,6 +487,7 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
   ],
   partner_contributor: [
     ...BACKEND_BASELINE_FEATURES,
+    'partnerships.wic.view',
     'partnerships.widgets.onboarding-checklist',
     'partnerships.widgets.wic-summary',
     'partnerships.widgets.tier-status',

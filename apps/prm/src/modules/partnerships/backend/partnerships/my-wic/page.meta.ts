@@ -1,6 +1,6 @@
 export const metadata = {
   requireAuth: true,
-  requireFeatures: ['partnerships.widgets.wic-summary'],
+  requireFeatures: ['partnerships.wic.view'],
   pageTitle: 'WIC Scores',
   pageTitleKey: 'partnerships.myWic.title',
   pageGroup: 'Partnerships',

@@ -19,7 +19,7 @@ This module demonstrates key Open Mercato extension patterns. Each file is a lea
 |------|-----------|---------------------|
 | `index.ts` | Module metadata | Auto-discovered by the platform via `src/modules/` convention |
 | `setup.ts` | `seedDefaults` + `seedExamples` | Roles, pipeline stages, custom fields, dictionaries, demo data. Idempotent — safe to run multiple times. |
-| `acl.ts` | Feature-based permissions | Declares `partnerships.manage`, `partnerships.wip-count`, `partnerships.onboarding-checklist` |
+| `acl.ts` | Feature-based permissions | Declares 14 features: `*.manage` (PM write), `*.view` (read access), `*.respond` (RFP action), `*.widgets.*` (dashboard cards). |
 | `ce.ts` | Custom entities | Declares `case_study` entity type via the entities module |
 | `events.ts` | Typed events | Event declarations (placeholder for Phase 2+) |
 

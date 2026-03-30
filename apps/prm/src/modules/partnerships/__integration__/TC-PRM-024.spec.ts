@@ -10,7 +10,7 @@ import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
  *
  * Auth:
  *   wic-import: requireFeatures: ['partnerships.wic.import'] (PM only)
- *   my-wic: requireFeatures: ['partnerships.widgets.wic-summary'] (agency roles)
+ *   my-wic: requireFeatures: ['partnerships.wic.view'] (agency roles)
  *
  * Tests:
  * T1 — PM sees WIC import form with agency select and JSON textarea

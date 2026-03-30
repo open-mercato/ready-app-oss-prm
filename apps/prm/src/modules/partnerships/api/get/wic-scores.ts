@@ -10,7 +10,7 @@ import type { OpenApiMethodDoc, OpenApiRouteDoc } from '@open-mercato/shared/lib
 
 export const metadata = {
   path: '/partnerships/wic-scores',
-  GET: { requireAuth: true },
+  GET: { requireAuth: true, requireFeatures: ['partnerships.wic.view'] },
 }
 
 // ---------------------------------------------------------------------------
@@ -74,7 +74,7 @@ async function isPm(
   tenantId: string,
   organizationId: string | null,
 ): Promise<boolean> {
-  return rbacService.userHasAllFeatures(userId, ['partnerships.manage'], {
+  return rbacService.userHasAllFeatures(userId, ['partnerships.wic.manage'], {
     tenantId,
     organizationId,
   })
