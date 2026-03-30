@@ -52,7 +52,7 @@ export default function EditLicenseDealPage() {
 
   React.useEffect(() => {
     async function load() {
-      const call = await apiCall<LicenseDeal>(`/api/partnerships/partner-license-deals?id=${id}`)
+      const call = await apiCall<LicenseDeal>(`/api/partnerships/partner-license-deals/${id}`)
       if (call.ok && call.result) {
         const d = call.result
         setLicenseIdentifier(d.licenseIdentifier ?? '')

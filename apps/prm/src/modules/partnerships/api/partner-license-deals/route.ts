@@ -166,14 +166,6 @@ export async function GET(req: Request) {
     const { resolve } = container
     const em = resolve('em') as import('@mikro-orm/postgresql').EntityManager
 
-    // Single record by ID
-    const idParam = url.searchParams.get('id')
-    if (idParam) {
-      const item = await em.findOne(PartnerLicenseDeal, { id: idParam, tenantId: auth.tenantId })
-      if (!item) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-      return NextResponse.json(item)
-    }
-
     // Resolve org scope from org switcher
     const { resolveOrganizationScopeForRequest } = await import('@open-mercato/core/modules/directory/utils/organizationScope')
     const scope = await resolveOrganizationScopeForRequest({ container, auth, request: req })
