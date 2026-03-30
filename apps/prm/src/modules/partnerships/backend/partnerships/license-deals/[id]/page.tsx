@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Page, PageBody } from '@open-mercato/ui/backend/Page'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
@@ -29,11 +29,10 @@ function toDateInput(value: string | null | undefined): string {
   return d.toISOString().split('T')[0]
 }
 
-export default function EditLicenseDealPage() {
+export default function EditLicenseDealPage({ params }: { params?: { id?: string } }) {
   const t = useT()
   const router = useRouter()
-  const params = useParams()
-  const id = params.id as string
+  const id = params?.id ?? ''
 
   const [loading, setLoading] = React.useState(true)
   const [notFound, setNotFound] = React.useState(false)
