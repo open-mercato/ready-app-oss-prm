@@ -5,7 +5,7 @@ import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
  * TC-PRM-018: Tier Review Page UI (US-5.3)
  *
  * Page: /backend/partnerships/tier-review
- * Auth: requireFeatures: ['partnerships.tier.approve'] (PM only)
+ * Auth: requireFeatures: ['partnerships.tier.manage'] (PM only)
  *
  * Tests:
  * T1 — PM sees tier review page with table and filter buttons
@@ -150,7 +150,7 @@ test.describe('TC-PRM-018: Tier Review Page UI', () => {
 
     await page.waitForTimeout(3_000)
 
-    // Admin lacks partnerships.tier.approve — page should not render
+    // Admin lacks partnerships.tier.manage — page should not render
     const titleVisible = await page.locator('text="Tier Review"').first().isVisible().catch(() => false)
     const tableVisible = await page.locator('th:text-is("Agency")').isVisible().catch(() => false)
     expect(titleVisible && tableVisible, 'Admin should not see tier review table').toBe(false)

@@ -10,7 +10,7 @@ import { TierChangeProposal } from '../../data/entities'
 
 export const metadata = {
   path: '/partnerships/enqueue-tier-evaluation',
-  POST: { requireAuth: true, requireFeatures: ['partnerships.manage'] },
+  POST: { requireAuth: true, requireFeatures: ['partnerships.tier.manage'] },
 }
 
 // ---------------------------------------------------------------------------

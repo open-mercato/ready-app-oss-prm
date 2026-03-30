@@ -9,7 +9,7 @@ import { TierChangeProposal, TierEvaluationState } from '../../data/entities'
 
 export const metadata = {
   path: '/partnerships/tier-proposals',
-  GET: { requireAuth: true, requireFeatures: ['partnerships.tier.approve'] },
+  GET: { requireAuth: true, requireFeatures: ['partnerships.tier.manage'] },
 }
 
 async function GET(req: Request) {

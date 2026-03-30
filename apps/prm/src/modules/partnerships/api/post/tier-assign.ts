@@ -9,7 +9,7 @@ import { TIER_THRESHOLDS } from '../../data/tier-thresholds'
 
 export const metadata = {
   path: '/partnerships/tier-assign',
-  POST: { requireAuth: true, requireFeatures: ['partnerships.tier.approve'] },
+  POST: { requireAuth: true, requireFeatures: ['partnerships.tier.manage'] },
 }
 
 // ---------------------------------------------------------------------------

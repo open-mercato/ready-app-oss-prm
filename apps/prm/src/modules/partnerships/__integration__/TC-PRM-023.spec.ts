@@ -5,7 +5,7 @@ import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
  * TC-PRM-023: Tier Review UI
  *
  * Page: /backend/partnerships/tier-review
- * Auth: requireFeatures: ['partnerships.tier.approve'] (PM only)
+ * Auth: requireFeatures: ['partnerships.tier.manage'] (PM only)
  *
  * Tests:
  * T1 — PM sees tier review page with evaluation status and proposals

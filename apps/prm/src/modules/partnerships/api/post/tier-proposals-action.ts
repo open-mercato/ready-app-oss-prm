@@ -9,7 +9,7 @@ import { TierChangeProposal, TierAssignment } from '../../data/entities'
 
 export const metadata = {
   path: '/partnerships/tier-proposals/action',
-  POST: { requireAuth: true, requireFeatures: ['partnerships.tier.approve'] },
+  POST: { requireAuth: true, requireFeatures: ['partnerships.tier.manage'] },
 }
 
 const actionSchema = z.object({

@@ -10,7 +10,8 @@ import {
 } from '@open-mercato/core/modules/customers/data/entities'
 import { Dictionary, DictionaryEntry } from '@open-mercato/core/modules/dictionaries/data/entities'
 import { Organization } from '@open-mercato/core/modules/directory/data/entities'
-import { User, Role, RoleAcl, UserRole, UserAcl } from '@open-mercato/core/modules/auth/data/entities'
+import { User, Role, RoleAcl, UserRole, UserAcl, RoleSidebarPreference } from '@open-mercato/core/modules/auth/data/entities'
+import { SIDEBAR_PREFERENCES_VERSION } from '@open-mercato/shared/modules/navigation/sidebarPreferences'
 import { ensureCustomFieldDefinitions } from '@open-mercato/core/modules/entities/lib/field-definitions'
 import { hashForLookup } from '@open-mercato/shared/lib/encryption/aes'
 import { seedDashboardDefaultsForTenant } from '@open-mercato/core/modules/dashboards/cli'
@@ -459,7 +460,6 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
     ...BACKEND_BASELINE_FEATURES,
     'customers.*',
     'entities.*',
-    'partnerships.manage',
     'partnerships.rfp.respond',
     'partnerships.widgets.onboarding-checklist',
     'partnerships.widgets.wip-count',
@@ -488,13 +488,14 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
   partnership_manager: [
     ...BACKEND_BASELINE_FEATURES,
     'customers.*',
-    'partnerships.manage',
+    'partnerships.agencies.manage',
+    'partnerships.wic.manage',
     'partnerships.rfp.manage',
     'partnerships.widgets.wip-count',
     'partnerships.widgets.wic-summary',
     'partnerships.widgets.cross-org-wip',
     'partnerships.license-deals.manage',
-    'partnerships.tier.approve',
+    'partnerships.tier.manage',
     'auth.*',
     'directory.organizations.manage',
     'directory.organizations.view',
@@ -524,7 +525,8 @@ async function seedPrmRoles(
     }
     await em.flush()
 
-    // Ensure RoleAcl exists with current features (merge if already present)
+    // Ensure RoleAcl exists with exact features from PRM_ROLE_FEATURES (replace, not merge).
+    // PRM roles are fully managed by seed — the feature list is the source of truth.
     const existingAcl = await em.findOne(RoleAcl, { role, tenantId: scope.tenantId })
     if (!existingAcl) {
       em.persist(em.create(RoleAcl, {
@@ -536,9 +538,43 @@ async function seedPrmRoles(
       }))
     } else {
       const current = Array.isArray(existingAcl.featuresJson) ? existingAcl.featuresJson as string[] : []
-      const merged = Array.from(new Set([...current, ...features]))
-      if (merged.length !== current.length) {
-        existingAcl.featuresJson = merged
+      const sorted = [...features].sort()
+      const currentSorted = [...current].sort()
+      if (JSON.stringify(sorted) !== JSON.stringify(currentSorted)) {
+        existingAcl.featuresJson = features
+      }
+    }
+  }
+  await em.flush()
+
+  // Seed RoleSidebarPreference: hide noise nav items for all PRM roles.
+  // Attachments standalone page is noise — used inline but not needed in sidebar.
+  const PRM_HIDDEN_NAV_ITEMS = ['/backend/storage/attachments']
+  for (const roleName of Object.keys(PRM_ROLE_FEATURES)) {
+    const role = await em.findOne(Role, { name: roleName, tenantId: scope.tenantId, deletedAt: null })
+    if (!role) continue
+    const existing = await em.findOne(RoleSidebarPreference, { role, tenantId: scope.tenantId, locale: 'en' })
+    if (!existing) {
+      em.persist(em.create(RoleSidebarPreference, {
+        role,
+        tenantId: scope.tenantId,
+        locale: 'en',
+        settingsJson: {
+          version: SIDEBAR_PREFERENCES_VERSION,
+          groupOrder: [],
+          groupLabels: {},
+          itemLabels: {},
+          hiddenItems: PRM_HIDDEN_NAV_ITEMS,
+        },
+        createdAt: new Date(),
+      }))
+    } else {
+      const settings = (existing.settingsJson ?? {}) as Record<string, unknown>
+      const currentHidden = Array.isArray(settings.hiddenItems) ? settings.hiddenItems as string[] : []
+      const merged = Array.from(new Set([...currentHidden, ...PRM_HIDDEN_NAV_ITEMS]))
+      if (merged.length !== currentHidden.length) {
+        settings.hiddenItems = merged
+        existing.settingsJson = settings
       }
     }
   }
