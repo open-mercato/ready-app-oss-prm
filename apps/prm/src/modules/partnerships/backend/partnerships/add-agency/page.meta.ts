@@ -1,6 +1,7 @@
 export const metadata = {
   requireAuth: true,
-  requireFeatures: ['partnerships.manage'],
+  requireFeatures: ['partnerships.agencies.manage'],
+  showInSidebar: false,
   pageTitle: 'Add Agency',
   pageTitleKey: 'partnerships.addAgency.title',
   pageGroup: 'Partnerships',

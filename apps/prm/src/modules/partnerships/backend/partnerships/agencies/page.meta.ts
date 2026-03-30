@@ -1,6 +1,6 @@
 export const metadata = {
   requireAuth: true,
-  requireFeatures: ['partnerships.manage'],
+  requireFeatures: ['partnerships.agencies.manage'],
   pageTitle: 'Agencies',
   pageTitleKey: 'partnerships.agencies.title',
   pageGroup: 'Partnerships',

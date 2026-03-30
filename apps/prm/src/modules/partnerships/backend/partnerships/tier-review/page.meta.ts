@@ -1,8 +1,7 @@
 export const metadata = {
   requireAuth: true,
   requireFeatures: ['partnerships.tier.manage'],
-  visible: (ctx: { auth?: { orgId?: string | null; homeOrgId?: string | null } }) =>
-    !ctx.auth?.homeOrgId || ctx.auth?.orgId === ctx.auth?.homeOrgId,
+  showInSidebar: false,
   pageTitle: 'Tier Review',
   pageTitleKey: 'partnerships.tierReview.title',
   pageGroup: 'Partnerships',
