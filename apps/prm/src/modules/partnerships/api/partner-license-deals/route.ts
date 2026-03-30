@@ -58,7 +58,6 @@ const crud = makeCrudRoute({
       'is_renewal',
       'start_date',
       'end_date',
-      'closed_at',
       'year',
       'created_by',
       'tenant_id',
@@ -97,9 +96,9 @@ const crud = makeCrudRoute({
       mapInput: async ({ raw, ctx }) => {
         const { translate } = await resolveTranslations()
         const scoped = withScopedPayload(raw ?? {}, ctx, translate)
-        // Compute year from closedAt if not provided (form doesn't send year)
-        const closedAtDate = scoped.closedAt ? new Date(scoped.closedAt as string) : undefined
-        const year = scoped.year ?? (closedAtDate ? closedAtDate.getUTCFullYear() : undefined)
+        // Compute year from startDate if not provided
+        const startDateValue = scoped.startDate ? new Date(scoped.startDate as string) : undefined
+        const year = scoped.year ?? (startDateValue ? startDateValue.getUTCFullYear() : undefined)
         const parsed = partnerLicenseDealCreateSchema.parse({
           ...scoped,
           year,
@@ -230,7 +229,8 @@ const pldListItemSchema = z.object({
   type: z.string(),
   status: z.string(),
   is_renewal: z.boolean().optional(),
-  closed_at: z.string().nullable().optional(),
+  start_date: z.string().nullable().optional(),
+  end_date: z.string().nullable().optional(),
   year: z.number(),
   created_by: z.string().uuid(),
   tenant_id: z.string().uuid(),

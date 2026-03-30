@@ -24,8 +24,8 @@ const pldCrudEvents: CrudEventsConfig = {
   }),
 }
 
-function computeYear(closedAt: Date): number {
-  return closedAt.getUTCFullYear()
+function computeYear(startDate: Date): number {
+  return startDate.getUTCFullYear()
 }
 
 // ---------------------------------------------------------------------------
@@ -40,7 +40,7 @@ const createPldCommand: CommandHandler<PartnerLicenseDealCreateInput, { id: stri
     ensureOrganizationScope(ctx, parsed.organizationId)
 
     const em = (ctx.container.resolve('em') as EntityManager).fork()
-    const year = computeYear(parsed.closedAt)
+    const year = computeYear(parsed.startDate)
 
     // Check unique constraint: (licenseIdentifier, year)
     const existing = await em.findOne(PartnerLicenseDeal, {
@@ -61,7 +61,8 @@ const createPldCommand: CommandHandler<PartnerLicenseDealCreateInput, { id: stri
       type: parsed.type,
       status: parsed.status,
       isRenewal: parsed.isRenewal,
-      closedAt: parsed.closedAt,
+      startDate: parsed.startDate,
+      endDate: parsed.endDate ?? null,
       year,
       createdBy: parsed.createdBy,
       tenantId: parsed.tenantId,
@@ -107,10 +108,11 @@ const updatePldCommand: CommandHandler<Record<string, unknown>, { id: string }> 
     if (parsed.type !== undefined) record.type = parsed.type
     if (parsed.status !== undefined) record.status = parsed.status
     if (parsed.isRenewal !== undefined) record.isRenewal = parsed.isRenewal
-    if (parsed.closedAt !== undefined) {
-      record.closedAt = parsed.closedAt
-      record.year = computeYear(parsed.closedAt)
+    if (parsed.startDate !== undefined) {
+      record.startDate = parsed.startDate
+      record.year = computeYear(parsed.startDate)
     }
+    if (parsed.endDate !== undefined) record.endDate = parsed.endDate
 
     await em.flush()
 

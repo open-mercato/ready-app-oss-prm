@@ -32,7 +32,6 @@ export default function CreateLicenseDealPage() {
   const [industryTag, setIndustryTag] = React.useState('')
   const [startDate, setStartDate] = React.useState('')
   const [endDate, setEndDate] = React.useState('')
-  const [closedAt, setClosedAt] = React.useState('')
   const [type, setType] = React.useState('enterprise')
   const [status, setStatus] = React.useState('won')
   const [isRenewal, setIsRenewal] = React.useState(false)
@@ -80,7 +79,6 @@ export default function CreateLicenseDealPage() {
         industryTag,
         startDate,
         endDate: endDate || null,
-        closedAt,
         type,
         status,
         isRenewal,
@@ -186,15 +184,6 @@ export default function CreateLicenseDealPage() {
                 onChange={(e) => setEndDate(e.target.value)}
                 className="w-full rounded-md border px-3 py-2 text-sm" />
             </div>
-          </div>
-
-          <div>
-            <label htmlFor="closedAt" className="block text-sm font-medium mb-1">
-              {t('partnerships.licenseDeals.fields.closedAt', 'Closed Date')}
-            </label>
-            <input id="closedAt" type="date" required value={closedAt}
-              onChange={(e) => setClosedAt(e.target.value)}
-              className="w-full rounded-md border px-3 py-2 text-sm" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

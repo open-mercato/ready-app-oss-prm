@@ -159,9 +159,6 @@ export class PartnerLicenseDeal {
   @Property({ name: 'end_date', type: Date, nullable: true })
   endDate?: Date | null
 
-  @Property({ name: 'closed_at', type: Date })
-  closedAt!: Date
-
   @Property({ type: 'integer' })
   year!: number
 
