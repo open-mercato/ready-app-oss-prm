@@ -7,7 +7,7 @@ import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { Button } from '@open-mercato/ui/primitives/button'
-import { TIER_THRESHOLDS } from '../../../data/tier-thresholds'
+import { TIER_THRESHOLDS } from '../../../../data/tier-thresholds'
 
 type CreateAgencyResponse = {
   organizationId: string

@@ -37,7 +37,7 @@ test.describe('TC-PRM-031: RFP Message Templates', () => {
   // T1: PM sees settings page with 3 templates
   test('T1: PM sees RFP settings page with 3 templates', async ({ page }) => {
     await loginInBrowser(page, pmToken)
-    await page.goto(`${BASE}/backend/partnerships/rfp-settings`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`${BASE}/backend/partnerships/rfp-campaigns/settings`, { waitUntil: 'domcontentloaded' })
 
     // Wait for page content to load (RSC payload in body contains "404"/"Not Found" strings)
     await page.waitForFunction(
@@ -59,7 +59,7 @@ test.describe('TC-PRM-031: RFP Message Templates', () => {
   // T2: PM edits template with placeholders
   test('T2: PM edits template with placeholders and saves', async ({ page }) => {
     await loginInBrowser(page, pmToken)
-    await page.goto(`${BASE}/backend/partnerships/rfp-settings`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`${BASE}/backend/partnerships/rfp-campaigns/settings`, { waitUntil: 'domcontentloaded' })
 
     // Find the award template textarea/editor
     const awardField = page.locator('textarea').nth(1).or(
@@ -113,7 +113,7 @@ test.describe('TC-PRM-031: RFP Message Templates', () => {
 
     // Check via UI
     await loginInBrowser(page, bdToken)
-    await page.goto(`${BASE}/backend/partnerships/rfp-settings`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`${BASE}/backend/partnerships/rfp-campaigns/settings`, { waitUntil: 'domcontentloaded' })
 
     const bodyText = await page.locator('body').textContent().catch(() => '')
     const noAccess = bodyText?.includes("don't have access") || bodyText?.includes('403') ||

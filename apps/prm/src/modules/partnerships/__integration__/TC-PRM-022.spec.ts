@@ -4,8 +4,8 @@ import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 /**
  * TC-PRM-022: Add Agency UI
  *
- * Page: /backend/partnerships/add-agency
- * Auth: requireFeatures: ['partnerships.manage'] (PM only)
+ * Page: /backend/partnerships/agencies/add
+ * Auth: requireFeatures: ['partnerships.agencies.manage'] (PM only)
  *
  * Tests:
  * T1 — PM sees add agency form with Initial Tier select
@@ -36,7 +36,7 @@ test.describe('TC-PRM-022: Add Agency UI', () => {
 
   test('T1: PM sees add agency form with Initial Tier select', async ({ page }) => {
     await loginInBrowser(page, pmToken)
-    await page.goto(`${BASE}/backend/partnerships/add-agency`)
+    await page.goto(`${BASE}/backend/partnerships/agencies/add`)
 
     await expect(page.locator('#agencyName')).toBeVisible({ timeout: 15_000 })
     await expect(page.locator('#adminEmail')).toBeVisible()
@@ -53,7 +53,7 @@ test.describe('TC-PRM-022: Add Agency UI', () => {
 
   test('T2: PM can create an agency and sees invite message', async ({ page }) => {
     await loginInBrowser(page, pmToken)
-    await page.goto(`${BASE}/backend/partnerships/add-agency`)
+    await page.goto(`${BASE}/backend/partnerships/agencies/add`)
     await expect(page.locator('#agencyName')).toBeVisible({ timeout: 15_000 })
 
     const ts = Date.now()
@@ -73,7 +73,7 @@ test.describe('TC-PRM-022: Add Agency UI', () => {
 
   test('T3: Contributor cannot access add agency page', async ({ page }) => {
     await loginInBrowser(page, contributorToken)
-    await page.goto(`${BASE}/backend/partnerships/add-agency`)
+    await page.goto(`${BASE}/backend/partnerships/agencies/add`)
     await page.waitForTimeout(3_000)
     const formVisible = await page.locator('#agencyName').isVisible().catch(() => false)
     expect(formVisible, 'Contributor should not see add agency form').toBe(false)

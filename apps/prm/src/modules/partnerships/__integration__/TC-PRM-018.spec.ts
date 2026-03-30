@@ -4,7 +4,7 @@ import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 /**
  * TC-PRM-018: Tier Review Page UI (US-5.3)
  *
- * Page: /backend/partnerships/tier-review
+ * Page: /backend/partnerships/agencies/tier-review
  * Auth: requireFeatures: ['partnerships.tier.manage'] (PM only)
  *
  * Tests:
@@ -14,7 +14,7 @@ import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
  * T4 — PendingApproval rows show Approve/Reject action buttons
  * T5 — Non-PM user (admin) cannot access tier review page
  *
- * Source: apps/prm/src/modules/partnerships/backend/partnerships/tier-review/page.tsx
+ * Source: apps/prm/src/modules/partnerships/backend/partnerships/agencies/tier-review/page.tsx
  * Phase: 2
  */
 
@@ -53,7 +53,7 @@ test.describe('TC-PRM-018: Tier Review Page UI', () => {
   // -------------------------------------------------------------------------
   test('T1: PM sees tier review page with table columns', async ({ page }) => {
     await loginInBrowser(page, pmToken)
-    await page.goto(`${BASE}/backend/partnerships/tier-review`)
+    await page.goto(`${BASE}/backend/partnerships/agencies/tier-review`)
 
     // Page header
     await expect(page.locator('text="Tier Review"').first()).toBeVisible({ timeout: 15_000 })
@@ -82,7 +82,7 @@ test.describe('TC-PRM-018: Tier Review Page UI', () => {
   // -------------------------------------------------------------------------
   test('T2: PM sees Run Evaluation Now button', async ({ page }) => {
     await loginInBrowser(page, pmToken)
-    await page.goto(`${BASE}/backend/partnerships/tier-review`)
+    await page.goto(`${BASE}/backend/partnerships/agencies/tier-review`)
 
     await expect(page.locator('text="Tier Review"').first()).toBeVisible({ timeout: 15_000 })
 
@@ -95,7 +95,7 @@ test.describe('TC-PRM-018: Tier Review Page UI', () => {
   // -------------------------------------------------------------------------
   test('T3: Status filter buttons work', async ({ page }) => {
     await loginInBrowser(page, pmToken)
-    await page.goto(`${BASE}/backend/partnerships/tier-review`)
+    await page.goto(`${BASE}/backend/partnerships/agencies/tier-review`)
 
     await expect(page.locator('text="Tier Review"').first()).toBeVisible({ timeout: 15_000 })
 
@@ -123,7 +123,7 @@ test.describe('TC-PRM-018: Tier Review Page UI', () => {
   // -------------------------------------------------------------------------
   test('T4: Pending proposals have Approve/Reject action buttons', async ({ page }) => {
     await loginInBrowser(page, pmToken)
-    await page.goto(`${BASE}/backend/partnerships/tier-review`)
+    await page.goto(`${BASE}/backend/partnerships/agencies/tier-review`)
 
     await expect(page.locator('text="Tier Review"').first()).toBeVisible({ timeout: 15_000 })
 
@@ -146,7 +146,7 @@ test.describe('TC-PRM-018: Tier Review Page UI', () => {
   // -------------------------------------------------------------------------
   test('T5: Admin cannot access tier review page', async ({ page }) => {
     await loginInBrowser(page, adminToken)
-    await page.goto(`${BASE}/backend/partnerships/tier-review`)
+    await page.goto(`${BASE}/backend/partnerships/agencies/tier-review`)
 
     await page.waitForTimeout(3_000)
 

@@ -100,7 +100,7 @@ const CrossOrgWipWidget: React.FC<DashboardWidgetComponentProps> = ({
       <div className="flex h-32 flex-col items-center justify-center gap-2 text-center">
         <p className="text-sm text-muted-foreground">No agencies yet</p>
         <a
-          href="/backend/partnerships/add-agency"
+          href="/backend/partnerships/agencies/add"
           className="text-sm font-medium text-primary hover:underline"
         >
           Add Agency

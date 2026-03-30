@@ -10,7 +10,7 @@ import { getAuthToken, apiRequest } from '@open-mercato/core/helpers/integration
  *   - Non-PM cannot trigger evaluation
  *
  * Pages:
- *   /backend/partnerships/tier-review — PM triggers evaluation, reviews proposals
+ *   /backend/partnerships/agencies/tier-review — PM triggers evaluation, reviews proposals
  *   /backend — Dashboard with tier-status widget
  *
  * Source:
@@ -57,7 +57,7 @@ test.describe('TC-PRM-014: Tier Evaluation UI', () => {
   // -------------------------------------------------------------------------
   test('T1: PM triggers evaluation from tier-review page', async ({ page }) => {
     await loginInBrowser(page, pmToken)
-    await page.goto(`${BASE}/backend/partnerships/tier-review`)
+    await page.goto(`${BASE}/backend/partnerships/agencies/tier-review`)
 
     await expect(page.locator('text="Tier Review"').first()).toBeVisible({ timeout: 15_000 })
 
@@ -112,7 +112,7 @@ test.describe('TC-PRM-014: Tier Evaluation UI', () => {
   // -------------------------------------------------------------------------
   test('T4: Contributor cannot access tier-review page', async ({ page }) => {
     await loginInBrowser(page, contributorToken)
-    await page.goto(`${BASE}/backend/partnerships/tier-review`)
+    await page.goto(`${BASE}/backend/partnerships/agencies/tier-review`)
 
     await page.waitForTimeout(3_000)
 

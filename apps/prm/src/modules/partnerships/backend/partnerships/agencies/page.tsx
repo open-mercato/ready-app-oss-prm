@@ -214,7 +214,7 @@ export default function AgenciesPage() {
             title={t('partnerships.agencies.emptyTitle', 'No agencies yet')}
             description={t('partnerships.agencies.emptyDescription', 'Add your first agency to start the partner program.')}
             actionLabel={t('partnerships.addAgency.title', 'Add Agency')}
-            onAction={() => window.location.href = '/backend/partnerships/add-agency'}
+            onAction={() => window.location.href = '/backend/partnerships/agencies/add'}
           />
         </PageBody>
       </Page>
@@ -226,7 +226,7 @@ export default function AgenciesPage() {
       <PageHeader
         title={t('partnerships.agencies.title', 'Agencies')}
         actions={
-          <Button onClick={() => window.location.href = '/backend/partnerships/add-agency'}>
+          <Button onClick={() => window.location.href = '/backend/partnerships/agencies/add'}>
             {t('partnerships.addAgency.title', 'Add Agency')}
           </Button>
         }

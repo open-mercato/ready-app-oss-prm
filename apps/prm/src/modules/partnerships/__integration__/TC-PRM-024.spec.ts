@@ -5,7 +5,7 @@ import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
  * TC-PRM-024: WIC Import + My WIC UI
  *
  * Pages:
- *   /backend/partnerships/wic-import   (PM — import WIC scores)
+ *   /backend/partnerships/my-wic/import   (PM — import WIC scores)
  *   /backend/partnerships/my-wic       (Agency — view WIC scores)
  *
  * Auth:
@@ -45,7 +45,7 @@ test.describe('TC-PRM-024: WIC Import + My WIC UI', () => {
 
   test('T1: PM sees WIC import form with agency select and JSON textarea', async ({ page }) => {
     await loginInBrowser(page, pmToken)
-    await page.goto(`${BASE}/backend/partnerships/wic-import`)
+    await page.goto(`${BASE}/backend/partnerships/my-wic/import`)
 
     const agencySelect = page.locator('select').first()
     await expect(agencySelect).toBeVisible({ timeout: 15_000 })
@@ -66,7 +66,7 @@ test.describe('TC-PRM-024: WIC Import + My WIC UI', () => {
 
   test('T3: Contributor cannot access WIC import page', async ({ page }) => {
     await loginInBrowser(page, contributorToken)
-    await page.goto(`${BASE}/backend/partnerships/wic-import`)
+    await page.goto(`${BASE}/backend/partnerships/my-wic/import`)
     await page.waitForTimeout(3_000)
     const visible = await page.locator('textarea').isVisible().catch(() => false)
     expect(visible, 'Contributor should not see WIC import form').toBe(false)

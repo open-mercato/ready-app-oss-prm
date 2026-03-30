@@ -8,7 +8,7 @@ import * as os from 'os'
 /**
  * TC-PRM-009: WIC Import Page UI
  *
- * Page: /backend/partnerships/wic-import
+ * Page: /backend/partnerships/my-wic/import
  * Auth: requireFeatures: ['partnerships.wic.import'] (PM only)
  *
  * Tests:
@@ -17,7 +17,7 @@ import * as os from 'os'
  * T3 — PM uploads file with unmatched GH username and sees error
  * T4 — Non-PM user (contributor) cannot access WIC import page
  *
- * Source: apps/prm/src/modules/partnerships/backend/partnerships/wic-import/page.tsx
+ * Source: apps/prm/src/modules/partnerships/backend/partnerships/my-wic/import/page.tsx
  * Phase: 2, WF3 WIC
  */
 
@@ -54,7 +54,7 @@ test.describe('TC-PRM-009: WIC Import Page UI', () => {
 
   test('T1: PM sees import form with agency select, month picker, file upload', async ({ page }) => {
     await loginInBrowser(page, pmToken)
-    await page.goto(`${BASE}/backend/partnerships/wic-import`)
+    await page.goto(`${BASE}/backend/partnerships/my-wic/import`)
 
     // Agency select
     await expect(page.locator('#wic-org')).toBeVisible({ timeout: 15_000 })
@@ -73,7 +73,7 @@ test.describe('TC-PRM-009: WIC Import Page UI', () => {
 
   test('T2: PM uploads valid JSON file and sees success message', async ({ page }) => {
     await loginInBrowser(page, pmToken)
-    await page.goto(`${BASE}/backend/partnerships/wic-import`)
+    await page.goto(`${BASE}/backend/partnerships/my-wic/import`)
     await expect(page.locator('#wic-org')).toBeVisible({ timeout: 15_000 })
 
     // Select Acme Digital — carol-acme belongs to this org
@@ -108,7 +108,7 @@ test.describe('TC-PRM-009: WIC Import Page UI', () => {
 
   test('T3: PM uploads file with unmatched GH username and sees error', async ({ page }) => {
     await loginInBrowser(page, pmToken)
-    await page.goto(`${BASE}/backend/partnerships/wic-import`)
+    await page.goto(`${BASE}/backend/partnerships/my-wic/import`)
     await expect(page.locator('#wic-org')).toBeVisible({ timeout: 15_000 })
 
     const month = '2098-02'
@@ -139,9 +139,9 @@ test.describe('TC-PRM-009: WIC Import Page UI', () => {
   })
 
   test('T4: Contributor cannot access WIC import page', async ({ page }) => {
-    // Contributor lacks partnerships.manage — page redirects or hides form
+    // Contributor lacks partnerships.wic.manage — page redirects or hides form
     await loginInBrowser(page, contributorToken)
-    await page.goto(`${BASE}/backend/partnerships/wic-import`)
+    await page.goto(`${BASE}/backend/partnerships/my-wic/import`)
     await page.waitForTimeout(3_000)
 
     const formVisible = await page.locator('#wic-json-file').isAttached().catch(() => false)

@@ -4,7 +4,7 @@ import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 /**
  * TC-PRM-023: Tier Review UI
  *
- * Page: /backend/partnerships/tier-review
+ * Page: /backend/partnerships/agencies/tier-review
  * Auth: requireFeatures: ['partnerships.tier.manage'] (PM only)
  *
  * Tests:
@@ -36,7 +36,7 @@ test.describe('TC-PRM-023: Tier Review UI', () => {
 
   test('T1: PM sees evaluation status banner and proposals table', async ({ page }) => {
     await loginInBrowser(page, pmToken)
-    await page.goto(`${BASE}/backend/partnerships/tier-review`)
+    await page.goto(`${BASE}/backend/partnerships/agencies/tier-review`)
 
     await expect(page.locator('text="Tier Review"').first()).toBeVisible({ timeout: 15_000 })
     await expect(page.locator('button:has-text("Run Evaluation Now"), button:has-text("Run Now")')).toBeVisible({ timeout: 10_000 })
@@ -50,7 +50,7 @@ test.describe('TC-PRM-023: Tier Review UI', () => {
 
   test('T2: PM can trigger evaluation via Run Now button', async ({ page }) => {
     await loginInBrowser(page, pmToken)
-    await page.goto(`${BASE}/backend/partnerships/tier-review`)
+    await page.goto(`${BASE}/backend/partnerships/agencies/tier-review`)
 
     const runButton = page.locator('button:has-text("Run Evaluation Now"), button:has-text("Run Now")')
     await expect(runButton).toBeVisible({ timeout: 15_000 })
@@ -61,7 +61,7 @@ test.describe('TC-PRM-023: Tier Review UI', () => {
 
   test('T3: Contributor cannot access tier review page', async ({ page }) => {
     await loginInBrowser(page, contributorToken)
-    await page.goto(`${BASE}/backend/partnerships/tier-review`)
+    await page.goto(`${BASE}/backend/partnerships/agencies/tier-review`)
     await page.waitForTimeout(3_000)
     const visible = await page.locator('button:has-text("Run Evaluation Now"), button:has-text("Run Now")').isVisible().catch(() => false)
     expect(visible, 'Contributor should not see tier review controls').toBe(false)
