@@ -184,7 +184,7 @@ test.describe.serial('TC-PRM-025: RFP Campaign Creation (US-4.1)', () => {
     expect(campaign!.title).toBe(CAMPAIGN.title)
     expect(campaign!.description).toBe(CAMPAIGN.description)
     expect(campaign!.audience).toBe(CAMPAIGN.audience)
-    expect(campaign!.status).toBeTruthy() // should have a status (draft/open)
+    expect(campaign!.status).toBeTruthy() // should have a status (draft/published)
   })
 
   // -------------------------------------------------------------------------

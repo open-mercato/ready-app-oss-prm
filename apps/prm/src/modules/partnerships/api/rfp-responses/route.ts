@@ -17,6 +17,8 @@ export const metadata = {
   PUT: { requireAuth: true, requireFeatures: ['partnerships.rfp.respond'] },
 }
 
+const ACTIVE_RESPONSE_CAMPAIGN_STATUSES = new Set(['open', 'published'])
+
 // ---------------------------------------------------------------------------
 // GET — list responses (PM sees all, filtered by campaignId)
 // ---------------------------------------------------------------------------
@@ -90,8 +92,8 @@ async function validateCampaignForResponse(
   if (campaign.status === 'awarded' || campaign.status === 'closed') {
     return { error: 'Campaign is no longer accepting responses', status: 422 }
   }
-  if (campaign.status !== 'open') {
-    return { error: 'Campaign is not open for responses', status: 422 }
+  if (!ACTIVE_RESPONSE_CAMPAIGN_STATUSES.has(campaign.status)) {
+    return { error: 'Campaign is not published yet', status: 422 }
   }
   if (
     campaign.audience === 'selected' &&

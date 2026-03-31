@@ -144,8 +144,8 @@ test.describe('TC-PRM-009: WIC Import Page UI', () => {
     await page.goto(`${BASE}/backend/partnerships/my-wic/import`)
     await page.waitForTimeout(3_000)
 
-    const formVisible = await page.locator('#wic-json-file').isAttached().catch(() => false)
-    expect(formVisible, 'Contributor should not see WIC import form').toBe(false)
+    const formCount = await page.locator('#wic-json-file').count().catch(() => 0)
+    expect(formCount > 0, 'Contributor should not see WIC import form').toBe(false)
   })
 })
 

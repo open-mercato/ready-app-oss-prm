@@ -61,7 +61,7 @@ async function POST(req: Request) {
     )
   }
 
-  campaign.status = 'open'
+  campaign.status = 'published'
   await em.flush()
 
   // Emit event (best-effort)
@@ -93,7 +93,7 @@ async function POST(req: Request) {
 // ---------------------------------------------------------------------------
 
 const postDoc: OpenApiMethodDoc = {
-  summary: 'Publish a draft RFP campaign (changes status from draft to open)',
+  summary: 'Publish a draft RFP campaign (changes status from draft to published)',
   tags: ['Partnerships'],
   responses: [
     { status: 200, description: 'Campaign published successfully' },

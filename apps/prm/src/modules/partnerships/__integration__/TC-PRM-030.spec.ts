@@ -5,7 +5,7 @@ import { readJsonSafe } from '@open-mercato/core/helpers/integration/generalFixt
 /**
  * TC-PRM-030: RFP Campaign Lifecycle & Edge Cases
  *
- * End-to-end lifecycle: draft → open → responses → awarded.
+ * End-to-end lifecycle: draft → published → responses → awarded.
  * Status badges, deadline auto-close, edit restrictions.
  *
  * Phase: 3 (WF4: Lead Distribution)
@@ -33,7 +33,7 @@ test.describe.serial('TC-PRM-030: RFP Campaign Lifecycle', () => {
     bdToken = await getAuthToken(request, BD_EMAIL, BD_PASSWORD)
   })
 
-  // T1: Full lifecycle: draft → open → response → awarded
+  // T1: Full lifecycle: draft → published → response → awarded
   test('T1: Campaign completes full lifecycle', async ({ request }) => {
     // 1. Create (draft)
     const createRes = await apiRequest(request, 'POST', '/api/partnerships/rfp-campaigns', {
@@ -86,7 +86,7 @@ test.describe.serial('TC-PRM-030: RFP Campaign Lifecycle', () => {
 
     // The lifecycle campaign should show "Awarded"
     const pageText = await page.locator('body').textContent().catch(() => '')
-    const hasStatusBadges = pageText?.includes('Awarded') || pageText?.includes('Open') || pageText?.includes('Draft')
+    const hasStatusBadges = pageText?.includes('Awarded') || pageText?.includes('Published') || pageText?.includes('Open') || pageText?.includes('Draft')
     expect(hasStatusBadges, 'List should show status badges').toBe(true)
   })
 

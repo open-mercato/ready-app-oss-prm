@@ -29,6 +29,7 @@ type RfpCampaign = {
 
 const STATUS_BADGE: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+  published: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
   open: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
   awarded: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
   closed: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
@@ -194,7 +195,7 @@ export default function RfpCampaignDetailPage() {
 
     if (call.ok) {
       flash(t('partnerships.rfpCampaigns.published', 'Campaign published successfully'))
-      setCampaign({ ...campaign, status: 'open' })
+      setCampaign({ ...campaign, status: 'published' })
     } else {
       const result = call.result as Record<string, unknown> | null
       flash(typeof result?.error === 'string' ? result.error : t('partnerships.rfpCampaigns.publishError', 'Failed to publish campaign'))
@@ -236,6 +237,7 @@ export default function RfpCampaignDetailPage() {
   const agencyIds = campaign.selectedAgencyIds ?? campaign.selected_agency_ids
   const winnerId = campaign.winnerOrganizationId ?? campaign.winner_organization_id
   const showResponseForm = canRespond && !canManage
+  const isActiveCampaign = campaign.status === 'published' || campaign.status === 'open'
 
   return (
     <Page>
@@ -329,7 +331,7 @@ export default function RfpCampaignDetailPage() {
           </div>
 
           {/* Response submit/edit form (BD view) */}
-          {showResponseForm && deadlineDate && deadlineDate > new Date() && campaign.status !== 'awarded' && campaign.status !== 'closed' && (
+          {showResponseForm && isActiveCampaign && deadlineDate && deadlineDate > new Date() && (
             <div className="rounded-lg border bg-card p-6">
               <h3 className="text-sm font-semibold mb-3">
                 {t('partnerships.rfpResponses.yourResponse', 'Your Response')}
@@ -378,7 +380,7 @@ export default function RfpCampaignDetailPage() {
                       <span className="text-sm font-medium">
                         {r.agencyName || 'Agency'}
                       </span>
-                      {canManage && campaign.status !== 'awarded' && campaign.status !== 'closed' && (
+                      {canManage && isActiveCampaign && (
                         <button
                           onClick={() => handleAward(r.organizationId)}
                           disabled={awarding}

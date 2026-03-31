@@ -244,6 +244,7 @@
       },
       "status": {
         "draft": "Draft",
+        "published": "Published",
         "open": "Open",
         "awarded": "Awarded",
         "closed": "Closed"
