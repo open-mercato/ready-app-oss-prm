@@ -6,13 +6,15 @@ import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/b
 import { EmptyState } from '@open-mercato/ui/backend/EmptyState'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
+import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Badge } from '@open-mercato/ui/primitives/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@open-mercato/ui/primitives/dialog'
 import { Spinner } from '@open-mercato/ui/primitives/spinner'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import type { CaseStudyValuesInput } from '../../../data/validators'
 
-const ENTITY_ID = 'partnerships:case_study'
+const API_PATH = '/api/partnerships/case-studies'
 
 const INDUSTRY_SUGGESTIONS = [
   'Finance', 'Healthcare', 'Retail', 'Manufacturing',
@@ -46,18 +48,37 @@ const DURATION_OPTIONS = [
 
 type CaseStudyRecord = Record<string, unknown> & {
   id: string
-  title?: string
+  title: string
   industry?: string | string[]
   technologies?: string | string[]
-  budget_bucket?: string
-  duration_bucket?: string
+  budget_bucket: string
+  duration_bucket: string
+  client_name?: string | null
   description?: string
-  created_at?: string
+  challenges?: string | null
+  solution?: string | null
+  results?: string | null
+  is_public?: boolean
+  created_at?: string | null
 }
 
 type ListResponse = {
   items: CaseStudyRecord[]
   total: number
+}
+
+const EMPTY_FORM_VALUES: CaseStudyValuesInput = {
+  title: '',
+  industry: [],
+  technologies: [],
+  budget_bucket: '',
+  duration_bucket: '',
+  client_name: '',
+  description: '',
+  challenges: '',
+  solution: '',
+  results: '',
+  is_public: false,
 }
 
 // ---------------------------------------------------------------------------
@@ -95,6 +116,23 @@ function parseTags(value: unknown): string[] {
   return []
 }
 
+function toFormValues(record?: CaseStudyRecord | null): CaseStudyValuesInput {
+  if (!record) return { ...EMPTY_FORM_VALUES }
+  return {
+    title: record.title ?? '',
+    industry: parseTags(record.industry),
+    technologies: parseTags(record.technologies),
+    budget_bucket: record.budget_bucket ?? '',
+    duration_bucket: record.duration_bucket ?? '',
+    client_name: record.client_name ?? '',
+    description: record.description ?? '',
+    challenges: record.challenges ?? '',
+    solution: record.solution ?? '',
+    results: record.results ?? '',
+    is_public: Boolean(record.is_public),
+  }
+}
+
 function TagCell({ values, variant }: { values: unknown; variant?: 'secondary' | 'outline' }) {
   const tags = parseTags(values)
   if (tags.length === 0) return null
@@ -114,14 +152,17 @@ function TagCell({ values, variant }: { values: unknown; variant?: 'secondary' |
 
 export default function CaseStudiesPage() {
   const t = useT()
+  const scopeVersion = useOrganizationScopeVersion()
   const [records, setRecords] = React.useState<CaseStudyRecord[]>([])
   const [loading, setLoading] = React.useState(true)
   const [dialogOpen, setDialogOpen] = React.useState(false)
+  const [editingRecord, setEditingRecord] = React.useState<CaseStudyRecord | null>(null)
+  const [deletingId, setDeletingId] = React.useState<string | null>(null)
 
   const loadRecords = React.useCallback(async () => {
     setLoading(true)
     const call = await apiCall<ListResponse>(
-      `/api/entities/records?entityId=${encodeURIComponent(ENTITY_ID)}&pageSize=100`,
+      API_PATH,
     )
     if (call.ok && call.result) {
       setRecords(call.result.items ?? [])
@@ -131,23 +172,70 @@ export default function CaseStudiesPage() {
 
   React.useEffect(() => {
     loadRecords()
-  }, [loadRecords])
+  }, [loadRecords, scopeVersion])
 
-  const handleCreate = async (values: Record<string, unknown>) => {
-    const call = await apiCall<{ ok: boolean }>('/api/entities/records', {
-      method: 'POST',
+  const closeDialog = () => {
+    setDialogOpen(false)
+    setEditingRecord(null)
+  }
+
+  const openCreateDialog = () => {
+    setEditingRecord(null)
+    setDialogOpen(true)
+  }
+
+  const openEditDialog = (record: CaseStudyRecord) => {
+    setEditingRecord(record)
+    setDialogOpen(true)
+  }
+
+  const handleSubmit = async (values: CaseStudyValuesInput) => {
+    const call = await apiCall<{ ok: boolean; item?: CaseStudyRecord }>(API_PATH, {
+      method: editingRecord ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        entityId: ENTITY_ID,
         values,
+        ...(editingRecord ? { recordId: editingRecord.id } : {}),
       }),
     })
     if (call.ok) {
-      flash(t('partnerships.caseStudies.created'), 'success')
-      setDialogOpen(false)
+      flash(
+        editingRecord
+          ? t('partnerships.caseStudies.updated')
+          : t('partnerships.caseStudies.created'),
+        'success',
+      )
+      closeDialog()
       await loadRecords()
     } else {
-      flash(t('partnerships.caseStudies.createError'), 'error')
+      flash(
+        editingRecord
+          ? t('partnerships.caseStudies.updateError')
+          : t('partnerships.caseStudies.createError'),
+        'error',
+      )
     }
+  }
+
+  const handleDelete = async (record: CaseStudyRecord) => {
+    if (!confirm(t('partnerships.caseStudies.confirmDelete'))) {
+      return
+    }
+
+    setDeletingId(record.id)
+    const call = await apiCall<{ ok: boolean }>(API_PATH, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recordId: record.id }),
+    })
+
+    if (call.ok) {
+      flash(t('partnerships.caseStudies.deleted'), 'success')
+      setRecords((prev) => prev.filter((item) => item.id !== record.id))
+    } else {
+      flash(t('partnerships.caseStudies.deleteError'), 'error')
+    }
+    setDeletingId(null)
   }
 
   if (loading) {
@@ -167,7 +255,7 @@ export default function CaseStudiesPage() {
       <PageBody>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold">{t('partnerships.caseStudies.title')}</h2>
-          <Button type="button" onClick={() => setDialogOpen(true)}>
+          <Button type="button" onClick={openCreateDialog}>
             {t('partnerships.caseStudies.add')}
           </Button>
         </div>
@@ -176,7 +264,7 @@ export default function CaseStudiesPage() {
           <EmptyState
             title={t('partnerships.caseStudies.empty')}
             description={t('partnerships.caseStudies.emptyDescription')}
-            action={{ label: t('partnerships.caseStudies.addFirst'), onClick: () => setDialogOpen(true) }}
+            action={{ label: t('partnerships.caseStudies.addFirst'), onClick: openCreateDialog }}
           />
         ) : (
           <div className="space-y-3">
@@ -203,26 +291,60 @@ export default function CaseStudiesPage() {
                       )}
                     </div>
                   </div>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {record.created_at ? new Date(record.created_at as string).toLocaleDateString() : ''}
-                  </span>
+                  <div className="shrink-0 text-right">
+                    <span className="block text-xs text-muted-foreground">
+                      {record.created_at ? new Date(record.created_at).toLocaleDateString() : ''}
+                    </span>
+                    <div className="mt-2 flex items-center justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="h-auto px-0 text-xs"
+                        onClick={() => openEditDialog(record)}
+                      >
+                        {t('partnerships.caseStudies.edit')}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        disabled={deletingId === record.id}
+                        className="h-auto px-0 text-xs text-destructive disabled:opacity-50"
+                        onClick={() => handleDelete(record)}
+                      >
+                        {deletingId === record.id ? '...' : t('partnerships.caseStudies.delete')}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={(open) => {
+          if (!open) closeDialog()
+          else setDialogOpen(true)
+        }}>
           <DialogContent className="sm:max-w-2xl [&_.grid]:!grid-cols-1">
             <DialogHeader>
-              <DialogTitle>{t('partnerships.caseStudies.add')}</DialogTitle>
+              <DialogTitle>
+                {editingRecord
+                  ? t('partnerships.caseStudies.editTitle')
+                  : t('partnerships.caseStudies.add')}
+              </DialogTitle>
             </DialogHeader>
-            <CrudForm
+            <CrudForm<CaseStudyValuesInput>
+              key={editingRecord ? editingRecord.id : 'create'}
               fields={formFields}
               groups={formGroups}
-              onSubmit={handleCreate}
+              initialValues={toFormValues(editingRecord)}
+              onSubmit={handleSubmit}
               embedded={true}
-              submitLabel={t('partnerships.caseStudies.submitButton')}
+              submitLabel={editingRecord
+                ? t('partnerships.caseStudies.saveButton')
+                : t('partnerships.caseStudies.submitButton')}
             />
           </DialogContent>
         </Dialog>

@@ -86,6 +86,21 @@ const optionalDateString = z.preprocess((value) => {
   return trimmed.length > 0 ? trimmed : null
 }, z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable())
 
+const requiredTrimmedString = (field: string) => z.preprocess((value) => {
+  if (typeof value !== 'string') return value
+  return value.trim()
+}, z.string().min(1, `${field} is required`))
+
+const optionalBoolean = z.preprocess((value) => {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'string') {
+    const trimmed = value.trim().toLowerCase()
+    if (trimmed === 'true') return true
+    if (trimmed === 'false') return false
+  }
+  return false
+}, z.boolean())
+
 export const agencyProfileValuesSchema = z.object({
   services: optionalStringArray,
   industries: optionalStringArray,
@@ -117,6 +132,38 @@ export const agencyProfileUpdateSchema = z.object({
 export type AgencyProfileValuesInput = z.infer<typeof agencyProfileValuesSchema>
 export type AgencyProfileEditableValuesInput = z.infer<typeof agencyProfileEditableValuesSchema>
 export type AgencyProfileUpdateInput = z.infer<typeof agencyProfileUpdateSchema>
+
+export const caseStudyValuesSchema = z.object({
+  title: requiredTrimmedString('title'),
+  industry: optionalStringArray.refine((value) => value.length > 0, 'At least one industry is required'),
+  technologies: optionalStringArray.refine((value) => value.length > 0, 'At least one technology is required'),
+  budget_bucket: requiredTrimmedString('budget_bucket'),
+  duration_bucket: requiredTrimmedString('duration_bucket'),
+  client_name: optionalTrimmedString,
+  description: optionalTrimmedString,
+  challenges: optionalTrimmedString,
+  solution: optionalTrimmedString,
+  results: optionalTrimmedString,
+  is_public: optionalBoolean.default(false),
+}).strict()
+
+export const caseStudyCreateSchema = z.object({
+  values: caseStudyValuesSchema,
+})
+
+export const caseStudyUpdateSchema = z.object({
+  recordId: z.string().uuid('recordId must be a valid UUID'),
+  values: caseStudyValuesSchema,
+})
+
+export const caseStudyDeleteSchema = z.object({
+  recordId: z.string().uuid('recordId must be a valid UUID'),
+})
+
+export type CaseStudyValuesInput = z.infer<typeof caseStudyValuesSchema>
+export type CaseStudyCreateInput = z.infer<typeof caseStudyCreateSchema>
+export type CaseStudyUpdateInput = z.infer<typeof caseStudyUpdateSchema>
+export type CaseStudyDeleteInput = z.infer<typeof caseStudyDeleteSchema>
 
 export const partnerLicenseDealCreateSchema = z.object({
   organizationId: z.string().uuid(),

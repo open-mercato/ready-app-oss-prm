@@ -82,6 +82,8 @@ test.describe('TC-PRM-008: Seed Data Verification UI', () => {
   test('T2: Admin sees seeded case studies on case studies page', async ({ page }) => {
     await loginInBrowser(page, adminToken)
     await page.goto(`${BASE}/backend/partnerships/case-studies`)
+    await expect(page.getByRole('link', { name: 'Case Studies' }).first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('link', { name: 'Agency Profile' }).first()).toBeVisible({ timeout: 15_000 })
 
     // Case studies page uses cards, not table. Look for case study entries.
     // The page has h3 elements for each case study title.
@@ -95,6 +97,73 @@ test.describe('TC-PRM-008: Seed Data Verification UI', () => {
     await expect(firstTitle).toBeVisible()
     const titleText = await firstTitle.textContent()
     expect(titleText?.trim().length, 'Case study should have a title').toBeGreaterThan(0)
+  })
+
+  test('T2a: Admin can edit and delete a case study from the page', async ({ page, request }) => {
+    const stamp = Date.now()
+    const createRes = await apiRequest(request, 'POST', '/api/partnerships/case-studies', {
+      token: adminToken,
+      data: {
+        values: {
+          title: `QA Case Study ${stamp}`,
+          industry: ['Technology'],
+          technologies: ['React'],
+          budget_bucket: '10k-50k',
+          duration_bucket: '1-3 months',
+          client_name: 'QA Client',
+          description: 'Temporary case study for edit/delete coverage.',
+          challenges: 'Challenge',
+          solution: 'Solution',
+          results: 'Results',
+          is_public: false,
+        },
+      },
+    })
+    expect(createRes.ok()).toBe(true)
+
+    await loginInBrowser(page, adminToken)
+    await page.goto(`${BASE}/backend/partnerships/case-studies`)
+
+    const card = page.locator('.rounded-lg.border.p-4').filter({ hasText: `QA Case Study ${stamp}` }).first()
+    await expect(card).toBeVisible({ timeout: 15_000 })
+
+    await card.getByRole('button', { name: 'Edit' }).click()
+    await page.getByLabel('Title').fill(`QA Case Study ${stamp} Updated`)
+    await page.getByRole('button', { name: 'Save Case Study' }).click()
+    await expect(page.getByText('Case study updated successfully')).toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('.rounded-lg.border.p-4').filter({ hasText: `QA Case Study ${stamp} Updated` }).first()).toBeVisible()
+
+    page.once('dialog', (dialog) => dialog.accept())
+    await page.locator('.rounded-lg.border.p-4').filter({ hasText: `QA Case Study ${stamp} Updated` }).first().getByRole('button', { name: 'Delete' }).click()
+    await expect(page.getByText('Case study deleted successfully')).toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('.rounded-lg.border.p-4').filter({ hasText: `QA Case Study ${stamp} Updated` })).toHaveCount(0)
+  })
+
+  test('T2b: BD can manage case studies on the case studies page', async ({ page }) => {
+    await loginInBrowser(page, bdToken)
+    await page.goto(`${BASE}/backend/partnerships/case-studies`)
+
+    await expect(page.getByRole('link', { name: 'Case Studies' }).first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('button', { name: 'Add Case Study' })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('button', { name: 'Edit' }).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Delete' }).first()).toBeVisible()
+  })
+
+  test('T2c: PM can manage case studies when scoped to an agency org', async ({ page, request }) => {
+    const agenciesRes = await apiRequest(request, 'GET', '/api/partnerships/agencies', { token: pmToken })
+    expect(agenciesRes.ok()).toBe(true)
+    const agenciesBody = await agenciesRes.json()
+    const agencies = agenciesBody.agencies ?? []
+    const acme = agencies.find((agency: { name?: string; organizationId?: string }) => agency.name?.toLowerCase().includes('acme'))
+    expect(acme?.organizationId, 'Acme org should be visible to PM').toBeTruthy()
+
+    await loginInBrowser(page, pmToken)
+    await page.context().addCookies([{ name: 'om_selected_org', value: acme.organizationId, url: BASE }])
+    await page.goto(`${BASE}/backend/partnerships/case-studies`)
+
+    await expect(page.getByRole('button', { name: 'Add Case Study' })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('button', { name: 'Edit' }).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Delete' }).first()).toBeVisible()
   })
 
   // -------------------------------------------------------------------------

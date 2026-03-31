@@ -153,11 +153,20 @@
       "title": "Case Studies",
       "add": "Add Case Study",
       "addFirst": "Add your first case study",
+      "edit": "Edit",
+      "editTitle": "Edit Case Study",
+      "delete": "Delete",
       "empty": "No case studies yet.",
       "emptyDescription": "Case studies showcase your agency's past projects and help match you with RFP campaigns.",
       "created": "Case study created successfully",
       "createError": "Failed to create case study",
-      "submitButton": "Create Case Study"
+      "updated": "Case study updated successfully",
+      "updateError": "Failed to update case study",
+      "deleted": "Case study deleted successfully",
+      "deleteError": "Failed to delete case study",
+      "confirmDelete": "Are you sure you want to delete this case study?",
+      "submitButton": "Create Case Study",
+      "saveButton": "Save Case Study"
     },
     "rfpCampaigns": {
       "title": "RFP Campaigns",

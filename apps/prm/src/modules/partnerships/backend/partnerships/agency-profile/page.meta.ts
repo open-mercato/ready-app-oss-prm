@@ -3,12 +3,12 @@ export const metadata = {
   requireFeatures: ['entities.records.manage'],
   pageTitle: 'Agency Profile',
   pageTitleKey: 'partnerships.agencyProfile.title',
-  pageGroup: 'Partnerships',
-  pageGroupKey: 'partnerships.nav.group',
+  pageGroup: 'Settings',
+  pageGroupKey: 'backend.nav.settings',
   pagePriority: 10,
   pageOrder: 115,
   breadcrumb: [
-    { label: 'Partnerships', labelKey: 'partnerships.nav.group' },
+    { label: 'Settings', labelKey: 'backend.nav.settings' },
     { label: 'Agency Profile', labelKey: 'partnerships.agencyProfile.title' },
   ],
 }
