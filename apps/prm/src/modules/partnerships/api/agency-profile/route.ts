@@ -16,8 +16,8 @@ import {
 
 export const metadata = {
   path: '/partnerships/agency-profile',
-  GET: { requireAuth: true, requireFeatures: ['entities.records.manage'] },
-  PUT: { requireAuth: true, requireFeatures: ['entities.records.manage'] },
+  GET: { requireAuth: true, requireFeatures: ['partnerships.agency-profile.manage'] },
+  PUT: { requireAuth: true, requireFeatures: ['partnerships.agency-profile.manage'] },
 }
 
 type AgencyProfileResponse = {

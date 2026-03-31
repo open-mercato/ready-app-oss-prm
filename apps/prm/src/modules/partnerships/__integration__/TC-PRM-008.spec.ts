@@ -166,6 +166,23 @@ test.describe('TC-PRM-008: Seed Data Verification UI', () => {
     await expect(page.getByRole('button', { name: 'Delete' }).first()).toBeVisible()
   })
 
+  test('T2d: PM sees agency profile in settings and can open it when scoped to an agency org', async ({ page, request }) => {
+    const agenciesRes = await apiRequest(request, 'GET', '/api/partnerships/agencies', { token: pmToken })
+    expect(agenciesRes.ok()).toBe(true)
+    const agenciesBody = await agenciesRes.json()
+    const agencies = agenciesBody.agencies ?? []
+    const acme = agencies.find((agency: { name?: string; organizationId?: string }) => agency.name?.toLowerCase().includes('acme'))
+    expect(acme?.organizationId, 'Acme org should be visible to PM').toBeTruthy()
+
+    await loginInBrowser(page, pmToken)
+    await page.context().addCookies([{ name: 'om_selected_org', value: acme.organizationId, url: BASE }])
+    await page.goto(`${BASE}/backend/partnerships/agency-profile`)
+
+    await expect(page.getByRole('link', { name: 'Agency Profile' }).first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('heading', { name: 'Agency Profile' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Save Profile' })).toBeVisible()
+  })
+
   // -------------------------------------------------------------------------
   // T3: Agencies page shows demo organizations
   // -------------------------------------------------------------------------

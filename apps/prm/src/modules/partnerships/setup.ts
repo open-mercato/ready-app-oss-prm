@@ -502,6 +502,7 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
     ...BACKEND_BASELINE_FEATURES,
     'customers.*',
     'partnerships.agencies.manage',
+    'partnerships.agency-profile.manage',
     'partnerships.case-studies.manage',
     'partnerships.wic.manage',
     'partnerships.wic.view',
