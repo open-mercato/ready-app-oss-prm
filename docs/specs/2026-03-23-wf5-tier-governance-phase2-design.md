@@ -22,7 +22,7 @@ Phase 2 governance: monthly tier evaluation using all 3 KPIs (WIC + WIP + MIN), 
 | 1 | PartnerLicenseDeal entity + PM CRUD | ORM entity + makeCrudRoute + backend page | None |
 | 2 | Cross-org company search + attribution UI | Custom GET route + backend page | Commit 1 |
 | 3 | KPI aggregation worker + grace period state machine | ORM entities + worker | Commit 1, WF3 |
-| 4 | Tier evaluation workflow + AgencyTierChanged event | Workflow JSON + events.ts | Commit 3 |
+| 4 | Tier evaluation workflow + PM approval route | Workflow JSON + API route | Commit 3 |
 | 5 | Cron trigger API | POST routes + crontab.example | Commit 4 |
 | 6 | Tier progress dashboard widget | Widget injection | Commit 3, 4 |
 | 7 | seedExamples Phase 2 | setup.ts seedExamples | Commits 1-6 |
@@ -174,7 +174,8 @@ Unique constraint: one open proposal per org per period — `(organization_id, e
 | `id` | UUID PK | auto |
 | `organization_id` | UUID FK | Non-null |
 | `tier` | string | Tier name |
-| `effective_date` | date | |
+| `valid_from` | date | Assignment date (always today) |
+| `valid_until` | timestamp | Nullable — scheduled review date, set by PM |
 | `approved_by` | UUID | userId of PM |
 | `reason` | string | Nullable |
 | `tenant_id` | UUID | Standard |
@@ -215,18 +216,7 @@ Unique constraint: one open proposal per org per period — `(organization_id, e
 
 ---
 
-## Commit 4: Tier Evaluation Workflow + AgencyTierChanged Event
-
-### AgencyTierChanged Event
-
-Add to `events.ts`:
-```
-{ id: 'partnerships.agency.tier_changed', label: 'Agency Tier Changed', entity: 'tier_assignment', category: 'lifecycle' }
-```
-
-**Payload:** `{ agencyId, previousTier, newTier, effectiveDate, approvedBy }` — all non-null.
-
-Published ONLY on approval, NOT on rejection.
+## Commit 4: Tier Evaluation Workflow + PM Approval Route
 
 ### Workflow Definition
 
@@ -236,16 +226,17 @@ Seeded via `setup.ts seedDefaults`:
 START
   → AUTOMATED: CALL_API POST /api/queue/partnerships/tier-evaluation
   → USER_TASK "Review Tier Change Proposal" (partnership_manager)
-      form: KPI snapshot (read-only), approve/reject radio, reason textarea
+      form: KPI snapshot (read-only), approve/reject radio, reason textarea, validUntil date picker (required on approve)
   → On APPROVE:
       UPDATE TierChangeProposal → status=Approved, resolvedAt=now
-      UPDATE/CREATE TierAssignment → new tier, effectiveDate, approvedBy
-      EMIT_EVENT partnerships.agency.tier_changed
+      UPDATE/CREATE TierAssignment → new tier, validFrom=now, validUntil=PM's choice, approvedBy
       WRITE audit log entry (agencyId, previousTier, newTier, reason, approvedBy, timestamp)
   → On REJECT:
       UPDATE TierChangeProposal → status=Rejected, rejectionReason, resolvedAt=now
   → END
 ```
+
+> **Note:** `AgencyTierChanged` event removed — had zero consumers. Re-add when a downstream consumer is implemented.
 
 ### Enqueue API
 
@@ -256,7 +247,6 @@ START
 
 ### Files
 
-- `src/modules/partnerships/events.ts` — add AgencyTierChanged
 - `src/modules/partnerships/examples/tier-evaluation-workflow.json`
 - `src/modules/partnerships/setup.ts` — seed workflow definition
 - `src/modules/partnerships/api/post/enqueue-tier-evaluation.ts`
@@ -368,8 +358,7 @@ All verified on upstream/main — **zero upstream changes needed:**
 - [ ] MIN counted only if type=enterprise, status=won, is_renewal=false
 - [ ] TierAssignment only mutated via PM-approval path
 - [ ] Approved TierChangeProposal immutable — cannot re-approve or re-reject
-- [ ] AgencyTierChanged published on every PM approval with full payload
-- [ ] AgencyTierChanged NOT published on rejection
+- ~~AgencyTierChanged~~ *(Removed — zero consumers. Re-add when needed.)*
 - [ ] Agency users cannot create/update/delete PartnerLicenseDeal (PM-only)
 - [ ] MIN calendar year boundary is UTC
 - [ ] KPI thresholds are conjunctive — all 3 must meet

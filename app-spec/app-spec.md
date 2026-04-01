@@ -69,9 +69,9 @@ All 5 must work for the flywheel to spin. Missing any one = broken loop.
 | **WIC** | Wildly Important Contribution. Code contributions to OM codebase, scored by level (L1-L4) with impact bonus and bounty multiplier. | GitHub PRs, scored by algorithm (LLM-assisted) | Monthly |
 | **WIP** | Work In Progress. Deals that first reached "Sales Qualified Lead" stage or above during a given month. Stamped at qualification moment via `wip_registered_at` custom field. Once stamped, immutable — deal stage changes don't affect the count. | CRM deals (customers module), stamped by API interceptor | Monthly |
 | **MIN** | Minimum Implementations Needed. Enterprise license deals sold and attributed to an agency via CRM company lookup. PM searches across all agencies' CRMs to find which agency brought the company into pipeline, then creates attribution record. | PM-created PartnerLicenseDeal linked to CRM Company | Calendar year (Jan 1 – Dec 31 UTC) |
-| **Tier** | Partnership level determining agency visibility and lead priority. 4 levels. Distinct from TierEligibility (computed) — Tier refers to the PM-approved TierAssignment. | Calculated from WIC + WIP + MIN thresholds | Evaluated monthly, valid 12 months |
+| **Tier** | Partnership level determining agency visibility and lead priority. 4 levels. Distinct from TierEligibility (computed) — Tier refers to the PM-approved TierAssignment. | Calculated from WIC + WIP + MIN thresholds | Evaluated monthly, assigned with scheduled review date (`validUntil`) |
 | **TierEligibility** | Computed comparison of an agency's current KPIs (WIC+WIP+MIN) against tier thresholds. Ephemeral, recalculated each evaluation. Not the actual tier — just the recommendation. | KPI aggregation worker | Monthly |
-| **TierAssignment** | The actual tier an agency holds. Durable, auditable, requires PM approval to change. Published via AgencyTierChanged event. | PM approval via workflow | Until next evaluation |
+| **TierAssignment** | The actual tier an agency holds, with a scheduled review date (`validFrom` to `validUntil`). Durable, auditable, requires PM approval to change. When `validUntil` passes, tier remains operationally active but PM is alerted (PendingReview computed state). `validUntil` nullable for legacy assignments. | PM approval via workflow | `validFrom` (assignment date) to `validUntil` (scheduled review date, set by PM) |
 | **TierChangeProposal** | A proposal to upgrade or downgrade an agency's tier. States: Draft → PendingApproval → Approved | Rejected. Invariant: at most one open proposal per org per period. | Tier evaluation worker | Per evaluation period |
 | **Program Scope** | PM-level visibility grant spanning all partner organizations. Distinct from org-level scope. Implementation: `organizationsJson: null` in auth module — but business rules reference Program Scope, not the implementation detail. | Auth module | — |
 | **RFP** | Request for Proposal. PM distributes leads to qualified agencies, agencies respond with structured proposals. | PM creates campaign, agencies respond | Per campaign |
@@ -85,7 +85,7 @@ All 5 must work for the flywheel to spin. Missing any one = broken loop.
 | **ContributionUnit** | Aggregate representing one person's contribution to one feature in one month. Dedup key: person + month + feature_key (enforced as invariant at creation, not just grouping). `organization_id` set at PR merge time. | WIC scoring algorithm or manual import | Monthly |
 | **WicAssessmentSource** | Enum tracking how WIC scores were produced: `manual_import` (PM uploads) or `automated_pipeline` (GitHub+LLM). Each import for a given org+month replaces the previous one; old version archived with timestamp. | WIC import/pipeline | Per import |
 | **AgencyCreated** | Domain event published when PM creates a new agency via "Add Agency" flow. Payload: organizationId, adminUserId, createdBy, demoDataSeeded, createdAt. Downstream consumers: audit trail, tier evaluation (enrollment timestamp for grace period), future notifications. | "Add Agency" API route | Per agency creation |
-| **AgencyTierChanged** | Domain event published when PM approves a tier change. Payload: agencyId, previousTier, newTier, effectiveDate, approvedBy. Downstream consumers: RFP audience filtering, agency dashboard, future website visibility. | Tier approval workflow | Per tier change |
+| ~~**AgencyTierChanged**~~ | *(Removed — event was emitted but had zero consumers. Re-add with correct payload when a downstream consumer is implemented.)* | — | — |
 | **CampaignPublished** | Domain event: PM published an RFP campaign, agencies notified. | RFP workflow | Per campaign |
 | **RfpAwarded** | Domain event: PM selected winning agency for an RFP. Payload: rfpId, winningAgencyId. | RFP workflow | Per campaign |
 
@@ -113,7 +113,8 @@ Source: Mat's business requirements (session 2026-03-19).
 - Grace period state machine: `OK` → `GracePeriod` (first month below threshold, no proposal generated) → `ProposedDowngrade` (second consecutive month below, proposal created for PM). `GracePeriod` resets to `OK` if agency recovers within the month. Entity: `TierEvaluationState { agencyId, currentTier, evaluationMonth, gracePeriodStartedAt, status }`
 - Downgrade: PM approval required before tier change takes effect. TierChangeProposal states: Draft → PendingApproval → Approved | Rejected. One open proposal per org per period.
 - Upgrade: no grace period needed. System proposes, PM approves.
-- History: all tier changes audited with reason and approver. Published via AgencyTierChanged domain event.
+- Validity period: every TierAssignment has `validFrom` (assignment date, always today) and `validUntil` (scheduled review date, set by PM, nullable for legacy). When `validUntil` passes, agency and PM see alerts. Tier remains operationally active until PM takes action. See `docs/specs/2026-04-01-tier-validity-dates.md`.
+- History: all tier changes audited with reason and approver.
 
 #### 1.4.2 KPI Formulas
 
@@ -251,7 +252,7 @@ API contracts use standard OM entities module: `POST /api/entities/definitions.b
 - [x] KPIs: WIP = stamp-based (`wip_registered_at`), immutable, first qualification only. MIN = calendar year, cross-org attribution workflow.
 - [x] Access control: permissions hierarchy (Admin > BD > Contributor), cross-org visibility (PM Program Scope), Admin full CRM write, BD own records only
 - [x] Data ownership: WIC system-generated with versioned import, WIP stamp-based, MIN PM-generated via cross-org search
-- [x] Domain events: AgencyTierChanged, CampaignPublished, RfpAwarded
+- [x] Domain events: CampaignPublished, RfpAwarded (AgencyTierChanged removed — zero consumers)
 - [x] Challenger review: 2026-03-20 — all CRITICAL findings addressed, 3 pushbacks documented
 
 ---
@@ -409,7 +410,7 @@ API contracts use standard OM entities module: `POST /api/entities/definitions.b
 
 ### WF5: Tier Governance
 
-**Journey:** System reads TierEvaluationState per org -> aggregates WIC+WIP+MIN for current period -> computes TierEligibility against 4 tier thresholds -> checks grace period state machine (OK → GracePeriod → ProposedDowngrade) -> generates TierChangeProposal if needed (one per org per period max) -> PM reviews + approves/rejects -> system publishes AgencyTierChanged event -> agency sees new status + progress to next level
+**Journey:** System reads TierEvaluationState per org -> aggregates WIC+WIP+MIN for current period -> computes TierEligibility against 4 tier thresholds -> checks grace period state machine (OK → GracePeriod → ProposedDowngrade) -> generates TierChangeProposal if needed (one per org per period max) -> PM reviews + approves/rejects (sets `validUntil` on approve) -> new TierAssignment created -> agency sees new status + validity dates + progress to next level
 
 **ROI:** Automated governance saves PM ~4h/week. Network quality maintained.
 
@@ -417,8 +418,8 @@ API contracts use standard OM entities module: `POST /api/entities/definitions.b
 
 **Boundaries:**
 - Starts when: Scheduled job triggers (monthly)
-- Ends when: PM approved/rejected tier change proposal, AgencyTierChanged event published (if approved), agency sees updated status
-- NOT this workflow: KPI data collection (WF2, WF3), RFP matching based on tier (WF4). RFP audience filtering uses current TierAssignment — until AgencyTierChanged is published, old tier governs.
+- Ends when: PM approved/rejected tier change proposal, new TierAssignment created (if approved) with `validUntil`, agency sees updated status
+- NOT this workflow: KPI data collection (WF2, WF3), RFP matching based on tier (WF4). RFP audience filtering uses current TierAssignment.
 
 **Edge cases:**
 1. Agency on tier boundary (4 WIC, needs 5) -> first month: TierEvaluationState moves to GracePeriod, no proposal generated. Second consecutive month: moves to ProposedDowngrade, TierChangeProposal created for PM. If agency recovers in grace month: resets to OK.
@@ -434,7 +435,7 @@ PM has license sale -> opens "Create License Deal" -> searches all companies acr
 - PM approval -> `workflows` USER_TASK ✅
 - Tier history / audit -> `audit_logs` module ✅
 - TierChangeProposal state machine -> `workflows` module ✅
-- AgencyTierChanged event -> platform event system ✅
+- ~~AgencyTierChanged event~~ *(Removed — zero consumers)*
 - **Gap: KPI aggregation + TierEligibility computation** — worker (~50 lines)
 - **Gap: Grace period state machine (TierEvaluationState entity)** — bundled with aggregation worker
 - **Gap: Tier status widget** — widget injection on dashboard (~50 lines)
@@ -447,7 +448,7 @@ PM has license sale -> opens "Create License Deal" -> searches all companies acr
 - [x] Boundaries — start, end, NOT-this-workflow for all 5 `Mat`
 - [x] 3-5 edge cases per workflow — production-realistic scenarios `Mat`
 - [x] Every step mapped to OM module with gap identified `Piotr`
-- [x] Domain events explicitly named — AgencyTierChanged, CampaignPublished, RfpAwarded `Mat`
+- [x] Domain events explicitly named — CampaignPublished, RfpAwarded (AgencyTierChanged removed — zero consumers) `Mat`
 - [x] Challenger review: 2026-03-20 — WIP formula fixed (stamp-based), MIN attribution workflow added, tier governance state machine added, 3 pushbacks documented
 
 #### Checklist (overall)
@@ -629,7 +630,7 @@ RFP lifecycle uses workflows module: START → WAIT_FOR_TIMER (deadline) → USE
 | KPI aggregation (WIC+WIP+MIN) | queue worker + partnerships | Gap: worker + logic | 1 | `app` | Worker reads WIC (from ContributionUnits), WIP (from `wip_registered_at` stamps), MIN (from PartnerLicenseDeals). Computes TierEligibility per org. |
 | Grace period check + TierChangeProposal | partnerships | Gap: state machine + entity | 1 | `app` | Reads TierEvaluationState, applies grace period state machine (OK → GracePeriod → ProposedDowngrade). Creates TierChangeProposal (one per org per period max). Bundled with aggregation. |
 | PM approval | workflows USER_TASK | Covered | 0 | — | Workflow JSON definition (bundled with tier workflow) |
-| Tier workflow definition | workflows | Gap: workflow JSON | 1 | `app` | Tier evaluation workflow: START → AUTOMATED (aggregate + grace check) → USER_TASK (PM approval) → END. Publishes AgencyTierChanged event on approval. |
+| Tier workflow definition | workflows | Gap: workflow JSON | 1 | `app` | Tier evaluation workflow: START → AUTOMATED (aggregate + grace check) → USER_TASK (PM approval, sets `validUntil`) → END. |
 | Tier updated + audit | partnerships | Gap: command | 0 | — | Bundled with workflow — UPDATE_ENTITY activity + audit log |
 | Agency sees tier + progress | partnerships backend | Gap: widget | 1 | `app` | Widget injection on dashboard (with grace period warning, TierEligibility vs TierAssignment) |
 | MIN attribution (cross-org search) | partnerships + search | Gap: search + attribution UI | 1 | `app` | Cross-org company search + CRM read-only jump + PartnerLicenseDeal creation. Moved from Phase 3 to Phase 2. |
@@ -895,7 +896,7 @@ Success: System computes TierEligibility above current TierAssignment, generates
 Success: First month below threshold: TierEvaluationState moves to GracePeriod, no proposal. Second consecutive month: moves to ProposedDowngrade, TierChangeProposal (type: downgrade) created. If agency recovers during grace month: state resets to OK, no proposal.
 
 **US-5.3** As PM, I approve or reject a tier change with a reason so that governance is auditable.
-Success: PM sees proposal (TierChangeProposal in PendingApproval state), approves/rejects with reason. On approval: TierAssignment updated, AgencyTierChanged event published, audit log created. On rejection: proposal moves to Rejected state with reason.
+Success: PM sees proposal (TierChangeProposal in PendingApproval state), approves/rejects with reason and sets `validUntil` (required on approve). On approval: TierAssignment created with `validFrom`=today and `validUntil`, audit log created. On rejection: proposal moves to Rejected state with reason.
 
 **US-5.4** As Agency Admin, I see my agency's current tier and progress toward next level so that I can motivate my team.
 Success: Dashboard shows: current tier, KPI values vs thresholds, % progress to next tier, grace period warning if below threshold.
@@ -985,7 +986,7 @@ Success: Every file follows OM conventions (auto-discovery paths, UMES patterns,
 | US-4.7 | notifications module | 0 | — | Bundled with US-4.4 award action. Award notification uses award template, rejection uses rejection template. Placeholder resolution in notification subscriber. |
 | US-5.1 | queue worker + partnerships | 1 | `app` | Aggregation worker: reads WIC (ContributionUnits), WIP (`wip_registered_at`), MIN (PartnerLicenseDeals). Computes TierEligibility. Cron trigger shared. |
 | US-5.2a/b | partnerships + TierEvaluationState | 0 | — | Bundled with US-5.1 (grace period state machine + TierChangeProposal generation in same worker) |
-| US-5.3 | workflows USER_TASK | 1 | `app` | Tier evaluation workflow JSON definition. Publishes AgencyTierChanged on approval. |
+| US-5.3 | workflows USER_TASK | 1 | `app` | Tier evaluation workflow JSON definition. PM sets `validUntil` on approval. |
 | US-5.4 | partnerships widget injection | 1 | `app` | Tier progress widget (TierEligibility vs TierAssignment, grace period warning) |
 | US-5.5 | partnerships widget | 0 | — | Scoped view of US-5.4 widget |
 | US-5.6 | partnerships entity + search + CRUD | 2 | `app` | 1: PartnerLicenseDeal entity + PM-only CRUD. 2: Cross-org company search + CRM read-only jump + attribution UI. |
@@ -1098,7 +1099,7 @@ Success: Every file follows OM conventions (auto-discovery paths, UMES patterns,
 | US-3.2 | WIC manual import API (validates WicScoringResult schema, Feature Key dedup, versioned replace+archive) | 1 |
 | US-3.3 | WIC score display (bundled with KPI dashboard from Phase 1) | 0 |
 | US-5.1 + US-5.2a/b | KPI aggregation worker + TierEligibility computation + grace period state machine + TierChangeProposal (bundled) | 1 |
-| US-5.3 | Tier evaluation workflow JSON definition (publishes AgencyTierChanged) | 1 |
+| US-5.3 | Tier evaluation workflow JSON definition (PM sets `validUntil` on approval) | 1 |
 | US-5.4 + US-5.5 | Tier progress widget (Admin + BD scoped views, TierEligibility vs TierAssignment, grace period warning) | 1 |
 | US-5.6 | PartnerLicenseDeal entity + PM-only CRUD + cross-org company search + attribution UI | 2 |
 | Cron trigger | External trigger mechanism for scheduled workers (WF3 import trigger, WF5 tier evaluation) | 1 |
@@ -1122,8 +1123,7 @@ Success: Every file follows OM conventions (auto-discovery paths, UMES patterns,
 - [ ] `WicAssessmentSource` always set on import — no null or unrecognized source values
 - [ ] TierAssignment only mutated via PM-approval path — no worker can directly update active tier
 - [ ] Approved TierChangeProposal is immutable — cannot be re-approved or re-rejected
-- [ ] `AgencyTierChanged` published on every PM approval with full payload (agencyId, previousTier, newTier, effectiveDate, approvedBy)
-- [ ] `AgencyTierChanged` NOT published on rejection
+- ~~`AgencyTierChanged` published on every PM approval~~ *(Removed — zero consumers. Re-add when needed.)*
 - [ ] Agency users cannot create/update/delete PartnerLicenseDeal — PM-only routes
 - [ ] WIC import rejects unmatched GH usernames with rejection list — no ghost users
 - [ ] MIN calendar year boundary is UTC (Dec 31 23:59:59Z = current year, Jan 1 00:00:00Z = next year)
@@ -1134,7 +1134,7 @@ Success: Every file follows OM conventions (auto-discovery paths, UMES patterns,
 - [ ] PM can import WIC scores (upload → system validates → replaces previous import for same org+month)
 - [ ] PM can attribute a license sale to an agency (cross-org company search → verify in CRM → create PartnerLicenseDeal)
 - [ ] System evaluates tiers monthly: computes TierEligibility, applies grace period, generates TierChangeProposal
-- [ ] PM can approve/reject tier changes with reason. AgencyTierChanged event published on approval.
+- [ ] PM can approve/reject tier changes with reason and set `validUntil` on approval.
 - [ ] Agency Admin sees current tier, KPI values vs thresholds, progress %, grace period warning
 
 **Value delivered:**
@@ -1503,13 +1503,13 @@ Vernon raised these findings. Mat disagrees with good business reason:
 - WIP formula rewritten: stamp-based (`wip_registered_at` custom field, immutable, first SQL qualification only). Removes snapshot/cumulative ambiguity. "Won" removed from WIP stages — deals graduate to MIN, not both.
 - TierEligibility vs TierAssignment: two distinct concepts named. TierChangeProposal aggregate with states (Draft → PendingApproval → Approved | Rejected) and uniqueness invariant (one per org per period).
 - Grace period state machine: OK → GracePeriod → ProposedDowngrade. TierEvaluationState entity tracks state.
-- AgencyTierChanged domain event: published on PM approval. RFP audience filtering uses current TierAssignment.
+- ~~AgencyTierChanged domain event~~: removed (zero consumers). RFP audience filtering uses current TierAssignment.
 - MIN attribution workflow: PM searches all companies cross-org → verifies in CRM → creates PartnerLicenseDeal. Moved from Phase 3 to Phase 2 (tier eval needs all 3 KPIs).
 - ContributionUnit aggregate: org_id set at PR merge time. Feature Key dedup enforced as invariant at creation.
 - WIC import: versioned (re-import for same org+month replaces + archives old). WicAssessmentSource enum added.
 
 **Glossary additions:**
-- Contributor, Program Scope, TierEligibility, TierAssignment, TierChangeProposal, ContributionUnit, WicAssessmentSource, AgencyTierChanged, CampaignPublished, RfpAwarded
+- Contributor, Program Scope, TierEligibility, TierAssignment, TierChangeProposal, ContributionUnit, WicAssessmentSource, CampaignPublished, RfpAwarded
 
 **Business rules clarified:**
 - Admin full CRM write (including BD records), BD own records only
