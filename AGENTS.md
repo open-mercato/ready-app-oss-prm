@@ -1,144 +1,125 @@
-# Ready Apps — Agent Guidelines
+# Standalone Open Mercato Application
 
-Build Open Mercato applications from App Specs. Each app follows the same process: business spec first, implementation specs second, code third.
+This is a **standalone application** that consumes Open Mercato packages from the npm registry. Unlike the monorepo development environment, packages here are pre-compiled and installed as dependencies.
 
-## Repo Structure
+Default to official npm releases. Use Verdaccio only when you intentionally need unpublished Open Mercato packages from a local branch or PR.
 
-```
-skills/                          # Shared AI skills (Mat, Piotr, Krug) + templates
-$OM_REPO/                        # OM monorepo (resolved: env var → ./open-mercato/ → .cache/)
-apps/<app-name>/                 # Ready app (code + app-spec + docs)
-  app-spec/                      # Business analysis (forkable, drives AI-assisted dev)
-  src/modules/                   # Application code
-  docs/specs/                    # Implementation specs
-```
+## Package Source Files
 
-Each app is self-contained: code, spec, and docs live together in `apps/<app>/`.
+To explore or understand the Open Mercato framework code:
 
-## OM Monorepo Reference
+- **Location**: `node_modules/@open-mercato/*/dist/` contains compiled JavaScript
+- **Source exploration**: Search `node_modules/@open-mercato/` for module implementations
+- **Key packages**:
+  - `@open-mercato/core` - Core business modules (auth, customers, catalog, sales, etc.)
+  - `@open-mercato/shared` - Shared utilities, types, DSL helpers, i18n
+  - `@open-mercato/ui` - UI components and primitives
+  - `@open-mercato/cli` - CLI tooling (mercato command)
+  - `@open-mercato/search` - Search module (fulltext, vector, tokens)
 
-The OM monorepo is referenced as `$OM_REPO` throughout this repo. It provides:
+**Note**: When debugging or extending functionality, reference the compiled code in `node_modules/@open-mercato/` to understand the framework's implementation details.
 
-1. **Platform skills** — `$OM_REPO/.ai/skills/<skill>/SKILL.md`. Read the file with Read tool, NOT the Skill tool.
-2. **Reference implementations** — `$OM_REPO/packages/core/src/modules/`. The `customers` module is the canonical CRUD reference.
-3. **Platform conventions** — `$OM_REPO/AGENTS.md`.
-
-**`$OM_REPO` resolution** — check in order, use the first that exists:
-1. `$OM_REPO` env var (if set)
-2. `./open-mercato/` in repo root (if exists)
-3. `.cache/open-mercato/` (clone from GitHub if neither above exists)
-
-**Before any implementation work:** verify `$OM_REPO` is on `develop` and up to date:
-```bash
-cd "$OM_REPO" && git checkout develop && git pull
-```
-
-## Task Router
-
-| Task | Where to work | What to read |
-|------|---------------|--------------|
-| Define a new app | `apps/<app>/app-spec/` | `skills/` (Mat + Piotr + Krug) + template |
-| Write implementation specs | `apps/<app>/docs/specs/` | [docs/agent-guides/writing-specs.md](docs/agent-guides/writing-specs.md) |
-| Implement a spec | `apps/<app>/src/modules/` | [docs/agent-guides/implementing.md](docs/agent-guides/implementing.md) + OM `implement-spec` skill |
-| Review implementation | `apps/<app>/` | OM `code-review` skill |
-
----
-
-## §1. Reading the App Spec
-
-Before writing any spec or code, read these files in order:
-
-1. **App Spec** — `apps/<app>/app-spec/app-spec.md`
-   - §1: Business Context + Domain Model
-   - §2: Identity Model
-   - §3: Workflows
-   - §7: Phasing + acceptance criteria
-
-2. **Commit Plans** — `apps/<app>/app-spec/piotr-notes/commits-WF*.md`
-
-3. **Upstream Flags** — `apps/<app>/app-spec/piotr-notes/upstream-flags.md`
-
-4. **App-specific overrides** — `apps/<app>/AGENTS.md`
-
-**The App Spec is the ceiling.** Do not invent features, entities, or workflows not in the App Spec.
-
----
-
-## §2. OM Package Strategy
-
-The OM monorepo is at `$OM_REPO` (see resolution order in §OM Monorepo Reference above).
-
-Default to official `@open-mercato/*` npm releases for app development. Use Verdaccio only when you explicitly need unpublished OM changes from a branch or open PR.
-
-1. **If your task depends on unpublished upstream changes, check for open PRs:** `gh pr list -R open-mercato/open-mercato --author matgren --state open`
-2. **If any PR has review comments** -> flag to user BEFORE starting any other work
-3. **Report to user:** "We're on [official npm release / branch X via Verdaccio]. PRs: [status]."
-
-**Default app install (official npm releases):**
-```bash
-cd apps/<app> && yarn install && yarn reinstall
-```
-
-**Verdaccio exception (local OM build):**
-```bash
-cd "$OM_REPO" && git checkout <branch-with-changes> && git pull
-yarn build:packages && bash scripts/registry/publish.sh
-```
-
-**App install (after Verdaccio publish):**
-```bash
-cd apps/<app> && rm -rf node_modules/@open-mercato && yarn install --force && yarn reinstall
-```
-
-**Never patch `node_modules` manually.** If you need unpublished platform changes, publish them to Verdaccio. Otherwise stay on official releases.
-
----
-
-## §3. Conventions
-
-- **Module folders:** plural, snake_case (e.g., `partnerships`). Acronyms OK (e.g., `prm`).
-- **Event IDs:** `module.entity.action` (singular entity, past tense: `catalog.product.created`)
-- **Feature IDs:** `module.action` (e.g., `catalog.manage`)
-- **JS identifiers:** camelCase
-- **DB columns:** snake_case
-- **PKs:** UUID, explicit FKs, junction tables for M:N
-- **API routes:** must export `openApi`
-- **Validation:** all inputs with Zod in `data/validators.ts`
-- **i18n:** no hardcoded user-facing strings — use `src/i18n/{locale}.json`
-- **Types:** no `any` — use Zod schemas with `z.infer`
-- **Cross-module:** FK IDs only, fetch separately. No direct ORM relationships between modules.
-- **Pagination:** `pageSize <= 100` on all list routes
-- **App Spec naming:** always `app-spec.md` inside `apps/<app>/app-spec/`. No dates in filenames — use git history for versioning. One main spec per app.
-
----
-
-## §4. Development Commands
+## Development Commands
 
 ```bash
-yarn dev                              # Start dev server
-yarn build                            # Build
-yarn typecheck                        # Type check
-yarn generate                         # Regenerate module files (after adding/modifying module files)
-yarn db:generate                      # Generate database migrations
-yarn db:migrate                       # Apply migrations
-yarn initialize                       # Full initialization (seedDefaults + seedExamples)
-yarn test                             # Run unit tests
-yarn test:integration                 # Run Playwright integration tests (fresh ephemeral app + DB)
-yarn test:integration:ephemeral       # Start ephemeral app only (QA exploration, no test run)
-yarn test:integration:report          # View HTML test report
+# Start development server
+yarn dev
+
+# Build for production
+yarn build
+
+# Run production server
+yarn start
+
+# Type checking
+yarn typecheck
+
+# Linting
+yarn lint
+
+# Run unit tests
+yarn test
+
+# Run a single unit test
+yarn test path/to/test.spec.ts
+
+# Run integration tests (spins up fresh ephemeral app + DB, runs Playwright)
+mercato test integration
+
+# Start ephemeral app only (for manual QA exploration)
+mercato test ephemeral
+
+# View HTML integration test report
+mercato test coverage
+
+# Generate code from modules
+yarn generate
+
+# Database operations
+yarn db:generate    # Generate migrations
+yarn db:migrate     # Run migrations
+yarn db:greenfield  # Reset and recreate database
+
+# Initialize/reinstall project
+yarn initialize
+yarn reinstall
 ```
 
----
+## Infrastructure
 
-## §5. Anti-Patterns
+Start required services via Docker Compose:
+```bash
+docker compose up -d
+```
 
-Stop and re-evaluate if you find yourself:
+Services: PostgreSQL (pgvector), Redis, Meilisearch
 
-- Building portal pages for users who need backend CRM access
-- Writing custom notification subscribers instead of using workflows SEND_EMAIL
-- Building custom state machines instead of using workflows module
-- Writing CRUD routes that duplicate what `makeCrudRoute` already provides
-- Adding features not in the App Spec
-- Creating cross-module ORM relationships
-- Hardcoding user-facing strings
-- Writing more than 5 files for a single atomic commit (you probably missed a platform capability)
+## Architecture
+
+### Open Mercato Framework
+
+This is a Next.js 16 application built on the **Open Mercato** modular ERP framework. The framework provides:
+
+- **Module system**: Business modules (auth, customers, catalog, sales, etc.) from `@open-mercato/*` packages
+- **Entity system**: MikroORM entities with code generation
+- **DI container**: Awilix-based dependency injection
+- **RBAC**: Role-based access control with feature flags
+
+### Key Files
+
+- `src/modules.ts` - Declares enabled modules and their sources (`@open-mercato/core`, `@open-mercato/*`, or `@app`)
+- `src/di.ts` - App-level DI overrides (runs after core/module registrations)
+- `src/bootstrap.ts` - Application initialization (imports generated files, registers i18n)
+- `.mercato/generated/` - Auto-generated files from `yarn generate` (do not edit manually)
+
+### Routing Structure
+
+- `/backend/*` - Admin panel routes (AppShell with sidebar navigation)
+- `/(frontend)/*` - Public-facing routes
+- `/api/*` - API routes with automatic module routing via `findApi()`
+
+### Module Development
+
+Custom modules go in `src/modules/`. Each module can define:
+- Entities (MikroORM)
+- API routes
+- Backend/frontend pages
+- DI registrations
+- Navigation entries
+
+Add new modules to `src/modules.ts` with `from: '@app'`.
+Install official package-backed modules with `yarn mercato module add @open-mercato/<package>`.
+
+### Path Aliases
+
+- `@/*` → `./src/*`
+- `@/.mercato/*` → `./.mercato/*`
+
+### i18n
+
+Translation files in `src/i18n/{locale}.json`. Supported locales: en, pl, es, de.
+
+## Requirements
+
+- Node.js >= 24
+- Yarn (via corepack)

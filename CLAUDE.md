@@ -1,5 +1,5 @@
-# Ready Apps
+# CLAUDE.md
 
-Repository for Open Mercato example applications and their App Specs.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 @AGENTS.md
