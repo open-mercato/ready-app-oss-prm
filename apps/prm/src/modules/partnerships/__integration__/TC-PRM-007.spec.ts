@@ -440,21 +440,22 @@ test.describe('TC-PRM-007: Settings > Users page & auth guardrails', () => {
   // -------------------------------------------------------------------------
   // T9: Agency Admin loads /api/auth/users — interceptor filters to own org
   // -------------------------------------------------------------------------
-  test('T9: PRM page sends organizationId — users scoped to own org', async ({ request }) => {
-    // The PRM page always sends organizationId when fetching users.
-    // Verify that with the correct org param, only own-org users are returned.
-    const res = await apiRequest(request, 'GET', `/api/auth/users?organizationId=${adminOrgId}`, {
+  test('T9: PRM agency-users endpoint returns only own-org users', async ({ request }) => {
+    // The PRM page uses /api/partnerships/agency-users (scoped endpoint)
+    // instead of raw /api/auth/users. Verify only own-org users are returned.
+    const res = await apiRequest(request, 'GET', `/api/partnerships/agency-users?organizationId=${adminOrgId}`, {
       token: adminToken,
     })
 
-    expect(res.ok(), `GET /api/auth/users?organizationId failed: ${res.status()}`).toBeTruthy()
+    expect(res.ok(), `GET /api/partnerships/agency-users failed: ${res.status()}`).toBeTruthy()
     const body = await readJsonSafe<{ items: Array<{ organizationId?: string }> }>(res)
     const items = body?.items ?? []
+    expect(items.length).toBeGreaterThan(0)
 
     for (const user of items) {
       expect(
         user.organizationId,
-        'Every returned user must belong to admin org when organizationId is passed',
+        'Every returned user must belong to admin org',
       ).toBe(adminOrgId)
     }
   })

@@ -1,6 +1,6 @@
 export const metadata = {
   requireAuth: true,
-  requireFeatures: ['auth.users.list'],
+  requireFeatures: ['partnerships.agency-profile.manage'],
   pageTitle: 'Users',
   pageTitleKey: 'partnerships.users.title',
   pageGroup: 'Settings',

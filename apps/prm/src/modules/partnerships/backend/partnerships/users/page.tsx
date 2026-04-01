@@ -394,7 +394,7 @@ export default function UsersPage() {
     params.set('pageSize', String(pageSize))
 
     const call = await apiCall<{ items: UserRow[]; total: number; totalPages: number }>(
-      `/api/auth/users?${params.toString()}`,
+      `/api/partnerships/agency-users?${params.toString()}`,
     )
 
     if (call.ok && call.result) {
