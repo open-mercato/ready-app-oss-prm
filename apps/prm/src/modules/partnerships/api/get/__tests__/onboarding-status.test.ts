@@ -116,8 +116,8 @@ describe('onboarding-status', () => {
       // Verify links
       expect(items[0].link).toBe('/backend/partnerships/agency-profile')
       expect(items[1].link).toBe('/backend/partnerships/case-studies')
-      expect(items[2].link).toBe('/backend/users/create')
-      expect(items[3].link).toBe('/backend/users/create')
+      expect(items[2].link).toBe('/backend/partnerships/users')
+      expect(items[3].link).toBe('/backend/partnerships/users')
     })
 
     it('supports overriding admin links for legacy and transitional permission states', async () => {

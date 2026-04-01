@@ -1,7 +1,8 @@
-import type { ApiInterceptor } from '@open-mercato/shared/lib/crud/api-interceptor'
+import type { ApiInterceptor, InterceptorContext } from '@open-mercato/shared/lib/crud/api-interceptor'
+import type { EntityManager } from '@mikro-orm/postgresql'
 import { CustomerPipelineStage } from '@open-mercato/core/modules/customers/data/entities'
 import { CustomFieldValue } from '@open-mercato/core/modules/entities/data/entities'
-import { User } from '@open-mercato/core/modules/auth/data/entities'
+import { User, Role, UserRole } from '@open-mercato/core/modules/auth/data/entities'
 import { ActionLogService } from '@open-mercato/core/modules/audit_logs/services/actionLogService'
 import type { RbacService } from './get/onboarding-status'
 import { PRM_SQL_STAGE_ORDER } from '../data/custom-fields'
@@ -215,4 +216,200 @@ export const interceptors: ApiInterceptor[] = [
       return {}
     },
   },
+
+  // ---------------------------------------------------------------------------
+  // Auth route interceptors — restrict partner_admin to own-org agency users
+  // ---------------------------------------------------------------------------
+
+  // Note: auth users GET is a custom handler that bypasses makeCrudRoute,
+  // so interceptor before/after hooks don't fire for GET requests.
+  // Org isolation for GET is enforced at the UI level (PRM page always sends organizationId)
+  // and by the auth route's own tenant scoping. Full raw-API GET protection requires
+  // upstream work to wire the custom GET handler through the interceptor pipeline.
+
+  {
+    id: 'partnerships.auth-users-mutation-guard',
+    targetRoute: 'auth/users',
+    methods: ['POST', 'PUT'],
+    priority: 200,
+    async before(request, context) {
+      if (!await isPartnerAdmin(context)) return { ok: true }
+
+      const body = request.body ?? {}
+      const em = context.em.fork()
+
+      // Enforce organization scope — must be actor's org
+      const bodyOrgId = body.organizationId as string | undefined
+      if (bodyOrgId && bodyOrgId !== context.organizationId) {
+        return {
+          ok: false,
+          statusCode: 403,
+          body: { error: 'Agency admins can only manage users within their own organization.' },
+        }
+      }
+
+      // Force organizationId to actor's org
+      const patchedBody = { ...body, organizationId: context.organizationId }
+
+      // Validate roles — only agency roles allowed
+      const roles = body.roles as string[] | undefined
+      if (Array.isArray(roles) && roles.length > 0) {
+        const agencyRoleIds = await getAgencyRoleIds(em, context.tenantId)
+        const agencyRoleIdSet = new Set(agencyRoleIds)
+
+        // Roles can be IDs or names — check both
+        const agencyRoleNameSet = new Set<string>(AGENCY_ROLE_NAMES)
+
+        for (const role of roles) {
+          if (!agencyRoleIdSet.has(role) && !agencyRoleNameSet.has(role)) {
+            return {
+              ok: false,
+              statusCode: 403,
+              body: { error: 'Agency admins can only assign agency roles (partner_admin, partner_member, partner_contributor).' },
+            }
+          }
+        }
+      }
+
+      return { ok: true, body: patchedBody }
+    },
+  },
+
+  {
+    id: 'partnerships.auth-users-delete-guard',
+    targetRoute: 'auth/users',
+    methods: ['DELETE'],
+    priority: 200,
+    async before(request, context) {
+      if (!await isPartnerAdmin(context)) return { ok: true }
+
+      const em = context.em.fork()
+
+      // Parse target user ID from query string
+      const url = new URL(request.url)
+      const targetUserId = url.searchParams.get('id') ?? (request.query?.id as string | undefined)
+
+      if (!targetUserId) {
+        return {
+          ok: false,
+          statusCode: 403,
+          body: { error: 'Missing user ID.' },
+        }
+      }
+
+      // Prevent self-delete
+      if (targetUserId === context.userId) {
+        return {
+          ok: false,
+          statusCode: 403,
+          body: { error: 'You cannot delete your own account.' },
+        }
+      }
+
+      // Target must be in actor's org
+      const targetUser = await em.findOne(User, { id: targetUserId, deletedAt: null })
+      if (!targetUser || targetUser.organizationId !== context.organizationId) {
+        return {
+          ok: false,
+          statusCode: 403,
+          body: { error: 'Agency admins can only delete users within their own organization.' },
+        }
+      }
+
+      // Prevent deleting the last partner_admin in the org
+      if (await isLastPartnerAdmin(em, context.organizationId, context.tenantId, targetUserId)) {
+        return {
+          ok: false,
+          statusCode: 403,
+          body: { error: 'Cannot delete the last agency admin in the organization.' },
+        }
+      }
+
+      return { ok: true }
+    },
+  },
 ]
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const AGENCY_ROLE_NAMES = ['partner_admin', 'partner_member', 'partner_contributor'] as const
+
+// ---------------------------------------------------------------------------
+// Exported helpers (testable)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true if the actor is a partner_admin (has agency-profile.manage but NOT wic.manage).
+ * PM users always pass through (returns false). Non-agency-admin users also return false.
+ */
+export async function isPartnerAdmin(context: InterceptorContext): Promise<boolean> {
+  const rbacService = context.container.resolve('rbacService') as RbacService
+  const scope = { tenantId: context.tenantId, organizationId: context.organizationId }
+
+  // PM passes through — not restricted
+  const isPm = await rbacService.userHasAllFeatures(context.userId, ['partnerships.wic.manage'], scope)
+  if (isPm) return false
+
+  // Check if actor is agency admin
+  const isAgencyAdmin = await rbacService.userHasAllFeatures(
+    context.userId,
+    ['partnerships.agency-profile.manage'],
+    scope,
+  )
+  return isAgencyAdmin
+}
+
+/**
+ * Looks up the Role IDs for the 3 agency roles within a tenant.
+ */
+export async function getAgencyRoleIds(em: EntityManager, tenantId: string): Promise<string[]> {
+  const roles = await em.find(Role, {
+    name: { $in: [...AGENCY_ROLE_NAMES] },
+    $or: [{ tenantId }, { tenantId: null }],
+    deletedAt: null,
+  })
+  return roles.map((r) => r.id)
+}
+
+/**
+ * Returns true if deleting targetUserId would leave zero partner_admins in the org.
+ */
+export async function isLastPartnerAdmin(
+  em: EntityManager,
+  organizationId: string,
+  tenantId: string,
+  targetUserId: string,
+): Promise<boolean> {
+  // Find the partner_admin role
+  const partnerAdminRole = await em.findOne(Role, {
+    name: 'partner_admin',
+    $or: [{ tenantId }, { tenantId: null }],
+    deletedAt: null,
+  })
+  if (!partnerAdminRole) return false
+
+  // Find all users in this org with partner_admin role
+  const orgAdmins = await em.find(User, {
+    organizationId,
+    deletedAt: null,
+  })
+  const orgAdminIds = new Set(orgAdmins.map((u) => u.id))
+
+  // Find which of those users have the partner_admin role
+  const adminLinks = await em.find(UserRole, {
+    role: partnerAdminRole.id,
+    user: { $in: [...orgAdminIds] },
+    deletedAt: null,
+  } as Record<string, unknown>)
+
+  // Count admins in this org excluding the target user
+  let otherAdminCount = 0
+  for (const link of adminLinks) {
+    const userId = String((link as unknown as Record<string, unknown>).user ?? '')
+    if (userId && userId !== targetUserId) otherAdminCount++
+  }
+
+  return otherAdminCount === 0
+}

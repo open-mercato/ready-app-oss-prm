@@ -224,13 +224,13 @@ export async function buildAdminItems(
       id: 'invite_bd',
       label: 'partnerships.widgets.onboardingChecklist.inviteBd',
       completed: bdInvited,
-      link: '/backend/users/create',
+      link: '/backend/partnerships/users',
     },
     {
       id: 'invite_contributor',
       label: 'partnerships.widgets.onboardingChecklist.inviteContributor',
       completed: contributorInvited,
-      link: '/backend/users/create',
+      link: '/backend/partnerships/users',
     },
   ]
 }

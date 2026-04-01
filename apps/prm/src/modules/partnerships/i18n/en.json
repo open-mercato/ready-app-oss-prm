@@ -293,6 +293,64 @@
         }
       }
     },
+    "users": {
+      "title": "Users",
+      "subtitle": "Manage agency team members",
+      "titleWithAgency": "Users — {agency}",
+      "selectAgency": "Select Agency",
+      "selectAgencyPlaceholder": "-- Choose an agency --",
+      "selectAgencyHint": "Select an agency to manage its users.",
+      "inviteTitle": "Invite User",
+      "editTitle": "Edit User",
+      "inviteButton": "Create & Show Credentials",
+      "saveButton": "Save",
+      "submitting": "Saving...",
+      "fieldEmail": "Email",
+      "fieldRole": "Role",
+      "resetPassword": "Reset password",
+      "colEmail": "Email",
+      "colRoles": "Roles",
+      "noUsers": "No users found for this agency.",
+      "created": "User created successfully",
+      "createError": "Failed to create user",
+      "updated": "User updated successfully",
+      "updateError": "Failed to update user",
+      "deleted": "User deleted successfully",
+      "deleteError": "Failed to delete user",
+      "confirmDelete": "Delete user \"{email}\"?",
+      "loadError": "Failed to load data",
+      "credentialLine1": "Account created on Open Mercato PRM.",
+      "credentialResetLine1": "Password has been reset on Open Mercato PRM.",
+      "credentialLogin": "Login",
+      "credentialPassword": "Password",
+      "credentialRole": "Role",
+      "credentialUrl": "URL",
+      "credentialChangePassword": "Please change your password after first login.",
+      "copyCredentials": "Copy Invite Message",
+      "copiedCredentials": "Credentials copied to clipboard",
+      "dismissCredentials": "Dismiss",
+      "roles": {
+        "label": "Role",
+        "partnerAdmin": "Agency Admin",
+        "partnerAdminHelp": "Full agency management including user invitations",
+        "partnerMember": "Business Developer",
+        "partnerMemberHelp": "Pipeline management and deal tracking",
+        "partnerContributor": "Contributor",
+        "partnerContributorHelp": "Code contributions tracked under this agency"
+      },
+      "fields": {
+        "email": "Email",
+        "password": "Temporary Password",
+        "role": "Role",
+        "organization": "Organization"
+      },
+      "errors": {
+        "forbiddenRole": "You cannot assign this role",
+        "foreignOrg": "You cannot manage users outside your organization",
+        "selfDelete": "You cannot delete your own account",
+        "lastAdmin": "Cannot delete the last admin in this organization"
+      }
+    },
     "widgets": {
       "wipCount": {
         "title": "WIP This Month",

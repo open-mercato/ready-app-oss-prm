@@ -64,4 +64,14 @@
 - Depends on: Commit 1 + upstream PR merge
 - Phase: 4
 
-## ~~Commit 8: REMOVED~~ — Onboarding sub-workflows dropped. Checklist widget is sufficient.
+## Commit 8: PRM Settings Users entrypoint + auth guardrails for agency user management
+- Scope: app
+- Pattern: settings page + auth API interceptor
+- Files: `src/modules/partnerships/backend/partnerships/users/page.tsx`, `page.meta.ts`, `src/modules/partnerships/api/interceptors.ts`, `src/modules/partnerships/api/get/onboarding-status.ts`
+- Delivers: Agency Admin and Partnership Manager get a discoverable PRM `Settings > Users` entrypoint for listing, inviting, editing, and deleting `partner_admin`, `partner_member`, and `partner_contributor` users. The page reuses existing auth user-management APIs instead of cloning them. Agency Admin requests to raw auth users/roles routes are constrained to their own org and the three allowed agency roles. PM targets agencies explicitly in the page flow, not via org-switcher dependency. Generated credentials are handed off via the same copyable message pattern as `Add Agency`. Delete flow includes guardrails for self-delete and last-admin protection. SPEC-038 is still the Phase 4 email-invitation upgrade.
+- Depends on: Commit 1
+- Phase: 2
+- Rationale: Keeps the App Spec contract (`Settings > Users`, `auth.users.*` for Agency Admin, `auth.*` for PM), removes the org-switcher write coupling, and solves the discoverability/safety gap with minimal duplication of OM auth functionality.
+
+## Removed Note
+- Onboarding sub-workflows dropped. Checklist widget is sufficient.
