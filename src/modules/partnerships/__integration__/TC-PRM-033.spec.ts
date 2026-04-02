@@ -54,7 +54,9 @@ test.describe('TC-PRM-033: Cross-org company_id uniqueness guard', () => {
         type: 'enterprise',
         status: 'won',
         isRenewal: false,
-        closedAt: '2026-03-01',
+        startDate: '2026-01-01',
+        endDate: '2026-03-01',
+        year: 2026,
       },
     })
     expect(res1.status(), `First deal should succeed, got ${res1.status()}`).toBe(201)
@@ -73,7 +75,9 @@ test.describe('TC-PRM-033: Cross-org company_id uniqueness guard', () => {
         type: 'enterprise',
         status: 'won',
         isRenewal: false,
-        closedAt: '2026-03-15',
+        startDate: '2026-01-01',
+        endDate: '2026-03-15',
+        year: 2026,
       },
     })
     expect(res2.status()).toBe(422)
@@ -91,7 +95,9 @@ test.describe('TC-PRM-033: Cross-org company_id uniqueness guard', () => {
         type: 'enterprise',
         status: 'won',
         isRenewal: false,
-        closedAt: '2026-06-01',
+        startDate: '2026-01-01',
+        endDate: '2026-06-01',
+        year: 2026,
       },
     })
     expect(res3.status(), `Same-org deal should succeed, got ${res3.status()}`).toBe(201)

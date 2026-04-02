@@ -14,7 +14,7 @@ import { loginInBrowser } from './helpers/login'
  *   my-wic: requireFeatures: ['partnerships.wic.view'] (agency roles)
  *
  * Tests:
- * T1 — PM sees WIC import form with agency select and JSON textarea
+ * T1 — PM sees WIC import form with agency select and file drop zone
  * T2 — Agency admin sees My WIC page with month picker
  * T3 — Contributor cannot access WIC import page
  *
@@ -40,7 +40,7 @@ test.describe('TC-PRM-024: WIC Import + My WIC UI', () => {
     contributorToken = await getAuthToken(request, CONTRIBUTOR_EMAIL, CONTRIBUTOR_PASSWORD)
   })
 
-  test('T1: PM sees WIC import form with agency select and JSON textarea', async ({ page }) => {
+  test('T1: PM sees WIC import form with agency select and file drop zone', async ({ page }) => {
     await loginInBrowser(page, pmToken)
     await page.goto(`${BASE}/backend/partnerships/my-wic/import`)
 
@@ -48,8 +48,10 @@ test.describe('TC-PRM-024: WIC Import + My WIC UI', () => {
     await expect(agencySelect).toBeVisible({ timeout: 15_000 })
     await expect(agencySelect.locator('option')).not.toHaveCount(0, { timeout: 10_000 })
     await expect(page.locator('input[type="month"]')).toBeVisible()
-    await expect(page.locator('textarea')).toBeVisible()
-    await expect(page.locator('button[type="submit"], button:has-text("Import")')).toBeVisible()
+    // UI uses a file drop zone (div with border-dashed) and a hidden file input, not a textarea
+    await expect(page.locator('.border-dashed')).toBeVisible()
+    await expect(page.locator('input[type="file"]')).toBeAttached()
+    await expect(page.locator('button[type="button"]').filter({ hasText: /import/i })).toBeVisible()
   })
 
   test('T2: Agency admin sees My WIC page with month picker', async ({ page }) => {
@@ -65,7 +67,7 @@ test.describe('TC-PRM-024: WIC Import + My WIC UI', () => {
     await loginInBrowser(page, contributorToken)
     await page.goto(`${BASE}/backend/partnerships/my-wic/import`)
     await page.waitForTimeout(3_000)
-    const visible = await page.locator('textarea').isVisible().catch(() => false)
+    const visible = await page.locator('.border-dashed').isVisible().catch(() => false)
     expect(visible, 'Contributor should not see WIC import form').toBe(false)
   })
 })

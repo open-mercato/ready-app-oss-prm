@@ -106,7 +106,8 @@ test.describe('TC-PRM-012: PartnerLicenseDeal CRUD', () => {
           type: 'enterprise',
           status: 'won',
           isRenewal: false,
-          closedAt: '2098-06-15T00:00:00.000Z',
+          startDate: '2098-01-01T00:00:00.000Z',
+          endDate: '2098-06-15T00:00:00.000Z',
           year: 2098,
         },
       })
@@ -144,7 +145,8 @@ test.describe('TC-PRM-012: PartnerLicenseDeal CRUD', () => {
           type: 'enterprise',
           status: 'won',
           isRenewal: false,
-          closedAt: '2098-07-01T00:00:00.000Z',
+          startDate: '2098-01-01T00:00:00.000Z',
+          endDate: '2098-07-01T00:00:00.000Z',
           year: 2098,
         },
       })
@@ -163,7 +165,8 @@ test.describe('TC-PRM-012: PartnerLicenseDeal CRUD', () => {
           type: 'enterprise',
           status: 'won',
           isRenewal: false,
-          closedAt: '2098-08-01T00:00:00.000Z',
+          startDate: '2098-01-01T00:00:00.000Z',
+          endDate: '2098-08-01T00:00:00.000Z',
           year: 2098,
         },
       })
@@ -195,7 +198,8 @@ test.describe('TC-PRM-012: PartnerLicenseDeal CRUD', () => {
         type: 'enterprise',
         status: 'won',
         isRenewal: false,
-        closedAt: '2098-09-01T00:00:00.000Z',
+        startDate: '2098-01-01T00:00:00.000Z',
+        endDate: '2098-09-01T00:00:00.000Z',
         year: 2098,
       },
     })

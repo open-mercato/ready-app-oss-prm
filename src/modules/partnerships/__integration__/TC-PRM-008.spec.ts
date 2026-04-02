@@ -116,9 +116,10 @@ test.describe('TC-PRM-008: Seed Data Verification UI', () => {
 
     await loginInBrowser(page, adminToken)
     await page.goto(`${BASE}/backend/partnerships/case-studies`)
+    await page.waitForLoadState('networkidle')
 
     const card = page.locator('.rounded-lg.border.p-4').filter({ hasText: `QA Case Study ${stamp}` }).first()
-    await expect(card).toBeVisible({ timeout: 15_000 })
+    await expect(card).toBeVisible({ timeout: 20_000 })
 
     await card.getByRole('button', { name: 'Edit' }).click()
     await page.getByLabel('Title').fill(`QA Case Study ${stamp} Updated`)

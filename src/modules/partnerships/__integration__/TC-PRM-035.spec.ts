@@ -35,13 +35,15 @@ test.describe('TC-PRM-035: My WIC page pagination', () => {
     // Import 25 records to trigger pagination (pageSize=20)
     const records = Array.from({ length: 25 }, (_, i) => ({
       contributorGithubUsername: GH_USERNAME,
-      prId: `PR-PAGE-${Date.now()}-${i}`,
       month: TEST_MONTH,
-      featureKey: `feat.pagination.test.${i}`,
-      level: 'L2' as const,
-      impactBonus: false,
-      bountyApplied: false,
       wicScore: 1.0,
+      level: 'L2' as const,
+      impactBonus: 0,
+      bountyBonus: 0,
+      whyBonus: '',
+      included: `feat.pagination.test.${i}`,
+      excluded: '',
+      scriptVersion: 'test-v1',
     }))
 
     const res = await apiRequest(request, 'POST', '/api/partnerships/wic/import', {
