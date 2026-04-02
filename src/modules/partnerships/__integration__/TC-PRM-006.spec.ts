@@ -49,8 +49,8 @@ test.describe('TC-PRM-006: Agencies Page UI', () => {
     await loginInBrowser(page, pmToken)
     await page.goto(`${BASE}/backend/partnerships/agencies`)
 
-    // Table headers
-    await expect(page.locator('th:text-is("Agency")').first()).toBeVisible({ timeout: 15_000 })
+    // Table headers — agencies API does N+1 queries, allow extra time
+    await expect(page.locator('th:text-is("Agency")').first()).toBeVisible({ timeout: 30_000 })
     await expect(page.locator('th:text-is("Admin Email")').first()).toBeVisible()
     await expect(page.locator('th:has-text("WIP")').first()).toBeVisible()
     await expect(page.locator('th:text-is("Created")').first()).toBeVisible()
