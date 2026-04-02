@@ -21,6 +21,8 @@ type AgencyListItem = {
   minCount: number
   createdAt: string
   currentTier: string | null
+  validUntil: string | null
+  reviewStatus: 'ok' | 'expiring' | 'overdue' | null
 }
 
 function ChangeTierDialog({
@@ -181,12 +183,29 @@ function ChangeTierDialog({
   )
 }
 
+function ReviewBadge({ status }: { status: AgencyListItem['reviewStatus'] }) {
+  if (!status || status === 'ok') return null
+  if (status === 'overdue') {
+    return (
+      <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900 dark:text-red-200">
+        Overdue
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+      Expiring
+    </span>
+  )
+}
+
 export default function AgenciesPage() {
   const t = useT()
   const [agencies, setAgencies] = React.useState<AgencyListItem[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [dialogAgency, setDialogAgency] = React.useState<AgencyListItem | null>(null)
+  const [reviewFilter, setReviewFilter] = React.useState<'' | 'expiring' | 'overdue'>('')
 
   const load = React.useCallback(async () => {
     setLoading(true)
@@ -258,30 +277,49 @@ export default function AgenciesPage() {
         }
       />
       <PageBody>
+        <div className="flex items-center justify-end mb-4 gap-1">
+          {(['', 'expiring', 'overdue'] as const).map((f) => (
+            <Button
+              key={f}
+              type="button"
+              variant={reviewFilter === f ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setReviewFilter(f)}
+            >
+              {f === '' ? t('partnerships.agencies.filterAll', 'All') : f === 'expiring' ? t('partnerships.tierStatus.expiring', 'Expiring') : t('partnerships.tierStatus.overdue', 'Overdue')}
+            </Button>
+          ))}
+        </div>
+
         <div className="rounded-lg border">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
                 <th className="px-4 py-3 text-left font-medium">Agency</th>
                 <th className="px-4 py-3 text-left font-medium">{t('partnerships.agencies.currentTier', 'Current Tier')}</th>
+                <th className="px-4 py-3 text-left font-medium">{t('partnerships.tierStatus.reviewDate', 'Review date')}</th>
                 <th className="px-4 py-3 text-left font-medium">Admin Email</th>
                 <th className="px-4 py-3 text-right font-medium">WIP (this month)</th>
-                <th className="px-4 py-3 text-left font-medium">Created</th>
                 <th className="px-4 py-3 text-right font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {agencies.map((agency) => (
+              {agencies.filter((a) => !reviewFilter || a.reviewStatus === reviewFilter).map((agency) => (
                 <tr key={agency.organizationId} className="border-b last:border-0 hover:bg-muted/30">
                   <td className="px-4 py-3 font-medium">{agency.name}</td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {agency.currentTier ?? t('partnerships.agencies.noTier', 'No tier')}
                   </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">
+                        {agency.validUntil ? new Date(agency.validUntil).toLocaleDateString() : t('partnerships.tierStatus.noReviewDate', 'No review date')}
+                      </span>
+                      <ReviewBadge status={agency.reviewStatus} />
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">{agency.adminEmail ?? '—'}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{agency.wipCount}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {new Date(agency.createdAt).toLocaleDateString()}
-                  </td>
                   <td className="px-4 py-3 text-right">
                     <Button
                       type="button"

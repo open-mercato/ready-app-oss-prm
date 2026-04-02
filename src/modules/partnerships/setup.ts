@@ -474,6 +474,7 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
     'partnerships.widgets.wip-count',
     'partnerships.widgets.wic-summary',
     'partnerships.widgets.tier-status',
+    'partnerships.widgets.tier-expiry-banner',
     'auth.users.create',
     'auth.users.edit',
     'auth.users.delete',
@@ -492,6 +493,7 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
     'partnerships.widgets.wip-count',
     'partnerships.widgets.wic-summary',
     'partnerships.widgets.tier-status',
+    'partnerships.widgets.tier-expiry-banner',
   ],
   partner_contributor: [
     ...BACKEND_BASELINE_FEATURES,
@@ -1170,6 +1172,7 @@ export const setup: ModuleSetupConfig = {
       // Phase 2+: 'partnerships.dashboard.pending-proposals',
     ]
     const AGENCY_WIDGETS = [
+      'partnerships.dashboard.tier-expiry-banner', // review date approaching/overdue notice
       'partnerships.dashboard.onboarding-checklist',
       'partnerships.dashboard.wip-count', // per-org single-number variant
       'partnerships.dashboard.wic-summary', // contributor WIC score summary

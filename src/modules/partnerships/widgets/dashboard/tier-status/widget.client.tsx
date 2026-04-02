@@ -10,6 +10,10 @@ type TierStatusResponse = {
   tier: string | null
   year: number
   viewMode: 'full' | 'badge'
+  validFrom: string | null
+  validUntil: string | null
+  isExpiring: boolean
+  isExpired: boolean
   kpis: {
     wic: number
     wip: number
@@ -184,6 +188,19 @@ const TierStatusWidget: React.FC<DashboardWidgetComponentProps> = ({
           </p>
         )}
       </div>
+
+      {/* Review date */}
+      {data.validUntil ? (
+        <p className={`text-center text-xs ${data.isExpired ? 'text-destructive font-medium' : data.isExpiring ? 'text-yellow-600 dark:text-yellow-400 font-medium' : 'text-muted-foreground'}`}>
+          {t('partnerships.tierStatus.reviewDate', 'Review date')}: {new Date(data.validUntil).toLocaleDateString()}
+          {data.isExpired && ` — ${t('partnerships.tierStatus.overdue', 'Overdue')}`}
+          {data.isExpiring && ` — ${t('partnerships.tierStatus.expiring', 'Expiring')}`}
+        </p>
+      ) : (
+        <p className="text-center text-xs text-muted-foreground">
+          {t('partnerships.tierStatus.noReviewDate', 'No review date')}
+        </p>
+      )}
 
       {/* Year switcher */}
       <div className="flex items-center justify-center gap-3">

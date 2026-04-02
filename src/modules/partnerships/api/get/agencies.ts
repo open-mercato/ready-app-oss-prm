@@ -9,6 +9,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { OpenApiMethodDoc, OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { WIP_REGISTERED_AT_FIELD } from '../../data/custom-fields'
 import { PartnerLicenseDeal, TierAssignment } from '../../data/entities'
+import { EXPIRY_NOTICE_DAYS } from '../../data/tier-thresholds'
 
 export const metadata = {
   path: '/partnerships/agencies',
@@ -28,6 +29,8 @@ type AgencyListItem = {
   minCount: number
   createdAt: string
   currentTier: string | null
+  validUntil: string | null
+  reviewStatus: 'ok' | 'expiring' | 'overdue' | null
 }
 
 // ---------------------------------------------------------------------------
@@ -201,7 +204,9 @@ async function GET(req: Request) {
       wicScore,
       minCount,
       createdAt: org.createdAt.toISOString(),
-      currentTier: null,
+      currentTier: null as string | null,
+      validUntil: null as string | null,
+      reviewStatus: null as AgencyListItem['reviewStatus'],
     })
   }
 
@@ -212,15 +217,25 @@ async function GET(req: Request) {
       organizationId: { $in: agencies.map((a) => a.organizationId) },
     }, { orderBy: { validFrom: 'DESC' } })
 
-    const currentTiers = new Map<string, string>()
+    const currentAssignments = new Map<string, typeof tierAssignments[number]>()
     for (const ta of tierAssignments) {
-      if (!currentTiers.has(ta.organizationId)) {
-        currentTiers.set(ta.organizationId, ta.tier)
+      if (!currentAssignments.has(ta.organizationId)) {
+        currentAssignments.set(ta.organizationId, ta)
       }
     }
 
+    const now = new Date()
+    const msPerDay = 1000 * 60 * 60 * 24
     for (const agency of agencies) {
-      agency.currentTier = currentTiers.get(agency.organizationId) ?? null
+      const ta = currentAssignments.get(agency.organizationId)
+      agency.currentTier = ta?.tier ?? null
+      agency.validUntil = ta?.validUntil?.toISOString() ?? null
+      if (ta?.validUntil) {
+        const daysUntil = (ta.validUntil.getTime() - now.getTime()) / msPerDay
+        agency.reviewStatus = daysUntil <= 0 ? 'overdue' : daysUntil <= EXPIRY_NOTICE_DAYS ? 'expiring' : 'ok'
+      } else {
+        agency.reviewStatus = null
+      }
     }
   }
 
@@ -240,6 +255,8 @@ const agencySchema = z.object({
   minCount: z.number(),
   createdAt: z.string(),
   currentTier: z.string().nullable(),
+  validUntil: z.string().nullable(),
+  reviewStatus: z.enum(['ok', 'expiring', 'overdue']).nullable(),
 })
 
 const getDoc: OpenApiMethodDoc = {

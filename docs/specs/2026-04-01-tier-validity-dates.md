@@ -341,10 +341,15 @@ If a consumer is needed in the future, re-add with the correct payload at that t
 | Phase | Status | Date | Notes |
 |-------|--------|------|-------|
 | Phase A — Data Model + Assignment Flows | Done | 2026-04-02 | C1-C3, C7 implemented. Typecheck + 57 unit tests passing. |
-| Phase B — Visibility + Notifications | Not Started | — | C4 (tier-status API), C5 (expiry banner widget), C6 (PM agencies list indicators) |
+| Phase B — Visibility + Notifications | Done | 2026-04-02 | C4-C6 implemented. Typecheck passing. |
 
 ### Phase A — Detailed Progress
 - [x] C1: Entity rename (effectiveDate→validFrom), add validUntil, migration, EXPIRY_NOTICE_DAYS, remove AgencyTierChanged event
 - [x] C2: Tier assign API + form (validUntil in zod schema, date picker in ChangeTierDialog)
 - [x] C3: Tier proposal approval (validUntil required on approve, date picker in ActionDialog)
 - [x] C7: Seed data updated, i18n keys added, 11 new unit tests for expiry logic
+
+### Phase B — Detailed Progress
+- [x] C4: Tier status API returns validFrom, validUntil, isExpiring, isExpired. Widget shows review date with color coding.
+- [x] C5: New tier-expiry-banner dashboard widget with ACL feature. Seeded for partner_admin + partner_member.
+- [x] C6: Agencies GET API returns validUntil + reviewStatus. Page has Expiring/Overdue filter buttons + ReviewBadge + Review date column.

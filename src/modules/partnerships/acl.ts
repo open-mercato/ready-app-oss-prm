@@ -12,6 +12,7 @@ const features = [
   { id: 'partnerships.license-deals.view', title: 'View license deals', module: 'partnerships' },
   { id: 'partnerships.tier.manage', title: 'Manage tiers', module: 'partnerships' },
   { id: 'partnerships.widgets.tier-status', title: 'View tier status widget', module: 'partnerships' },
+  { id: 'partnerships.widgets.tier-expiry-banner', title: 'View tier expiry banner', module: 'partnerships' },
   { id: 'partnerships.rfp.manage', title: 'Manage RFP campaigns', module: 'partnerships' },
   { id: 'partnerships.rfp.view', title: 'View RFP campaigns', module: 'partnerships' },
   { id: 'partnerships.rfp.respond', title: 'Respond to RFP campaigns', module: 'partnerships' },

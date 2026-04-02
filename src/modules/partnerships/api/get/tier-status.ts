@@ -9,7 +9,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { OpenApiMethodDoc, OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { TierAssignment, TierEvaluationState, TierChangeProposal } from '../../data/entities'
 import { PartnerLicenseDeal } from '../../data/entities'
-import { TIER_THRESHOLDS } from '../../data/tier-thresholds'
+import { TIER_THRESHOLDS, EXPIRY_NOTICE_DAYS } from '../../data/tier-thresholds'
 
 export const metadata = {
   path: '/partnerships/tier-status',
@@ -222,10 +222,24 @@ async function GET(req: Request) {
       // Fallback to badge (least privilege) if RBAC unavailable
     }
 
+    // Compute validity read-model projections
+    const validFrom = currentAssignment?.validFrom?.toISOString() ?? null
+    const validUntil = currentAssignment?.validUntil?.toISOString() ?? null
+    const msPerDay = 1000 * 60 * 60 * 24
+    const daysUntilReview = currentAssignment?.validUntil
+      ? (currentAssignment.validUntil.getTime() - now.getTime()) / msPerDay
+      : null
+    const isExpiring = daysUntilReview !== null && daysUntilReview > 0 && daysUntilReview <= EXPIRY_NOTICE_DAYS
+    const isExpired = daysUntilReview !== null && daysUntilReview <= 0
+
     return NextResponse.json({
       tier,
       year,
       viewMode,
+      validFrom,
+      validUntil,
+      isExpiring,
+      isExpired,
       kpis: {
         wic,
         wip,
@@ -274,6 +288,10 @@ const responseSchema = z.object({
   tier: z.string().nullable(),
   year: z.number().int(),
   viewMode: z.enum(['full', 'badge']),
+  validFrom: z.string().nullable(),
+  validUntil: z.string().nullable(),
+  isExpiring: z.boolean(),
+  isExpired: z.boolean(),
   kpis: kpiSchema,
   gracePeriod: z.boolean(),
   pendingProposal: z.boolean(),
