@@ -30,37 +30,37 @@ const USER_ID = 'user-001'
 
 describe('onboarding-status', () => {
   describe('detectRole', () => {
-    it('returns partner_admin when user has agency-profile manage feature', async () => {
+    it('returns agency_admin when user has agency-profile manage feature', async () => {
       const rbac = createMockRbacService({
         'partnerships.agency-profile.manage': true,
         'partnerships.widgets.wip-count': true,
       })
       const role = await detectRole(rbac, USER_ID, TENANT_ID, ORG_ID)
-      expect(role).toBe('partner_admin')
+      expect(role).toBe('agency_admin')
     })
 
-    it('returns partner_member when user has wip-count but not agency-profile manage', async () => {
+    it('returns agency_business_developer when user has wip-count but not agency-profile manage', async () => {
       const rbac = createMockRbacService({
         'partnerships.agency-profile.manage': false,
         'partnerships.widgets.wip-count': true,
       })
       const role = await detectRole(rbac, USER_ID, TENANT_ID, ORG_ID)
-      expect(role).toBe('partner_member')
+      expect(role).toBe('agency_business_developer')
     })
 
-    it('returns partner_contributor when user has neither agency-profile manage nor wip-count', async () => {
+    it('returns agency_developer when user has neither agency-profile manage nor wip-count', async () => {
       const rbac = createMockRbacService({
         'partnerships.agency-profile.manage': false,
         'partnerships.widgets.wip-count': false,
       })
       const role = await detectRole(rbac, USER_ID, TENANT_ID, ORG_ID)
-      expect(role).toBe('partner_contributor')
+      expect(role).toBe('agency_developer')
     })
   })
 
   describe('getItemsForRole', () => {
-    it('returns 4 items for partner_admin', () => {
-      const items = getItemsForRole('partner_admin')
+    it('returns 4 items for agency_admin', () => {
+      const items = getItemsForRole('agency_admin')
       expect(items).toHaveLength(4)
       expect(items.map((i) => i.id)).toEqual([
         'fill_profile',
@@ -78,8 +78,8 @@ describe('onboarding-status', () => {
       expect(items[3].link).toBe('/backend/partnerships/users')
     })
 
-    it('returns 2 items for partner_member', () => {
-      const items = getItemsForRole('partner_member')
+    it('returns 2 items for agency_business_developer', () => {
+      const items = getItemsForRole('agency_business_developer')
       expect(items).toHaveLength(2)
       expect(items.map((i) => i.id)).toEqual(['add_prospect', 'create_deal'])
       expect(items[0].label).toBe('partnerships.widgets.onboardingChecklist.addProspect')
@@ -88,8 +88,8 @@ describe('onboarding-status', () => {
       expect(items[1].link).toBe('/backend/customers/deals')
     })
 
-    it('returns 1 item for partner_contributor', () => {
-      const items = getItemsForRole('partner_contributor')
+    it('returns 1 item for agency_developer', () => {
+      const items = getItemsForRole('agency_developer')
       expect(items).toHaveLength(1)
       expect(items[0].id).toBe('set_gh_username')
       expect(items[0].label).toBe('partnerships.widgets.onboardingChecklist.setGhUsername')

@@ -202,7 +202,7 @@ test.describe.serial('TC-PRM-019: Onboarding Checklist UI — Fresh Agency', () 
         name: `QA BD ${stamp}`,
         password: 'TestPass123!',
         organizationId: orgId,
-        roles: ['partner_member'],
+        roles: ['agency_business_developer'],
       },
     })
     expect([200, 201].includes(res.status()), `Create BD user failed: ${res.status()}`).toBe(true)
@@ -226,7 +226,7 @@ test.describe.serial('TC-PRM-019: Onboarding Checklist UI — Fresh Agency', () 
         name: `QA Contributor ${stamp}`,
         password: 'TestPass123!',
         organizationId: orgId,
-        roles: ['partner_contributor'],
+        roles: ['agency_developer'],
       },
     })
     expect([200, 201].includes(res.status()), `Create Contributor failed: ${res.status()}`).toBe(true)
@@ -276,7 +276,7 @@ test.describe.serial('TC-PRM-019: Onboarding Checklist UI — Fresh Agency', () 
       allCompleted: boolean
     }>(res)
 
-    expect(body!.role).toBe('partner_admin')
+    expect(body!.role).toBe('agency_admin')
     expect(body!.items).toHaveLength(4)
 
     const byId = Object.fromEntries(body!.items.map((i) => [i.id, i.completed]))

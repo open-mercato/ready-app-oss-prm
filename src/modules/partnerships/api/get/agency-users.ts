@@ -18,7 +18,7 @@ export const metadata = {
 // Constants
 // ---------------------------------------------------------------------------
 
-const AGENCY_ROLE_NAMES = ['partner_admin', 'partner_member', 'partner_contributor'] as const
+const AGENCY_ROLE_NAMES = ['agency_admin', 'agency_business_developer', 'agency_developer'] as const
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -61,7 +61,7 @@ async function GET(req: Request) {
   const userId = auth.sub
 
   // -----------------------------------------------------------------------
-  // Determine actor type: PM or partner_admin
+  // Determine actor type: PM or agency_admin
   // -----------------------------------------------------------------------
 
   const isPm = await rbacService.userHasAllFeatures(
@@ -96,7 +96,7 @@ async function GET(req: Request) {
     }
     targetOrgId = org.id
   } else {
-    // partner_admin — always scoped to own org
+    // agency_admin — always scoped to own org
     targetOrgId = auth.orgId ?? null
     if (!targetOrgId) {
       return NextResponse.json({ error: 'No organization associated with user' }, { status: 403 })
@@ -215,7 +215,7 @@ const agencyUserSchema = z.object({
 })
 
 const getDoc: OpenApiMethodDoc = {
-  summary: 'List agency users scoped to the actor\'s org (partner_admin) or a specified org (PM)',
+  summary: 'List agency users scoped to the actor\'s org (agency_admin) or a specified org (PM)',
   tags: ['Partnerships'],
   query: querySchema,
   responses: [

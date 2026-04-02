@@ -268,9 +268,9 @@ const DEMO_AGENCIES: DemoAgency[] = [
     teamSize: '21-50',
     profile: 'full',
     users: [
-      { email: 'acme-admin@demo.local', name: 'Alice Acme (Admin)', roleName: 'partner_admin' },
-      { email: 'acme-bd@demo.local', name: 'Bob Acme (BD)', roleName: 'partner_member' },
-      { email: 'acme-contributor@demo.local', name: 'Carol Acme (Contributor)', roleName: 'partner_contributor' },
+      { email: 'acme-admin@demo.local', name: 'Alice Acme (Admin)', roleName: 'agency_admin' },
+      { email: 'acme-bd@demo.local', name: 'Bob Acme (BD)', roleName: 'agency_business_developer' },
+      { email: 'acme-contributor@demo.local', name: 'Carol Acme (Contributor)', roleName: 'agency_developer' },
     ],
     customFields: {
       services: ['Software Development', 'Consulting', 'Integration'],
@@ -345,8 +345,8 @@ const DEMO_AGENCIES: DemoAgency[] = [
     teamSize: '6-20',
     profile: 'full',
     users: [
-      { email: 'nordic-admin@demo.local', name: 'Nils Nordic (Admin)', roleName: 'partner_admin' },
-      { email: 'nordic-bd@demo.local', name: 'Saga Nordic (BD)', roleName: 'partner_member' },
+      { email: 'nordic-admin@demo.local', name: 'Nils Nordic (Admin)', roleName: 'agency_admin' },
+      { email: 'nordic-bd@demo.local', name: 'Saga Nordic (BD)', roleName: 'agency_business_developer' },
     ],
     customFields: {
       services: ['Software Development', 'Consulting'],
@@ -398,7 +398,7 @@ const DEMO_AGENCIES: DemoAgency[] = [
     teamSize: '1-5',
     profile: 'minimal',
     users: [
-      { email: 'cloudbridge-admin@demo.local', name: 'Chris CloudBridge (Admin)', roleName: 'partner_admin' },
+      { email: 'cloudbridge-admin@demo.local', name: 'Chris CloudBridge (Admin)', roleName: 'agency_admin' },
     ],
     customFields: undefined,
     caseStudies: [],
@@ -459,7 +459,7 @@ const BACKEND_BASELINE_FEATURES = [
 ]
 
 const PRM_ROLE_FEATURES: Record<string, string[]> = {
-  partner_admin: [
+  agency_admin: [
     ...BACKEND_BASELINE_FEATURES,
     'customers.*',
     'entities.records.view',
@@ -481,7 +481,7 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
     'auth.roles.list',
     'directory.organizations.view',
   ],
-  partner_member: [
+  agency_business_developer: [
     ...BACKEND_BASELINE_FEATURES,
     'customers.*',
     'partnerships.case-studies.manage',
@@ -495,7 +495,7 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
     'partnerships.widgets.tier-status',
     'partnerships.widgets.tier-expiry-banner',
   ],
-  partner_contributor: [
+  agency_developer: [
     ...BACKEND_BASELINE_FEATURES,
     'partnerships.wic.view',
     'partnerships.widgets.onboarding-checklist',
@@ -732,7 +732,7 @@ async function seedPrmExamples(
     await seedUser(em, {
       email: contrib.email,
       name: contrib.name,
-      roleName: 'partner_contributor',
+      roleName: 'agency_developer',
       organizationId: scope.organizationId,
       tenantId: scope.tenantId,
       passwordHash,
@@ -1192,7 +1192,7 @@ export const setup: ModuleSetupConfig = {
     await seedDashboardDefaultsForTenant(ctx.em, {
       tenantId: ctx.tenantId,
       organizationId: null,
-      roleNames: ['partner_admin', 'partner_member', 'partner_contributor'],
+      roleNames: ['agency_admin', 'agency_business_developer', 'agency_developer'],
       widgetIds: AGENCY_WIDGETS,
       logger: () => {},
     })

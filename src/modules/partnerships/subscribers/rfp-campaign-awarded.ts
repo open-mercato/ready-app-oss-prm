@@ -21,7 +21,7 @@ type ResolverContext = {
   resolve: <T = unknown>(name: string) => T
 }
 
-const BD_ROLE_NAMES = ['partner_member', 'partner_admin']
+const BD_ROLE_NAMES = ['agency_business_developer', 'agency_admin']
 
 async function findBdUserIds(
   em: EntityManager,

@@ -29,7 +29,7 @@ import { interceptors, isPartnerAdmin, getAgencyRoleIds, isLastPartnerAdmin } fr
 // Constants
 // ---------------------------------------------------------------------------
 
-const AGENCY_ROLE_NAMES = ['partner_admin', 'partner_member', 'partner_contributor']
+const AGENCY_ROLE_NAMES = ['agency_admin', 'agency_business_developer', 'agency_developer']
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -189,9 +189,9 @@ describe('auth user guardrails — helper functions', () => {
     it('returns IDs for the 3 agency roles found in DB', async () => {
       const em = makeMockEm({
         findRoles: [
-          { id: 'role-pa', name: 'partner_admin' },
-          { id: 'role-pm', name: 'partner_member' },
-          { id: 'role-pc', name: 'partner_contributor' },
+          { id: 'role-pa', name: 'agency_admin' },
+          { id: 'role-pm', name: 'agency_business_developer' },
+          { id: 'role-pc', name: 'agency_developer' },
         ],
       })
 
@@ -212,9 +212,9 @@ describe('auth user guardrails — helper functions', () => {
   // isLastPartnerAdmin
   // -------------------------------------------------------------------------
   describe('isLastPartnerAdmin', () => {
-    it('returns true when target user is the only partner_admin in org', async () => {
+    it('returns true when target user is the only agency_admin in org', async () => {
       const em = makeMockEm({
-        findOneRole: { id: 'role-pa', name: 'partner_admin' },
+        findOneRole: { id: 'role-pa', name: 'agency_admin' },
         findUsers: [{ id: 'user-target', organizationId: 'org-1' }],
         findUserRoles: [{ user: 'user-target', role: 'role-pa' }],
       })
@@ -226,9 +226,9 @@ describe('auth user guardrails — helper functions', () => {
       expect(result).toBe(true)
     })
 
-    it('returns false when there are other partner_admins in org', async () => {
+    it('returns false when there are other agency_admins in org', async () => {
       const em = makeMockEm({
-        findOneRole: { id: 'role-pa', name: 'partner_admin' },
+        findOneRole: { id: 'role-pa', name: 'agency_admin' },
         findUsers: [
           { id: 'user-target', organizationId: 'org-1' },
           { id: 'user-other', organizationId: 'org-1' },
@@ -246,7 +246,7 @@ describe('auth user guardrails — helper functions', () => {
       expect(result).toBe(false)
     })
 
-    it('returns false when partner_admin role does not exist', async () => {
+    it('returns false when agency_admin role does not exist', async () => {
       const em = makeMockEm({ findOneRole: null })
 
       const result = await isLastPartnerAdmin(
@@ -292,9 +292,9 @@ describe('auth user guardrails — interceptors', () => {
     it('rejects foreign organizationId in body', async () => {
       const em = makeMockEm({
         findRoles: [
-          { id: 'role-pa', name: 'partner_admin' },
-          { id: 'role-pm', name: 'partner_member' },
-          { id: 'role-pc', name: 'partner_contributor' },
+          { id: 'role-pa', name: 'agency_admin' },
+          { id: 'role-pm', name: 'agency_business_developer' },
+          { id: 'role-pc', name: 'agency_developer' },
         ],
       })
       const rbacService = makeRbacService(['partnerships.agency-profile.manage'])
@@ -315,9 +315,9 @@ describe('auth user guardrails — interceptors', () => {
     it('rejects forbidden role', async () => {
       const em = makeMockEm({
         findRoles: [
-          { id: 'role-pa', name: 'partner_admin' },
-          { id: 'role-pm', name: 'partner_member' },
-          { id: 'role-pc', name: 'partner_contributor' },
+          { id: 'role-pa', name: 'agency_admin' },
+          { id: 'role-pm', name: 'agency_business_developer' },
+          { id: 'role-pc', name: 'agency_developer' },
         ],
       })
       const rbacService = makeRbacService(['partnerships.agency-profile.manage'])
@@ -338,9 +338,9 @@ describe('auth user guardrails — interceptors', () => {
     it('forces organizationId to actor org and passes for valid roles', async () => {
       const em = makeMockEm({
         findRoles: [
-          { id: 'role-pa', name: 'partner_admin' },
-          { id: 'role-pm', name: 'partner_member' },
-          { id: 'role-pc', name: 'partner_contributor' },
+          { id: 'role-pa', name: 'agency_admin' },
+          { id: 'role-pm', name: 'agency_business_developer' },
+          { id: 'role-pc', name: 'agency_developer' },
         ],
       })
       const rbacService = makeRbacService(['partnerships.agency-profile.manage'])
@@ -349,7 +349,7 @@ describe('auth user guardrails — interceptors', () => {
       const request = makeRequest({
         method: 'POST',
         url: 'http://localhost/api/auth/users',
-        body: { email: 'new@example.com', roles: ['role-pm', 'partner_contributor'] },
+        body: { email: 'new@example.com', roles: ['role-pm', 'agency_developer'] },
       })
 
       const result = await interceptor.before!(request, context)
@@ -413,10 +413,10 @@ describe('auth user guardrails — interceptors', () => {
       expect((result.body as Record<string, unknown>)?.error).toMatch(/own organization/)
     })
 
-    it('rejects deleting last partner_admin', async () => {
+    it('rejects deleting last agency_admin', async () => {
       const em = makeMockEm({
         findOneUser: { id: 'user-target', organizationId: 'org-1', deletedAt: null },
-        findOneRole: { id: 'role-pa', name: 'partner_admin' },
+        findOneRole: { id: 'role-pa', name: 'agency_admin' },
         findUserRoles: [{ user: 'user-target', role: 'role-pa' }],
       })
       const rbacService = makeRbacService(['partnerships.agency-profile.manage'])
@@ -434,7 +434,7 @@ describe('auth user guardrails — interceptors', () => {
           return Promise.resolve(null)
         }
         if (entityName === 'Role') {
-          return Promise.resolve({ id: 'role-pa', name: 'partner_admin' })
+          return Promise.resolve({ id: 'role-pa', name: 'agency_admin' })
         }
         return Promise.resolve(null)
       })
@@ -470,7 +470,7 @@ describe('auth user guardrails — interceptors', () => {
           return Promise.resolve(null)
         }
         if (entityName === 'Role') {
-          return Promise.resolve({ id: 'role-pa', name: 'partner_admin' })
+          return Promise.resolve({ id: 'role-pa', name: 'agency_admin' })
         }
         return Promise.resolve(null)
       })

@@ -13,7 +13,7 @@ type OnboardingChecklistItem = {
 }
 
 type OnboardingStatusResponse = {
-  role: 'partner_admin' | 'partner_member' | 'partner_contributor' | null
+  role: 'agency_admin' | 'agency_business_developer' | 'agency_developer' | null
   items: OnboardingChecklistItem[]
 }
 

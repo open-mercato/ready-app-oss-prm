@@ -120,7 +120,7 @@ async function POST(req: Request) {
   })
   em.persist(user)
 
-  const role = await em.findOne(Role, { name: 'partner_admin', tenantId, deletedAt: null })
+  const role = await em.findOne(Role, { name: 'agency_admin', tenantId, deletedAt: null })
   if (role) {
     em.persist(em.create(UserRole, { user, role, createdAt: new Date() }))
 

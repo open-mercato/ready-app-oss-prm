@@ -129,7 +129,7 @@ test.describe.serial('TC-PRM-036: Agency Onboarding E2E', () => {
     }>(response)
 
     expect(body).not.toBeNull()
-    expect(body!.role).toBe('partner_admin')
+    expect(body!.role).toBe('agency_admin')
     expect(body!.items).toHaveLength(4)
     expect(body!.items.map((i) => i.id)).toEqual([
       'fill_profile', 'add_case_study', 'invite_bd', 'invite_contributor',
@@ -149,7 +149,7 @@ test.describe.serial('TC-PRM-036: Agency Onboarding E2E', () => {
         password: bdPassword,
         name: 'TC-036 BD User',
         organizationId: agencyOrgId,
-        roles: ['partner_member'],
+        roles: ['agency_business_developer'],
       },
     })
 
@@ -180,7 +180,7 @@ test.describe.serial('TC-PRM-036: Agency Onboarding E2E', () => {
         password: contributorPassword,
         name: 'TC-036 Contributor',
         organizationId: agencyOrgId,
-        roles: ['partner_contributor'],
+        roles: ['agency_developer'],
       },
     })
 
@@ -215,7 +215,7 @@ test.describe.serial('TC-PRM-036: Agency Onboarding E2E', () => {
     }>(response)
 
     expect(body).not.toBeNull()
-    expect(body!.role).toBe('partner_member')
+    expect(body!.role).toBe('agency_business_developer')
     expect(body!.items).toHaveLength(2)
     expect(body!.items.map((i) => i.id)).toEqual(['add_prospect', 'create_deal'])
   })
@@ -237,7 +237,7 @@ test.describe.serial('TC-PRM-036: Agency Onboarding E2E', () => {
     }>(response)
 
     expect(body).not.toBeNull()
-    expect(body!.role).toBe('partner_contributor')
+    expect(body!.role).toBe('agency_developer')
     expect(body!.items).toHaveLength(1)
     expect(body!.items[0].id).toBe('set_gh_username')
   })

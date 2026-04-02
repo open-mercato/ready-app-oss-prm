@@ -35,7 +35,7 @@ type UserRow = {
   roles: string[]
 }
 
-const AGENCY_ROLE_NAMES = ['partner_admin', 'partner_member', 'partner_contributor'] as const
+const AGENCY_ROLE_NAMES = ['agency_admin', 'agency_business_developer', 'agency_developer'] as const
 
 function generateTempPassword(): string {
   return Math.random().toString(36).slice(2, 14) + '!1A'

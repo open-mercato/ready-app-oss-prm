@@ -165,7 +165,7 @@ async function GET(req: Request) {
   })
   const agencyOrgs = allOrgs
 
-  const partnerAdminRole = await em.findOne(Role, { name: 'partner_admin', tenantId, deletedAt: null })
+  const partnerAdminRole = await em.findOne(Role, { name: 'agency_admin', tenantId, deletedAt: null })
   const agencies: AgencyListItem[] = []
 
   for (const org of agencyOrgs) {

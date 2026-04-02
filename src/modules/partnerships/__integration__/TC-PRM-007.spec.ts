@@ -55,7 +55,7 @@ test.describe('TC-PRM-007: Admin Creates Users UI (US-1.4 + US-1.5)', () => {
           password: testPassword,
           name: 'Test BD UI',
           organizationId,
-          roles: ['partner_member'],
+          roles: ['agency_business_developer'],
         },
       })
       expect([200, 201].includes(res.status()), `User creation failed: ${res.status()}`).toBe(true)
@@ -98,7 +98,7 @@ test.describe('TC-PRM-007: Admin Creates Users UI (US-1.4 + US-1.5)', () => {
           password: testPassword,
           name: 'Test Contributor UI',
           organizationId,
-          roles: ['partner_contributor'],
+          roles: ['agency_developer'],
         },
       })
       expect([200, 201].includes(res.status()), `User creation failed: ${res.status()}`).toBe(true)
@@ -132,7 +132,7 @@ test.describe('TC-PRM-007: Admin Creates Users UI (US-1.4 + US-1.5)', () => {
         password: 'Test123!',
         name: 'Should Not Be Created',
         organizationId,
-        roles: ['partner_member'],
+        roles: ['agency_business_developer'],
       },
     })
 
@@ -197,7 +197,7 @@ test.describe('TC-PRM-007: Settings > Users page & auth guardrails', () => {
   })
 
   // -------------------------------------------------------------------------
-  // T2: Admin creates partner_member from PRM page — credential handoff
+  // T2: Admin creates agency_business_developer from PRM page — credential handoff
   // -------------------------------------------------------------------------
   test('T2: Admin creates BD user from PRM page and sees credential handoff', async ({ page, request }) => {
     await loginInBrowser(page, adminToken)
@@ -224,10 +224,10 @@ test.describe('TC-PRM-007: Settings > Users page & auth guardrails', () => {
       // Fill email
       await dialog.locator('#user-email').fill(testEmail)
 
-      // Select partner_member role
+      // Select agency_business_developer role
       const roleSelect = dialog.locator('#user-role')
       const options = await roleSelect.locator('option').allTextContents()
-      const memberOption = options.find((o) => o.includes('partner_member'))
+      const memberOption = options.find((o) => o.includes('agency_business_developer'))
       if (memberOption) {
         await roleSelect.selectOption({ label: memberOption })
       }
@@ -262,7 +262,7 @@ test.describe('TC-PRM-007: Settings > Users page & auth guardrails', () => {
   })
 
   // -------------------------------------------------------------------------
-  // T3: Admin creates partner_contributor from PRM page
+  // T3: Admin creates agency_developer from PRM page
   // -------------------------------------------------------------------------
   test('T3: Admin creates Contributor from PRM page and sees credential handoff', async ({ page, request }) => {
     await loginInBrowser(page, adminToken)
@@ -287,10 +287,10 @@ test.describe('TC-PRM-007: Settings > Users page & auth guardrails', () => {
       // Fill email
       await dialog.locator('#user-email').fill(testEmail)
 
-      // Select partner_contributor role
+      // Select agency_developer role
       const roleSelect = dialog.locator('#user-role')
       const options = await roleSelect.locator('option').allTextContents()
-      const contribOption = options.find((o) => o.includes('partner_contributor'))
+      const contribOption = options.find((o) => o.includes('agency_developer'))
       if (contribOption) {
         await roleSelect.selectOption({ label: contribOption })
       }
@@ -304,7 +304,7 @@ test.describe('TC-PRM-007: Settings > Users page & auth guardrails', () => {
       const credentialText = await credentialBanner.first().textContent() ?? ''
 
       expect(credentialText, 'Credential message should contain email').toContain(testEmail)
-      expect(credentialText, 'Credential message should contain partner_contributor').toContain('partner_contributor')
+      expect(credentialText, 'Credential message should contain agency_developer').toContain('agency_developer')
 
       // Cleanup: find created user
       const listRes = await apiRequest(request, 'GET', `/api/auth/users?search=${encodeURIComponent(testEmail)}`, { token: adminToken })
@@ -336,7 +336,7 @@ test.describe('TC-PRM-007: Settings > Users page & auth guardrails', () => {
           email: testEmail,
           password: 'Temp123!Abc',
           organizationId: adminOrgId,
-          roles: ['partner_member'],
+          roles: ['agency_business_developer'],
         },
       })
       expect(createRes.ok(), `Setup: user creation failed ${createRes.status()}`).toBeTruthy()
@@ -423,7 +423,7 @@ test.describe('TC-PRM-007: Settings > Users page & auth guardrails', () => {
         password: 'Test123!',
         name: 'Foreign Org User',
         organizationId: fakeOrgId,
-        roles: ['partner_member'],
+        roles: ['agency_business_developer'],
       },
     })
 

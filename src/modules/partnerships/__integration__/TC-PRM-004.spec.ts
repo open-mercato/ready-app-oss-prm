@@ -10,7 +10,7 @@ import { deleteUserIfExists } from '@open-mercato/core/helpers/integration/authF
  * Auth:  requireAuth + requireFeatures: ['partnerships.agencies.manage'] (PM only)
  * Body:  { agencyName: string, adminEmail: string, seedDemoData: boolean }
  *
- * Creates: Organization + User (partner_admin) + UserAcl (restricted to org) + optional demo data
+ * Creates: Organization + User (agency_admin) + UserAcl (restricted to org) + optional demo data
  * Returns: { organizationId, adminUserId, agencyName, adminEmail, inviteMessage, demoDataSeeded }
  *
  * T1 — PM creates agency successfully (seedDemoData=false)

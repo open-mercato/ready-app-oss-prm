@@ -218,7 +218,7 @@ export const interceptors: ApiInterceptor[] = [
   },
 
   // ---------------------------------------------------------------------------
-  // Auth route interceptors — restrict partner_admin to own-org agency users
+  // Auth route interceptors — restrict agency_admin to own-org agency users
   // ---------------------------------------------------------------------------
 
   // Note: auth users GET is a custom handler that bypasses makeCrudRoute,
@@ -265,7 +265,7 @@ export const interceptors: ApiInterceptor[] = [
             return {
               ok: false,
               statusCode: 403,
-              body: { error: 'Agency admins can only assign agency roles (partner_admin, partner_member, partner_contributor).' },
+              body: { error: 'Agency admins can only assign agency roles (agency_admin, agency_business_developer, agency_developer).' },
             }
           }
         }
@@ -274,7 +274,7 @@ export const interceptors: ApiInterceptor[] = [
       return { ok: true, body: patchedBody }
     },
     async after(request, response, context) {
-      // After successful user creation by partner_admin, restrict the new user to actor's org
+      // After successful user creation by agency_admin, restrict the new user to actor's org
       if (request.method !== 'POST') return {}
       if (response.statusCode !== 201) return {}
       if (!await isPartnerAdmin(context)) return {}
@@ -363,7 +363,7 @@ export const interceptors: ApiInterceptor[] = [
         }
       }
 
-      // Prevent deleting the last partner_admin in the org
+      // Prevent deleting the last agency_admin in the org
       if (await isLastPartnerAdmin(em, context.organizationId, context.tenantId, targetUserId)) {
         return {
           ok: false,
@@ -381,14 +381,14 @@ export const interceptors: ApiInterceptor[] = [
 // Constants
 // ---------------------------------------------------------------------------
 
-const AGENCY_ROLE_NAMES = ['partner_admin', 'partner_member', 'partner_contributor'] as const
+const AGENCY_ROLE_NAMES = ['agency_admin', 'agency_business_developer', 'agency_developer'] as const
 
 // ---------------------------------------------------------------------------
 // Exported helpers (testable)
 // ---------------------------------------------------------------------------
 
 /**
- * Returns true if the actor is a partner_admin (has agency-profile.manage but NOT wic.manage).
+ * Returns true if the actor is an agency_admin (has agency-profile.manage but NOT wic.manage).
  * PM users always pass through (returns false). Non-agency-admin users also return false.
  */
 export async function isPartnerAdmin(context: InterceptorContext): Promise<boolean> {
@@ -421,7 +421,7 @@ export async function getAgencyRoleIds(em: EntityManager, tenantId: string): Pro
 }
 
 /**
- * Returns true if deleting targetUserId would leave zero partner_admins in the org.
+ * Returns true if deleting targetUserId would leave zero agency_admins in the org.
  */
 export async function isLastPartnerAdmin(
   em: EntityManager,
@@ -429,22 +429,22 @@ export async function isLastPartnerAdmin(
   tenantId: string,
   targetUserId: string,
 ): Promise<boolean> {
-  // Find the partner_admin role
+  // Find the agency_admin role
   const partnerAdminRole = await em.findOne(Role, {
-    name: 'partner_admin',
+    name: 'agency_admin',
     $or: [{ tenantId }, { tenantId: null }],
     deletedAt: null,
   })
   if (!partnerAdminRole) return false
 
-  // Find all users in this org with partner_admin role
+  // Find all users in this org with agency_admin role
   const orgAdmins = await em.find(User, {
     organizationId,
     deletedAt: null,
   })
   const orgAdminIds = new Set(orgAdmins.map((u) => u.id))
 
-  // Find which of those users have the partner_admin role
+  // Find which of those users have the agency_admin role
   const adminLinks = await em.find(UserRole, {
     role: partnerAdminRole.id,
     user: { $in: [...orgAdminIds] },

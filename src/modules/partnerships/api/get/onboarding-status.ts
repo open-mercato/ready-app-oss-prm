@@ -24,7 +24,7 @@ export type OnboardingChecklistItem = {
 }
 
 export type OnboardingStatusResponse = {
-  role: 'partner_admin' | 'partner_member' | 'partner_contributor'
+  role: 'agency_admin' | 'agency_business_developer' | 'agency_developer'
   items: OnboardingChecklistItem[]
 }
 
@@ -40,7 +40,7 @@ export type RbacService = {
   ): Promise<boolean>
 }
 
-export type DetectedRole = 'partner_admin' | 'partner_member' | 'partner_contributor' | null
+export type DetectedRole = 'agency_admin' | 'agency_business_developer' | 'agency_developer' | null
 
 export async function detectRole(
   rbacService: RbacService,
@@ -52,15 +52,15 @@ export async function detectRole(
 
   const canManageAgencyProfile = await rbacService.userHasAllFeatures(userId, ['partnerships.agency-profile.manage'], scope)
   if (canManageAgencyProfile) {
-    return 'partner_admin'
+    return 'agency_admin'
   }
 
   const hasWipCount = await rbacService.userHasAllFeatures(userId, ['partnerships.widgets.wip-count'], scope)
   if (hasWipCount) {
-    return 'partner_member'
+    return 'agency_business_developer'
   }
 
-  return 'partner_contributor'
+  return 'agency_developer'
 }
 
 async function detectRoleByAssignment(
@@ -75,24 +75,24 @@ async function detectRoleByAssignment(
 
   const hasAdminRole = await em.findOne(UserRole, {
     user: userFilter,
-    role: { name: 'partner_admin', tenantId, deletedAt: null },
+    role: { name: 'agency_admin', tenantId, deletedAt: null },
     deletedAt: null,
   })
-  if (hasAdminRole) return 'partner_admin'
+  if (hasAdminRole) return 'agency_admin'
 
   const hasMemberRole = await em.findOne(UserRole, {
     user: userFilter,
-    role: { name: 'partner_member', tenantId, deletedAt: null },
+    role: { name: 'agency_business_developer', tenantId, deletedAt: null },
     deletedAt: null,
   })
-  if (hasMemberRole) return 'partner_member'
+  if (hasMemberRole) return 'agency_business_developer'
 
   const hasContributorRole = await em.findOne(UserRole, {
     user: userFilter,
-    role: { name: 'partner_contributor', tenantId, deletedAt: null },
+    role: { name: 'agency_developer', tenantId, deletedAt: null },
     deletedAt: null,
   })
-  if (hasContributorRole) return 'partner_contributor'
+  if (hasContributorRole) return 'agency_developer'
 
   return null
 }
@@ -147,9 +147,9 @@ const CONTRIBUTOR_ITEMS: OnboardingChecklistItem[] = [
 
 export function getItemsForRole(role: DetectedRole): OnboardingChecklistItem[] {
   switch (role) {
-    case 'partner_admin': return ADMIN_ITEMS
-    case 'partner_member': return BD_ITEMS
-    case 'partner_contributor': return CONTRIBUTOR_ITEMS
+    case 'agency_admin': return ADMIN_ITEMS
+    case 'agency_business_developer': return BD_ITEMS
+    case 'agency_developer': return CONTRIBUTOR_ITEMS
     default: return []
   }
 }
@@ -208,7 +208,7 @@ const onboardingItemSchema = z.object({
 })
 
 const responseSchema = z.object({
-  role: z.enum(['partner_admin', 'partner_member', 'partner_contributor']).nullable(),
+  role: z.enum(['agency_admin', 'agency_business_developer', 'agency_developer']).nullable(),
   items: z.array(onboardingItemSchema),
 })
 

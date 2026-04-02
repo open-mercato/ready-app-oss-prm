@@ -29,7 +29,7 @@ type OnboardingItem = {
 }
 
 type OnboardingStatusResponse = {
-  role: 'partner_admin' | 'partner_member' | 'partner_contributor' | null
+  role: 'agency_admin' | 'agency_business_developer' | 'agency_developer' | null
   items: OnboardingItem[]
 }
 
@@ -67,7 +67,7 @@ test.describe('TC-PRM-003: Onboarding checklist API — static items per role', 
 
     const body = await readJsonSafe<OnboardingStatusResponse>(response)
     expect(body).not.toBeNull()
-    expect(body!.role).toBe('partner_admin')
+    expect(body!.role).toBe('agency_admin')
     expect(body!.items).toHaveLength(4)
 
     for (let i = 0; i < body!.items.length; i++) {
@@ -90,7 +90,7 @@ test.describe('TC-PRM-003: Onboarding checklist API — static items per role', 
 
     const body = await readJsonSafe<OnboardingStatusResponse>(response)
     expect(body).not.toBeNull()
-    expect(body!.role).toBe('partner_member')
+    expect(body!.role).toBe('agency_business_developer')
     expect(body!.items).toHaveLength(2)
 
     for (let i = 0; i < body!.items.length; i++) {
@@ -109,7 +109,7 @@ test.describe('TC-PRM-003: Onboarding checklist API — static items per role', 
 
     const body = await readJsonSafe<OnboardingStatusResponse>(response)
     expect(body).not.toBeNull()
-    expect(body!.role).toBe('partner_contributor')
+    expect(body!.role).toBe('agency_developer')
     expect(body!.items).toHaveLength(1)
 
     assertItemShape(body!.items[0], 0)

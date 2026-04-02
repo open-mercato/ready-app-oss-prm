@@ -59,7 +59,7 @@ This module demonstrates key Open Mercato extension patterns. Each file is a lea
 
 ## OM Patterns Demonstrated
 
-1. **RBAC with custom roles** — `setup.ts` seeds `partnership_manager` (PM), `partner_admin` (Agency Admin), `partner_member` (Business Developer / BD), and `partner_contributor` with `defaultRoleFeatures`
+1. **RBAC with custom roles** — `setup.ts` seeds `partnership_manager` (PM), `agency_admin` (Agency Admin), `agency_business_developer` (Business Developer / BD), and `agency_developer` with `defaultRoleFeatures`
 2. **CRM extension** — agencies are `customers` companies with custom fields (tier, WIC score, WIP count)
 3. **API interceptors** — before/after hooks on CRM deal CRUD to enforce WIP immutability
 4. **Widget injection** — dashboard widgets injected into `dashboards.main` slot
