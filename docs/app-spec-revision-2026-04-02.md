@@ -328,8 +328,8 @@ Three KPI items in Partnerships sidebar group use consistent naming:
 
 ---
 
-## 10. Open Questions
+## 10. Resolved Questions
 
-1. **Multi-agency admin**: Admin with 2+ orgs uses org switcher to switch between own agencies. WIP Scores shows data for currently selected org. Correct?
+1. **Multi-agency admin**: Admin with 2+ orgs uses org switcher to switch between own agencies. WIP Scores shows data for currently selected org. Standard OM behavior, no custom logic.
 
-2. **PM's own agency**: Does PM's org (OM Backoffice) appear in the Agencies list? Or is it excluded since it's the "home" org? Currently the agencies list is filtered by `agency_admin` role presence — PM's org wouldn't appear unless it has that role.
+2. **PM's own agency on Agencies list**: Yes — PM's org appears on the list like any other agency. PM is an agency, no reason to hide. Keeps the system simple, zero filtering exceptions.
