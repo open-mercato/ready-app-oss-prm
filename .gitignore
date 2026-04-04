@@ -75,6 +75,6 @@ yarn-error.log*
 # Misc
 *.tgz
 .cache/
-data/
+/data/
 .ai/prompts/
 .ai/qa/ephemeral-build-cache.json

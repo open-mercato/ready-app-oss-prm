@@ -464,6 +464,8 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
     'customers.*',
     'entities.records.view',
     'entities.records.manage',
+    'attachments.view',
+    'attachments.manage',
     'partnerships.agency-profile.manage',
     'partnerships.case-studies.manage',
     'partnerships.rfp.respond',
@@ -484,6 +486,8 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
   agency_business_developer: [
     ...BACKEND_BASELINE_FEATURES,
     'customers.*',
+    'attachments.view',
+    'attachments.manage',
     'partnerships.case-studies.manage',
     'partnerships.rfp.respond',
     'partnerships.rfp.view',
@@ -505,6 +509,8 @@ const PRM_ROLE_FEATURES: Record<string, string[]> = {
   partnership_manager: [
     ...BACKEND_BASELINE_FEATURES,
     'customers.*',
+    'attachments.view',
+    'attachments.manage',
     'partnerships.agencies.manage',
     'partnerships.agency-profile.manage',
     'partnerships.case-studies.manage',
@@ -1151,12 +1157,35 @@ async function seedPrmExamples(
 }
 
 // ---------------------------------------------------------------------------
+// Seed RFP attachment partition
+// ---------------------------------------------------------------------------
+
+async function seedRfpPartition(
+  em: import('@mikro-orm/postgresql').EntityManager,
+) {
+  const { AttachmentPartition } = await import('@open-mercato/core/modules/attachments/data/entities')
+  const existing = await em.findOne(AttachmentPartition, { code: 'rfp' })
+  if (!existing) {
+    const partition = em.create(AttachmentPartition, {
+      code: 'rfp',
+      title: 'RFP Attachments',
+      description: 'Attachments for RFP campaigns and responses (markdown, images)',
+      storageDriver: 'local',
+      isPublic: false,
+      requiresOcr: false,
+    })
+    await em.persistAndFlush(partition)
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Module setup
 // ---------------------------------------------------------------------------
 
 export const setup: ModuleSetupConfig = {
   seedDefaults: async (ctx) => {
     const scope: SeedScope = { tenantId: ctx.tenantId, organizationId: ctx.organizationId }
+    await seedRfpPartition(ctx.em)
     await seedPrmPipeline(ctx.em, scope)
     await seedCustomFields(ctx.em, scope)
     await seedDictionaries(ctx.em, scope)

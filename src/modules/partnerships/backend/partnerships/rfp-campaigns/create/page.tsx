@@ -13,9 +13,101 @@ type AgencyOption = {
   name: string
 }
 
+const RFP_ACCEPT_EXTENSIONS = ['md', 'jpg', 'jpeg', 'png', 'gif', 'webp']
+const RFP_MAX_SIZE_MB = 25
+const RFP_ACCEPT_STRING = '.md,.jpg,.jpeg,.png,.gif,.webp'
+
+function humanSize(n: number): string {
+  const units = ['B', 'KB', 'MB', 'GB']
+  let i = 0
+  let x = n
+  while (x >= 1024 && i < units.length - 1) { x /= 1024; i++ }
+  return `${x.toFixed(i === 0 ? 0 : 1)} ${units[i]}`
+}
+
+type AttachmentItem = { id: string; url: string; fileName: string; fileSize: number }
+
+function AttachmentSection({ entityId, recordId }: { entityId: string; recordId: string }) {
+  const t = useT()
+  const [items, setItems] = React.useState<AttachmentItem[]>([])
+  const [error, setError] = React.useState<string | null>(null)
+  const [uploading, setUploading] = React.useState(false)
+
+  const loadAttachments = React.useCallback(async () => {
+    try {
+      const res = await fetch(`/api/partnerships/rfp-attachments?entityId=${encodeURIComponent(entityId)}&recordId=${encodeURIComponent(recordId)}`)
+      if (res.ok) {
+        const data = await res.json()
+        setItems(Array.isArray(data.items) ? data.items : [])
+      }
+    } catch {}
+  }, [entityId, recordId])
+
+  React.useEffect(() => { loadAttachments() }, [loadAttachments])
+
+  async function handleUpload(files: FileList | null) {
+    if (!files) return
+    setError(null)
+    setUploading(true)
+    for (const file of Array.from(files)) {
+      const ext = (file.name || '').split('.').pop()?.toLowerCase() || ''
+      if (!RFP_ACCEPT_EXTENSIONS.includes(ext)) {
+        setError(t('partnerships.rfp.attachments.typeNotAllowed', 'File type not allowed. Accepted: ') + RFP_ACCEPT_EXTENSIONS.join(', '))
+        continue
+      }
+      if (file.size > RFP_MAX_SIZE_MB * 1024 * 1024) {
+        setError(t('partnerships.rfp.attachments.tooLarge', `File exceeds ${RFP_MAX_SIZE_MB} MB limit`))
+        continue
+      }
+      const fd = new FormData()
+      fd.set('entityId', entityId)
+      fd.set('recordId', recordId)
+      fd.set('partitionCode', 'rfp')
+      fd.set('file', file)
+      const res = await fetch('/api/attachments', { method: 'POST', body: fd })
+      if (!res.ok) {
+        setError(t('partnerships.rfp.attachments.uploadFailed', 'Upload failed'))
+        break
+      }
+    }
+    setUploading(false)
+    await loadAttachments()
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <input
+          type="file"
+          multiple
+          accept={RFP_ACCEPT_STRING}
+          onChange={(e) => handleUpload(e.target.files)}
+          disabled={uploading}
+          className="text-sm"
+        />
+        {uploading && <Spinner className="h-4 w-4" />}
+      </div>
+      {error && <div className="text-xs text-red-600">{error}</div>}
+      {items.length > 0 && (
+        <div className="space-y-1">
+          {items.map((it) => (
+            <div key={it.id} className="text-sm">
+              <a className="underline hover:text-primary" href={it.url} target="_blank" rel="noreferrer">{it.fileName}</a>
+              <span className="text-xs text-muted-foreground ml-1">{humanSize(it.fileSize)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function CreateRfpCampaignPage() {
   const t = useT()
   const router = useRouter()
+
+  // Pre-generate UUID so attachments can be uploaded before form submit
+  const [campaignId] = React.useState(() => crypto.randomUUID())
 
   const [title, setTitle] = React.useState('')
   const [description, setDescription] = React.useState('')
@@ -55,6 +147,7 @@ export default function CreateRfpCampaignPage() {
     setSubmitError(null)
 
     const payload: Record<string, unknown> = {
+      id: campaignId,
       title,
       description,
       deadline,
@@ -74,7 +167,7 @@ export default function CreateRfpCampaignPage() {
 
     if (call.ok) {
       flash(t('partnerships.rfpCampaigns.created', 'RFP campaign created successfully'))
-      router.push('/backend/partnerships/rfp-campaigns')
+      router.push(`/backend/partnerships/rfp-campaigns/${campaignId}`)
     } else {
       const result = call.result as Record<string, unknown> | null
       setSubmitError(
@@ -181,6 +274,17 @@ export default function CreateRfpCampaignPage() {
                 )}
               </div>
             )}
+
+            {/* Attachments — upload during creation */}
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                {t('partnerships.rfpCampaigns.attachments', 'Attachments')}
+              </label>
+              <p className="text-xs text-muted-foreground mb-2">
+                {t('partnerships.rfpCampaigns.attachmentsHint', 'Briefs, requirements, reference materials. Accepted: .md, images (max 25 MB).')}
+              </p>
+              <AttachmentSection entityId="partnerships:rfp_campaign" recordId={campaignId} />
+            </div>
 
             {submitError && (
               <div className="rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">

@@ -8,6 +8,103 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { Spinner } from '@open-mercato/ui/primitives/spinner'
 
+const RFP_ACCEPT_EXTENSIONS = ['md', 'jpg', 'jpeg', 'png', 'gif', 'webp']
+const RFP_MAX_SIZE_MB = 25
+const RFP_ACCEPT_STRING = '.md,.jpg,.jpeg,.png,.gif,.webp'
+
+function humanSize(n: number): string {
+  const units = ['B', 'KB', 'MB', 'GB']
+  let i = 0
+  let x = n
+  while (x >= 1024 && i < units.length - 1) { x /= 1024; i++ }
+  return `${x.toFixed(i === 0 ? 0 : 1)} ${units[i]}`
+}
+
+type AttachmentItem = { id: string; url: string; fileName: string; fileSize: number }
+
+function AttachmentSection({ entityId, recordId, canUpload }: { entityId: string; recordId: string; canUpload: boolean }) {
+  const t = useT()
+  const [items, setItems] = React.useState<AttachmentItem[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+  const [uploading, setUploading] = React.useState(false)
+
+  const loadAttachments = React.useCallback(async () => {
+    try {
+      const res = await fetch(`/api/partnerships/rfp-attachments?entityId=${encodeURIComponent(entityId)}&recordId=${encodeURIComponent(recordId)}`)
+      if (res.ok) {
+        const data = await res.json()
+        setItems(Array.isArray(data.items) ? data.items : [])
+      }
+    } catch {}
+    setLoading(false)
+  }, [entityId, recordId])
+
+  React.useEffect(() => { loadAttachments() }, [loadAttachments])
+
+  async function handleUpload(files: FileList | null) {
+    if (!files) return
+    setError(null)
+    setUploading(true)
+    for (const file of Array.from(files)) {
+      const ext = (file.name || '').split('.').pop()?.toLowerCase() || ''
+      if (!RFP_ACCEPT_EXTENSIONS.includes(ext)) {
+        setError(t('partnerships.rfp.attachments.typeNotAllowed', 'File type not allowed. Accepted: ') + RFP_ACCEPT_EXTENSIONS.join(', '))
+        continue
+      }
+      if (file.size > RFP_MAX_SIZE_MB * 1024 * 1024) {
+        setError(t('partnerships.rfp.attachments.tooLarge', `File exceeds ${RFP_MAX_SIZE_MB} MB limit`))
+        continue
+      }
+      const fd = new FormData()
+      fd.set('entityId', entityId)
+      fd.set('recordId', recordId)
+      fd.set('partitionCode', 'rfp')
+      fd.set('file', file)
+      const res = await fetch('/api/attachments', { method: 'POST', body: fd })
+      if (!res.ok) {
+        setError(t('partnerships.rfp.attachments.uploadFailed', 'Upload failed'))
+        break
+      }
+    }
+    setUploading(false)
+    await loadAttachments()
+  }
+
+  if (loading) return null
+
+  return (
+    <div className="space-y-2">
+      {canUpload && (
+        <div className="flex items-center gap-2">
+          <input
+            type="file"
+            multiple
+            accept={RFP_ACCEPT_STRING}
+            onChange={(e) => handleUpload(e.target.files)}
+            disabled={uploading}
+            className="text-sm"
+          />
+          {uploading && <Spinner className="h-4 w-4" />}
+        </div>
+      )}
+      {error && <div className="text-xs text-red-600">{error}</div>}
+      {items.length > 0 ? (
+        <div className="space-y-1">
+          {items.map((it) => (
+            <div key={it.id} className="text-sm">
+              <a className="underline hover:text-primary" href={it.url} target="_blank" rel="noreferrer">{it.fileName}</a>
+              <span className="text-xs text-muted-foreground ml-1">{humanSize(it.fileSize)}</span>
+            </div>
+          ))}
+        </div>
+      ) : !canUpload ? (
+        <p className="text-xs text-muted-foreground">{t('partnerships.rfp.attachments.none', 'No attachments.')}</p>
+      ) : null}
+    </div>
+  )
+}
+
 type RfpCampaign = {
   id: string
   title: string
@@ -330,6 +427,18 @@ export default function RfpCampaignDetailPage() {
             </div>
           </div>
 
+          {/* Campaign Attachments */}
+          <div className="rounded-lg border bg-card p-6 space-y-3">
+            <h3 className="text-sm font-semibold">
+              {t('partnerships.rfpCampaigns.attachments', 'Attachments')}
+            </h3>
+            <AttachmentSection
+              entityId="partnerships:rfp_campaign"
+              recordId={campaign.id}
+              canUpload={canManage && campaign.status === 'draft'}
+            />
+          </div>
+
           {/* Response submit/edit form (BD view) */}
           {showResponseForm && isActiveCampaign && deadlineDate && deadlineDate > new Date() && (
             <div className="rounded-lg border bg-card p-6">
@@ -391,6 +500,11 @@ export default function RfpCampaignDetailPage() {
                       )}
                     </div>
                     <p className="text-sm whitespace-pre-wrap">{r.responseText}</p>
+                    <AttachmentSection
+                      entityId="partnerships:rfp_response"
+                      recordId={r.id}
+                      canUpload={!canManage && canRespond && isActiveCampaign}
+                    />
                     <p className="text-xs text-muted-foreground">
                       {new Date(r.createdAt).toLocaleDateString()}
                     </p>

@@ -328,8 +328,37 @@ Three KPI items in Partnerships sidebar group use consistent naming:
 
 ---
 
-## 10. Resolved Questions
+## 10. Notification Model
 
-1. **Multi-agency admin**: Admin with 2+ orgs uses org switcher to switch between own agencies. WIP Scores shows data for currently selected org. Standard OM behavior, no custom logic.
+### 10.1 Scope Decision
 
-2. **PM's own agency on Agencies list**: Yes — PM's org appears on the list like any other agency. PM is an agency, no reason to hide. Keeps the system simple, zero filtering exceptions.
+**Notifications (in-app + email) exist only for the RFP process (WF4).** All other workflows rely on dashboards and manual checks — no push notifications, no email alerts.
+
+### 10.2 What This Means
+
+| Area | Notification? | How users stay informed |
+|------|--------------|------------------------|
+| RFP campaign published | **Yes** — in-app bell + auto email to target BDs + Admins | `notifications` module subscriber on `CampaignPublished` |
+| RFP awarded / rejected | **Yes** — in-app + auto email to Admins + BDs of responding agencies | Award/rejection templates with placeholders |
+| WIP registered | **No** | PM checks WIP Scores page |
+| Tier validUntil expired | **No** | PM checks Tier Review page |
+| TierChangeProposal pending | **No** | PM checks Tier Review page |
+| WIC scores imported | **No** | Agency checks WIC Scores page |
+| Agency onboarding progress | **No** | PM checks Agencies list (onboarding status column) |
+| Admin hasn't logged in | **No** | PM follows up out-of-band |
+
+### 10.3 Clarifications to App Spec Language
+
+The main app spec contains vague notification language that this section supersedes:
+
+- *"PM is alerted"* (TierAssignment validUntil) → means PM sees PendingReview state on Tier Review page, **not** a push notification
+- *"System can remind PM via notification"* (TierChangeProposal) → **removed** — PM checks Tier Review page
+- *"future notifications"* (AgencyCreated event consumers) → **deferred indefinitely** — no notification consumers planned
+
+---
+
+## 11. Resolved Questions
+
+3. **Multi-agency admin**: Admin with 2+ orgs uses org switcher to switch between own agencies. WIP Scores shows data for currently selected org. Standard OM behavior, no custom logic.
+
+4. **PM's own agency on Agencies list**: Yes — PM's org appears on the list like any other agency. PM is an agency, no reason to hide. Keeps the system simple, zero filtering exceptions.

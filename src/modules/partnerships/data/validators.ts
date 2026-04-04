@@ -200,6 +200,7 @@ export const partnerLicenseDealUpdateSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export const rfpCampaignCreateSchema = z.object({
+  id: z.string().uuid().optional(),
   title: z.string().min(1, 'Title is required').max(200),
   description: z.string().min(1, 'Description is required'),
   deadline: z.coerce.date(),
