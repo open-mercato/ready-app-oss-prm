@@ -1319,7 +1319,7 @@
     mikro-orm "6.6.4"
     reflect-metadata "0.2.2"
 
-"@mikro-orm/knex@6.6.11", "@mikro-orm/knex@6.6.4":
+"@mikro-orm/knex@6.6.4":
   version "6.6.4"
   resolved "https://registry.yarnpkg.com/@mikro-orm/knex/-/knex-6.6.4.tgz#e34b855f1f168d7578cc9e6723cd66aaecd0c237"
   integrity sha512-r9SvwQ87s6bwYZzteWPuQ7Kufatv1ZESwTPR/WUAG/Q7phDhPmzktE9G8fAABpwVwvXpXxcfpK9Y9A3eZsIt7w==
@@ -1479,6 +1479,20 @@
   dependencies:
     "@types/better-sqlite3" "^7.6.13"
 
+"@open-mercato/cli@0.4.10":
+  version "0.4.10"
+  resolved "https://registry.yarnpkg.com/@open-mercato/cli/-/cli-0.4.10.tgz#bdce3865ab9cb51712ad1b9e729992d6ed5561b3"
+  integrity sha512-Vgb3713k9fUReFQyuluaqCIJRXPCfzg2E1fIivvGIRv6xoRppRBeZGAXI/xX3GD8POq99XZOI7iXnM5LN/1CFg==
+  dependencies:
+    "@mikro-orm/core" "^6.6.2"
+    "@mikro-orm/migrations" "^6.6.2"
+    "@mikro-orm/postgresql" "^6.6.2"
+    "@open-mercato/shared" "0.4.10"
+    pg "8.20.0"
+    semver "^7.7.3"
+    testcontainers "^11.12.0"
+    typescript "^5.9.3"
+
 "@open-mercato/cli@^0.4.8":
   version "0.4.9"
   resolved "https://registry.yarnpkg.com/@open-mercato/cli/-/cli-0.4.9.tgz#902012716b593b751f68c1360c63ac907c74899d"
@@ -1493,10 +1507,10 @@
     testcontainers "^11.12.0"
     typescript "^5.9.3"
 
-"@open-mercato/core@^0.4.8":
-  version "0.4.9"
-  resolved "https://registry.yarnpkg.com/@open-mercato/core/-/core-0.4.9.tgz#270b314ed5f2c9775db6c7d743d92013feebffcb"
-  integrity sha512-YWofC0hG+go23Ee0xoT2fZ/dug7n+ZJhZ/MUTACFu4PBPycb3G1eQDM3gkaotObbr1/1EkfcMyP+lt7kcMsHww==
+"@open-mercato/core@0.4.10":
+  version "0.4.10"
+  resolved "https://registry.yarnpkg.com/@open-mercato/core/-/core-0.4.10.tgz#9e2dd7758fabe9fc5f603336bb338d3a1cee8bf8"
+  integrity sha512-Jv+LTHZ9/SR44fsY/ezOwpp7iUD0BhhpqdLveXeWSyoCpPlYjXvb4Veiq93t/iJCGGZXBMSgT5hkgYDYFxQ0DA==
   dependencies:
     "@types/html-to-text" "^9.0.4"
     "@types/semver" "^7.5.8"
@@ -1547,12 +1561,31 @@
     pg "8.20.0"
     zod "^4.0.0"
 
+"@open-mercato/shared@0.4.10":
+  version "0.4.10"
+  resolved "https://registry.yarnpkg.com/@open-mercato/shared/-/shared-0.4.10.tgz#e6f6d1b908890b64bbc5d1c45d178cd542a0848f"
+  integrity sha512-tm2nrPM3yvYXlXtC0475chWpl4tbaLXUh+L3TCB4blRD9rZX8ImCKxgMlVi3j/tblNPSDAWk2P8GfOmwt0wmuA==
+  dependencies:
+    rate-limiter-flexible "^9.0.0"
+
 "@open-mercato/shared@0.4.9", "@open-mercato/shared@^0.4.8":
   version "0.4.9"
   resolved "https://registry.yarnpkg.com/@open-mercato/shared/-/shared-0.4.9.tgz#796d2fed5aba4865796b0a0d87b91f5959222836"
   integrity sha512-x93z53k6rHQq/VXVs3iJfVVQb3/ffpEB98oRlnY1Nq3asvHWEmUaoRj96xgIfpEIvoqreEF0cc+d2FKfzsl9rA==
   dependencies:
     rate-limiter-flexible "^9.0.0"
+
+"@open-mercato/ui@0.4.10":
+  version "0.4.10"
+  resolved "https://registry.yarnpkg.com/@open-mercato/ui/-/ui-0.4.10.tgz#537ae134eb95b341f15a297b5076a5a7e6d97c60"
+  integrity sha512-t03wt9SADbos4mSn2D3PLfCNYqkIzZlCCr45ESBLxHpI2RKnzEVty7TTKuw24b1JgY3HoJvvwb3jGdiO+s4cjA==
+  dependencies:
+    "@radix-ui/react-popover" "^1.1.6"
+    "@radix-ui/react-tooltip" "^1.2.8"
+    date-fns "^4.1.0"
+    react-big-calendar "^1.19.4"
+    react-day-picker "^9.6.4"
+    recharts "^2.15.0"
 
 "@open-mercato/ui@^0.4.8":
   version "0.4.9"
@@ -4351,7 +4384,7 @@ dotenv@17.2.3:
   resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-17.2.3.tgz#ad995d6997f639b11065f419a22fabf567cdb9a2"
   integrity sha512-JVUnt+DUIzu87TABbhPmNfVdBDt18BLOWjMUFJMSi/Qqg7NTYtabbvSNJGOJ7afbRuv9D/lngizHtP7QyLQ+9w==
 
-dotenv@17.3.1, dotenv@^17.2.3:
+dotenv@^17.2.3:
   version "17.3.1"
   resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-17.3.1.tgz#2706f5b0165e45a1503348187b8468f87fe6aae2"
   integrity sha512-IO8C/dzEb6O3F9/twg6ZLXz164a2fhTnEWb95H23Dm4OuN+92NmEAlTrupP9VW6Jm3sO26tQlqyvyi4CsnY9GA==
@@ -7344,11 +7377,6 @@ micromatch@^4.0.4, micromatch@^4.0.8:
   dependencies:
     braces "^3.0.3"
     picomatch "^2.3.1"
-
-mikro-orm@6.6.11:
-  version "6.6.11"
-  resolved "https://registry.yarnpkg.com/mikro-orm/-/mikro-orm-6.6.11.tgz#af99820dd0221b43252fdcd45c6fce9514192daa"
-  integrity sha512-8z1pS5IfKGys0OR0m5bWDLbmCu7n86DXvozL9v7BYcqW6O3GbsioghmNobzl7PraOOIRy260rS+mO6Z1jLduDQ==
 
 mikro-orm@6.6.4:
   version "6.6.4"

@@ -12,6 +12,7 @@ const normalizePath = (value: string) => value.split(path.sep).join('/');
 const STATIC_TEST_IGNORES = [
   `${normalizePath(path.join(projectRoot, '.claude'))}/**`,
   `${normalizePath(path.join(projectRoot, '.codex'))}/**`,
+  `${normalizePath(path.join(projectRoot, '.worktrees'))}/**`,
 ];
 const discoveredSpecs = discoverIntegrationSpecFiles(projectRoot, path.join(projectRoot, '.ai', 'qa', 'tests'));
 const discoveredSpecPaths = discoveredSpecs.map((entry) => entry.path);
