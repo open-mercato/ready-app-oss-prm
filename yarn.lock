@@ -1319,7 +1319,7 @@
     mikro-orm "6.6.4"
     reflect-metadata "0.2.2"
 
-"@mikro-orm/knex@6.6.11", "@mikro-orm/knex@6.6.4":
+"@mikro-orm/knex@6.6.4":
   version "6.6.4"
   resolved "https://registry.yarnpkg.com/@mikro-orm/knex/-/knex-6.6.4.tgz#e34b855f1f168d7578cc9e6723cd66aaecd0c237"
   integrity sha512-r9SvwQ87s6bwYZzteWPuQ7Kufatv1ZESwTPR/WUAG/Q7phDhPmzktE9G8fAABpwVwvXpXxcfpK9Y9A3eZsIt7w==
@@ -4351,7 +4351,7 @@ dotenv@17.2.3:
   resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-17.2.3.tgz#ad995d6997f639b11065f419a22fabf567cdb9a2"
   integrity sha512-JVUnt+DUIzu87TABbhPmNfVdBDt18BLOWjMUFJMSi/Qqg7NTYtabbvSNJGOJ7afbRuv9D/lngizHtP7QyLQ+9w==
 
-dotenv@17.3.1, dotenv@^17.2.3:
+dotenv@^17.2.3:
   version "17.3.1"
   resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-17.3.1.tgz#2706f5b0165e45a1503348187b8468f87fe6aae2"
   integrity sha512-IO8C/dzEb6O3F9/twg6ZLXz164a2fhTnEWb95H23Dm4OuN+92NmEAlTrupP9VW6Jm3sO26tQlqyvyi4CsnY9GA==
@@ -7344,11 +7344,6 @@ micromatch@^4.0.4, micromatch@^4.0.8:
   dependencies:
     braces "^3.0.3"
     picomatch "^2.3.1"
-
-mikro-orm@6.6.11:
-  version "6.6.11"
-  resolved "https://registry.yarnpkg.com/mikro-orm/-/mikro-orm-6.6.11.tgz#af99820dd0221b43252fdcd45c6fce9514192daa"
-  integrity sha512-8z1pS5IfKGys0OR0m5bWDLbmCu7n86DXvozL9v7BYcqW6O3GbsioghmNobzl7PraOOIRy260rS+mO6Z1jLduDQ==
 
 mikro-orm@6.6.4:
   version "6.6.4"
