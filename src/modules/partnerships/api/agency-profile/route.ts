@@ -8,7 +8,7 @@ import { loadCustomFieldSnapshot } from '@open-mercato/shared/lib/commands/custo
 import { Organization } from '@open-mercato/core/modules/directory/data/entities'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { OpenApiMethodDoc, OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
-import { E } from '#generated/entities.ids.generated'
+import { E } from '@/.mercato/generated/entities.ids.generated'
 import {
   agencyProfileUpdateSchema,
   agencyProfileValuesSchema,
