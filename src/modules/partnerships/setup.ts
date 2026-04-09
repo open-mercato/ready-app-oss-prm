@@ -18,7 +18,7 @@ import { seedDashboardDefaultsForTenant } from '@open-mercato/core/modules/dashb
 import { hash } from 'bcryptjs'
 import { DefaultDataEngine } from '@open-mercato/shared/lib/data/engine'
 import { PartnerLicenseDeal, PartnerRfpCampaign, PartnerRfpResponse, RfpSettings, TierAssignment, TierEvaluationState, TierChangeProposal } from './data/entities'
-import { E } from '#generated/entities.ids.generated'
+import { E } from '@/.mercato/generated/entities.ids.generated'
 import {
   PRM_PIPELINE_NAME,
   PRM_PIPELINE_STAGES,
