@@ -68,7 +68,7 @@ All 5 must work for the flywheel to spin. Missing any one = broken loop.
 |------|-----------|----------------|--------|
 | **WIC** | Wildly Important Contribution. Code contributions to OM codebase, scored by level (L1-L4) with impact bonus and bounty multiplier. | GitHub PRs, scored by algorithm (LLM-assisted) | Monthly |
 | **WIP** | Work In Progress. Deals that first reached "Sales Qualified Lead" stage or above during a given month. Stamped at qualification moment via `wip_registered_at` custom field. Once stamped, immutable — deal stage changes don't affect the count. | CRM deals (customers module), stamped by API interceptor | Monthly |
-| **MIN** | Minimum Implementations Needed. Enterprise license deals sold and attributed to an agency via CRM company lookup. PM searches across all agencies' CRMs to find which agency brought the company into pipeline, then creates attribution record. | PM-created PartnerLicenseDeal linked to CRM Company | Calendar year (Jan 1 – Dec 31 UTC) |
+| **MIN** | Most Important Number — Licenses. Enterprise license deals sold and attributed to an agency via CRM company lookup. PM searches across all agencies' CRMs to find which agency brought the company into pipeline, then creates attribution record. | PM-created PartnerLicenseDeal linked to CRM Company | Partnership year (12 months from `Agency.partnership_start_date`; falls back to calendar year when the anchor is unset — see SPEC-2026-05-10) |
 | **Tier** | Partnership level determining agency visibility and lead priority. 4 levels. Distinct from TierEligibility (computed) — Tier refers to the PM-approved TierAssignment. | Calculated from WIC + WIP + MIN thresholds | Evaluated monthly, assigned with scheduled review date (`validUntil`) |
 | **TierEligibility** | Computed comparison of an agency's current KPIs (WIC+WIP+MIN) against tier thresholds. Ephemeral, recalculated each evaluation. Not the actual tier — just the recommendation. | KPI aggregation worker | Monthly |
 | **TierAssignment** | The actual tier an agency holds, with a scheduled review date (`validFrom` to `validUntil`). Durable, auditable, requires PM approval to change. When `validUntil` passes, tier remains operationally active but PM is alerted (PendingReview computed state). `validUntil` nullable for legacy assignments. | PM approval via workflow | `validFrom` (assignment date) to `validUntil` (scheduled review date, set by PM) |
@@ -249,7 +249,7 @@ API contracts use standard OM entities module: `POST /api/entities/definitions.b
 - [x] Tiers: all 4 real tiers with thresholds and benefits (was 3 in old spec, caught and fixed)
 - [x] Tiers: governance rules complete — grace period state machine (OK → GracePeriod → ProposedDowngrade), TierChangeProposal with uniqueness invariant
 - [x] KPIs: complete formulas with input source, period, anti-gaming (feature key dedup enforced as invariant at ContributionUnit creation)
-- [x] KPIs: WIP = stamp-based (`wip_registered_at`), immutable, first qualification only. MIN = calendar year, cross-org attribution workflow.
+- [x] KPIs: WIP = stamp-based (`wip_registered_at`), immutable, first qualification only. MIN = partnership year (anchored to `Agency.partnership_start_date`, falls back to calendar year when unset — SPEC-2026-05-10), cross-org attribution workflow.
 - [x] Access control: permissions hierarchy (Admin > BD > Contributor), cross-org visibility (PM Program Scope), Admin full CRM write, BD own records only
 - [x] Data ownership: WIC system-generated with versioned import, WIP stamp-based, MIN PM-generated via cross-org search
 - [x] Domain events: CampaignPublished, RfpAwarded (AgencyTierChanged removed — zero consumers)
@@ -905,7 +905,7 @@ Success: Dashboard shows: current tier, KPI values vs thresholds, % progress to 
 Success: Dashboard shows: current tier, agency WIP count (with my deals highlighted), WIC score for my org.
 
 **US-5.6** As PM, I attribute a license sale to the agency that brought the company into pipeline so that MIN is tracked for tier evaluation.
-Success: PM opens "Create License Deal" -> searches all companies across all agencies (cross-org, Program Scope) -> sees results with agency name, company name, date created, deal count -> clicks company -> jumps to that agency's CRM to verify deals, people, history (procedural read-only per OM RBAC design) -> confirms -> PartnerLicenseDeal created with: agency attribution, industry tag, license identifier. MIN count increments for that agency's calendar year. No double-attribution (unique: license identifier + year). Visible on KPI dashboard.
+Success: PM opens "Create License Deal" -> searches all companies across all agencies (cross-org, Program Scope) -> sees results with agency name, company name, date created, deal count -> clicks company -> jumps to that agency's CRM to verify deals, people, history (procedural read-only per OM RBAC design) -> confirms -> PartnerLicenseDeal created with: agency attribution, industry tag, license identifier. MIN count increments for that agency's partnership year (calendar-year fallback when anchor unset — SPEC-2026-05-10). No double-attribution (unique: license identifier + year). Visible on KPI dashboard.
 
 ### Cross-workflow
 
@@ -1126,7 +1126,7 @@ Success: Every file follows OM conventions (auto-discovery paths, UMES patterns,
 - ~~`AgencyTierChanged` published on every PM approval~~ *(Removed — zero consumers. Re-add when needed.)*
 - [ ] Agency users cannot create/update/delete PartnerLicenseDeal — PM-only routes
 - [ ] WIC import rejects unmatched GH usernames with rejection list — no ghost users
-- [ ] MIN calendar year boundary is UTC (Dec 31 23:59:59Z = current year, Jan 1 00:00:00Z = next year)
+- [ ] MIN partnership-year boundary is UTC, computed from `Agency.partnership_start_date` via the shared `getPartnershipYearWindow` helper. Calendar-year fallback applies when the anchor is unset (SPEC-2026-05-10).
 - [ ] WIC import API rejects non-conforming records (missing fields, unknown levels, bad month format) — 422 with field-level errors, no partial batch insertion
 
 **Business criteria** `Mat`:
@@ -1516,7 +1516,7 @@ Vernon raised these findings. Mat disagrees with good business reason:
 - Admin can respond to RFP (superset rule)
 - GH username: unique, immutable once WIC recorded
 - PM write context: global actions, not scoped by org switcher
-- MIN: calendar year, no double-attribution, qualification criteria defined
+- MIN: partnership year (12 months from `Agency.partnership_start_date`, calendar-year fallback when unset — SPEC-2026-05-10), no double-attribution, qualification criteria defined
 - CaseStudy minimum fields: industry tag, tech stack, budget range, duration
 
 **Phasing changes:**
